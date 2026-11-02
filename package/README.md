@@ -6,7 +6,7 @@ Small islands out at sea with old ruins, guards and treasure, tougher the furthe
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
 
-- **Islets** in the open sea, away from the coasts, with ruins on top, something on the cliff, an old jetty and a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
+- **Islets** in the open sea, away from the coasts, with ruins on top, often a tower or graves on the cliff, sometimes an old jetty or a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
 - **Guards** that show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet.
 
@@ -22,9 +22,11 @@ The further from the world centre, the tougher the islet:
 
 Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or a dvergr outpost (Mistlands), a grausten fortress or broken arches (Ashlands). Every kind comes in four shapes (round, long, with a bay, with two humps), the ruin is turned differently from islet to islet, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
 
-About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**, a second, richer chest among the rocks. Some have a runestone.
+About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**: a second, richer chest tucked between rocks on the slope (it isn't buried, look around). Some have a runestone.
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
+
+Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
 ## New worlds and existing worlds
 

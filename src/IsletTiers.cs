@@ -26,6 +26,7 @@ namespace IslandsOfValheim
         internal IsletBuilder.RuinStyle Style;
         internal string Nest;          // vanilla creature nest used instead of a ruin on some islets; null: none
         internal int NestCount = 1;
+        internal string[] NestProps;   // static clutter around the nest
         internal string RuneStone;
         internal string JettyFloor = "wood_floor", JettyPole = "wood_pole2";
         internal string[] Wreck = KarveWreck;
@@ -57,7 +58,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Meadows", Biome = Heightmap.Biome.Meadows, MinDistance = 300f, MaxDistance = 2200f, DefaultCount = 20, Seed = 0f,
-                Style = IsletBuilder.RuinStyle.StoneHall, Nest = "Spawner_GreydwarfNest", RuneStone = "RuneStone_Meadows",
+                Style = IsletBuilder.RuinStyle.StoneHall, Nest = "Spawner_GreydwarfNest", NestProps = new[] { "root07", "root08" }, RuneStone = "RuneStone_Meadows",
                 Guards = new[] { "Greydwarf", "Greydwarf", "Greydwarf_Shaman", "Greydwarf", "Greydwarf" },
                 ChestBases = new[] { "TreasureChest_meadows" },
                 Trees = new[] { "FirTree_small_dead", "FirTree_small", "Pinetree_01" },
@@ -71,7 +72,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Swamp", Biome = Heightmap.Biome.Swamp, MinDistance = 2200f, MaxDistance = 4000f, DefaultCount = 25, Seed = 137f,
-                Style = IsletBuilder.RuinStyle.StiltHut, Nest = "BonePileSpawner_swamp", RuneStone = "RuneStone_Swamps",
+                Style = IsletBuilder.RuinStyle.StiltHut, Nest = "BonePileSpawner_swamp", NestProps = new[] { "bone_stack", "crypt_skeleton_laying" }, RuneStone = "RuneStone_Swamps",
                 Guards = new[] { "Draugr", "Draugr", "Draugr_Ranged", "Draugr", "Draugr_Elite" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_swamp", "TreasureChest_meadows" },
@@ -101,7 +102,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Mistlands", Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 25, Seed = 409f,
-                Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck, Nest = "SeekerEgg", NestCount = 4, RuneStone = "RuneStone_Mistlands",
+                Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck, Nest = "SeekerEgg", NestCount = 4, NestProps = new[] { "blackmarble_pile", "dvergrprops_crate" }, RuneStone = "RuneStone_Mistlands",
                 Guards = new[] { "Seeker", "Seeker", "SeekerBrute", "Seeker", "Seeker" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_dvergrtower", "TreasureChest_meadows" },
@@ -116,7 +117,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Ashlands", Biome = Heightmap.Biome.AshLands, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 20, Seed = 557f,
-                Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck, Nest = "GraveStone_CharredTwitcherNest", NestCount = 2, RuneStone = "RuneStone_Ashlands",
+                Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck, Nest = "GraveStone_CharredTwitcherNest", NestCount = 2, NestProps = new[] { "grausten_pile", "ashland_pot2_red" }, RuneStone = "RuneStone_Ashlands",
                 JettyFloor = "ashwood_floor_2x2", JettyPole = "ashwood_pole_2m",
                 Guards = new[] { "Charred_Melee", "Charred_Melee", "Charred_Mage", "Charred_Archer", "Charred_Melee" },
                 MaxLevel = 2, LevelUpChance = 10f,

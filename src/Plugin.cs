@@ -13,7 +13,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "0.8.0";
+        public const string Version = "1.0.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<bool> DebugLog;
@@ -31,7 +31,7 @@ namespace IslandsOfValheim
             GroundStyle = Config.Bind("1 - World generation", "GroundStyle", GroundTerrain,
                 new ConfigDescription("How the islet ground looks: Terrain (like the game's own land: grass, sand, cliff rock) or Rock (bare stone). Needs a restart.",
                     new AcceptableValueList<string>(GroundTerrain, GroundRock)));
-            DebugLog = Config.Bind("2 - Debug", "DebugLog", true, // TODO before 1.0: default false
+            DebugLog = Config.Bind("2 - Debug", "DebugLog", false,
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;

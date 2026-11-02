@@ -53,8 +53,9 @@ namespace IslandsOfValheim
             float[] rocks = { 30f, 140f, 250f, 320f };
             for (int i = 0; i < rocks.Length; i++)
                 OnGround(bigRocks, Polar(rocks[i], 4.8f), rocks[i] * 2f, 2f + (i % 2) * 0.8f, 0.4f);
-            Prop(new[] { "bone_stack", "Skull1" }, Polar(95f, 3.6f), 30f, 0.1f);
-            Prop(new[] { "Skull2", "Skull1" }, Polar(290f, 3.2f), 200f, 0.05f);
+            // The vanilla skull props are giants' skulls; small clutter of the tier's own fits better.
+            PropAtMost(tier.NestProps[0], Polar(95f, 3.6f), 30f, 0.15f, 2.4f);
+            PropAtMost(tier.NestProps[1], Polar(290f, 3.2f), 200f, 0.05f, 1.6f);
             Vector2 chest = Polar(200f, 3.2f);
             CourtyardGuardsAndChest(PlateauHeight, new Vector3(chest.x, PlateauHeight, chest.y), 20f);
         }
@@ -164,8 +165,8 @@ namespace IslandsOfValheim
             At("wood_fence", new Vector3(-4.5f, PlateauHeight - 0.05f, -2f), new Vector3(0f, 80f, 0f), false);
             At("wood_fence", new Vector3(-4f, PlateauHeight - 0.05f, -5f), new Vector3(0f, 30f, 8f), false);
             Prop(new[] { "skull_pile" }, new Vector2(3.5f, 4.5f), 40f, 0.1f);
-            Prop(new[] { "bone_stack", "Skull1" }, new Vector2(-4f, 3.5f), 110f, 0.1f);
-            Prop(new[] { "Skull1" }, new Vector2(3f, -4.5f), 200f, 0.05f);
+            Prop(new[] { "bone_stack" }, new Vector2(-4f, 3.5f), 110f, 0.1f);
+            Prop(new[] { "crypt_skeleton_laying" }, new Vector2(3f, -4.5f), 200f, 0.05f);
 
             CourtyardGuardsAndChest(floor, new Vector3(-1f, floor, 2.2f), 180f);
         }
@@ -180,7 +181,7 @@ namespace IslandsOfValheim
                 Vector3 off = turn * new Vector3(spots[i, 0], 0f, spots[i, 1]);
                 Prop(new[] { i % 2 == 0 ? "marker01" : "marker02", "marker01" }, new Vector2(c.x + off.x, c.y + off.z), turn.eulerAngles.y + i * 7f, 0.15f);
             }
-            Prop(new[] { "crypt_skeleton_laying", "Skull2" }, c, turn.eulerAngles.y + 90f, 0.05f);
+            Prop(new[] { "crypt_skeleton_laying" }, c, turn.eulerAngles.y + 90f, 0.05f);
         }
 
         // ---- Plains: a Fuling camp behind a palisade, with a lookout of totems ----
@@ -358,7 +359,7 @@ namespace IslandsOfValheim
             At("SunkenKit_int_arch", new Vector3(0f, b, -3.4f), Vector3.zero, false);
             Prop(new[] { "sunken_crypt_gate" }, new Vector2(0f, 2.7f), 0f, 0.1f);
             Prop(new[] { "crypt_skeleton_laying" }, new Vector2(2f, -1f), 60f, 0.05f);
-            Prop(new[] { "bone_stack", "Skull1" }, new Vector2(-2.5f, -2.5f), 10f, 0.1f);
+            Prop(new[] { "bone_stack" }, new Vector2(-2.5f, -2.5f), 10f, 0.1f);
             Prop(new[] { "skull_pile" }, new Vector2(4.5f, -3f), 140f, 0.1f);
             CourtyardGuardsAndChest(FloorTop, new Vector3(-2f, FloorTop, 1.2f), 90f);
         }
@@ -472,6 +473,22 @@ namespace IslandsOfValheim
         static void Prop(string[] candidates, Vector2 at, float rotY, float sink)
         {
             OnGround(candidates, at, rotY, 0f, sink, true);
+        }
+
+        // Like Prop, but shrunk to at most maxSize metres across if the vanilla prop is bigger.
+        static void PropAtMost(string name, Vector2 at, float rotY, float sink, float maxSize)
+        {
+            GameObject go = Copy(new[] { name }, new Vector3(0f, rotY, 0f), 0f, true);
+            if (go == null) return;
+            Bounds b = LocalBounds(go);
+            float extent = Mathf.Max(b.size.x, b.size.z);
+            if (extent > maxSize)
+            {
+                go.transform.localScale = Vector3.one * (maxSize / extent);
+                b = LocalBounds(go);
+            }
+            float y = GroundMin(at.x, at.y, 0.4f * Mathf.Max(b.size.x, b.size.z)) - sink * b.size.y;
+            Move(go, b, new Vector3(at.x, y, at.y), false);
         }
     }
 }

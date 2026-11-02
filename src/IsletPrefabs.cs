@@ -124,8 +124,8 @@ namespace IslandsOfValheim
             return table;
         }
 
-        // Vanilla plants have StaticPhysics, which drops them onto the terrain: out here that's the sea
-        // floor. The islets use copies without it ("IoV_" + name).
+        // Vanilla plants, nests and runestones have StaticPhysics, which drops them onto the terrain: out
+        // here that's the sea floor. The islets use copies without it ("IoV_" + name).
         internal static string PlantName(string vanilla)
         {
             return "IoV_" + vanilla;
@@ -136,6 +136,8 @@ namespace IslandsOfValheim
             if (PrefabManager.Instance.GetPrefab(name) == null) return;
             GameObject go = PrefabManager.Instance.CreateClonedPrefab(PlantName(name), name);
             foreach (StaticPhysics physics in go.GetComponentsInChildren<StaticPhysics>(true)) Object.DestroyImmediate(physics);
+            // A nest only spawns on terrain if it asks for "ground"; the islet's ground counts as blocked.
+            foreach (SpawnArea area in go.GetComponentsInChildren<SpawnArea>(true)) area.m_onGroundOnly = false;
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
     }
