@@ -8,7 +8,8 @@ namespace IslandsOfValheim
     // close enough to see them.
     static partial class IsletBuilder
     {
-        static readonly string[] beacons = { "MountainKit_brazier", "piece_brazierfloor01", "fire_pit" };
+        // A big fire is what you see from the sea; the world-prop braziers have no flames of their own.
+        static readonly string[] beacons = { "bonfire", "piece_brazierfloor01", "fire_pit" };
 
         static void PlaceHints()
         {
@@ -52,6 +53,7 @@ namespace IslandsOfValheim
                 if (light.gameObject != gameObject) parts.Add(light.gameObject);
             foreach (ParticleSystem particles in GetComponentsInChildren<ParticleSystem>(true))
                 if (particles.gameObject != gameObject && !parts.Contains(particles.gameObject)) parts.Add(particles.gameObject);
+            Plugin.Debug("Night fire with " + parts.Count + " flame parts");
             InvokeRepeating("Check", Random.Range(0f, 2f), 4f);
         }
 
@@ -61,7 +63,13 @@ namespace IslandsOfValheim
             if (night == lit) return;
             lit = night;
             foreach (GameObject part in parts)
-                if (part != null) part.SetActive(night);
+            {
+                if (part == null) continue;
+                part.SetActive(night);
+                if (!night) continue;
+                foreach (ParticleSystem particles in part.GetComponentsInChildren<ParticleSystem>())
+                    particles.Play();
+            }
         }
     }
 }

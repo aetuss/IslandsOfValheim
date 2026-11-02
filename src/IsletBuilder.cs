@@ -27,7 +27,9 @@ namespace IslandsOfValheim
         const int Segments = 72;
 
         const float RingStep = 1f;
-        const float FloorTop = PlateauHeight + 0.1f;
+        // Floor tiles stick out of the ground a little: a piece only gets support where it touches the
+        // ground mesh's surface, and one entirely below it touches nothing.
+        const float FloorTop = PlateauHeight + 0.25f;
 
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
         static readonly string[] smallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
@@ -370,9 +372,10 @@ namespace IslandsOfValheim
             if (!alignTop)
             {
                 // A piece meant to stand on the ground must touch it, or it has no support and collapses.
-                // Just above the ground means "on the ground": sink it in a little.
+                // Just above the ground means "on the ground": sink it in, deep enough that it still
+                // touches where the ground is a little higher or lower (ruins are turned after building).
                 float ground = GroundMin(pos.x, pos.z, 0.35f * Mathf.Max(b.size.x, b.size.z));
-                if (pos.y > ground - 0.1f && pos.y < ground + 0.6f) pos.y = ground - 0.15f;
+                if (pos.y > ground - 0.1f && pos.y < ground + 0.6f) pos.y = ground - 0.3f;
             }
             Move(go, b, pos, alignTop);
             return go;
@@ -496,10 +499,17 @@ namespace IslandsOfValheim
                 {
                     Vector2 p = u * along[i] + side * (0.9f * k);
                     float poleTop = i == 2 ? top + 0.6f - k * 0.25f : top;
-                    float ground = GroundMin(p.x, p.y, 0.2f) - 0.3f;
+                    float surface = GroundMin(p.x, p.y, 0.2f);
+                    float ground = surface - 0.3f;
                     int count = Mathf.Max(1, Mathf.CeilToInt((poleTop - ground) / 2f));
                     for (int n = 0; n < count; n++)
-                        At(tier.JettyPole, new Vector3(p.x, poleTop - 2f * (count - n), p.y), new Vector3(0f, yaw, 0f), false);
+                    {
+                        float bottom = poleTop - 2f * (count - n);
+                        // A pole entirely below the sea floor touches nothing and would break; the one
+                        // above it reaches through the floor instead.
+                        if (bottom + 2f < surface + 0.1f) continue;
+                        At(tier.JettyPole, new Vector3(p.x, bottom, p.y), new Vector3(0f, yaw, 0f), false);
+                    }
                 }
         }
 
