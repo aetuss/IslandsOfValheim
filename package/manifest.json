@@ -1,0 +1,10 @@
+{
+  "name": "IslandsOfValheim",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/aetuss/IslandsOfValheim",
+  "description": "Small rocky islands out at sea, with old stone ruins, Greydwarfs guarding them and a treasure chest. Gives you a reason to sail.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2360",
+    "ValheimModding-Jotunn-2.30.2"
+  ]
+}
