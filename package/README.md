@@ -9,6 +9,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Islets** in the open sea, away from the coasts, with ruins on top, often a tower or graves on the cliff, sometimes an old jetty or a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
 - **Guards** that show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet.
+- **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 
 The further from the world centre, the tougher the islet:
 

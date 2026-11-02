@@ -5,7 +5,8 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // The networked parts of the islets: one-time creature spawners, treasure chests and plants.
+    // The networked parts of the islets: creature spawners (one-time guards, returning gulls), treasure
+    // chests and plants.
     // They need their own registered prefabs, because a zone that is loaded again rebuilds its
     // objects from ZNetScene by name, and a changed vanilla prefab would come back as vanilla.
     static class IsletPrefabs
@@ -16,23 +17,29 @@ namespace IslandsOfValheim
             foreach (IsletTier tier in IsletTier.All)
             {
                 foreach (string creature in tier.Guards)
-                    if (spawners.Add(creature)) AddSpawner(creature);
+                    if (spawners.Add(creature))
+                    {
+                        IsletTier first = TierOf(creature);
+                        AddSpawner(creature, IsletTier.SpawnerName(creature), first.MinLevel, first.MaxLevel, first.LevelUpChance, 0f, true, 40f);
+                    }
                 AddChest(tier);
             }
+            // Gulls over every islet in daylight, a sign of land from a boat; they come back after a while.
+            AddSpawner("Seagal", GullSpawner, 1, 1, 0f, 10f, false, 150f);
             foreach (string plant in IsletTier.AllPlants()) AddPlant(plant);
         }
 
-        // One spawner prefab per creature; its levels come from the (first) tier that uses that creature.
-        static void AddSpawner(string creature)
+        internal const string GullSpawner = "IoV_Spawner_Gull";
+
+        // respawnMinutes 0: spawn once, never again (the guards).
+        static void AddSpawner(string creature, string name, int minLevel, int maxLevel, float levelUpChance, float respawnMinutes, bool atNight, float triggerDistance)
         {
             GameObject creaturePrefab = PrefabManager.Instance.GetPrefab(creature);
             if (creaturePrefab == null)
             {
-                Plugin.Log.LogWarning("Creature prefab " + creature + " not found, its islet guards are left out.");
+                Plugin.Log.LogWarning("Creature prefab " + creature + " not found, " + name + " is left out.");
                 return;
             }
-            IsletTier tier = TierOf(creature);
-            string name = IsletTier.SpawnerName(creature);
 
             // CreateEmptyPrefab makes a cube with a ZNetView; the spawner must be invisible.
             GameObject go = PrefabManager.Instance.CreateEmptyPrefab(name, true);
@@ -43,13 +50,13 @@ namespace IslandsOfValheim
 
             CreatureSpawner spawner = go.AddComponent<CreatureSpawner>();
             spawner.m_creaturePrefab = creaturePrefab;
-            spawner.m_minLevel = tier.MinLevel;
-            spawner.m_maxLevel = tier.MaxLevel;
-            spawner.m_levelupChance = tier.LevelUpChance;
-            spawner.m_respawnTimeMinuts = 0f; // spawn once, never again
-            spawner.m_triggerDistance = 40f;
+            spawner.m_minLevel = minLevel;
+            spawner.m_maxLevel = maxLevel;
+            spawner.m_levelupChance = levelUpChance;
+            spawner.m_respawnTimeMinuts = respawnMinutes;
+            spawner.m_triggerDistance = triggerDistance;
             spawner.m_spawnAtDay = true;
-            spawner.m_spawnAtNight = true;
+            spawner.m_spawnAtNight = atNight;
             spawner.m_requireSpawnArea = false;
             spawner.m_setPatrolSpawnPoint = true;
             spawner.m_wakeUpAnimation = false;

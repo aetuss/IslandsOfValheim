@@ -17,7 +17,7 @@ $refs = @(
     "$Managed\mscorlib.dll", "$Managed\netstandard.dll", "$Managed\System.dll", "$Managed\System.Core.dll",
     "$Managed\UnityEngine.dll", "$Managed\UnityEngine.CoreModule.dll", "$Managed\assembly_valheim.dll", "$Managed\assembly_utils.dll",
     "$BepInExCore\BepInEx.dll", "$BepInExCore\0Harmony.dll", $Jotunn,
-    "$Managed\UnityEngine.PhysicsModule.dll", "$Managed\SoftReferenceableAssets.dll"
+    "$Managed\UnityEngine.PhysicsModule.dll", "$Managed\UnityEngine.ParticleSystemModule.dll", "$Managed\SoftReferenceableAssets.dll"
 ) | ForEach-Object { "/r:$_" }
 
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /nostdlib /noconfig /target:library /optimize+ `
