@@ -20,7 +20,7 @@ The further from the world centre, the tougher the islet:
 | Mistlands | 5800-7500 m | Seekers, a Seeker Brute | coins, soft tissue, black marble, black cores, carapace arrows |
 | Ashlands | 7500 m and further | Charred warriors, an archer and a mage | coins, flametal ore, grausten, gemstones, molten cores, charred arrows |
 
-Each kind has its own ground, painted like its biome, its own plants and its own ruins: a stone hall and lookout tower (Meadows), a hut on stilts and graves (Swamp), a Fuling camp behind a palisade (Plains), a ring of black marble columns (Mistlands), a broken grausten fortress (Ashlands).
+Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or a dvergr outpost (Mistlands), a grausten fortress or broken arches (Ashlands). Every kind also comes in two shapes, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
 

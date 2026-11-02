@@ -13,7 +13,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "0.6.0";
+        public const string Version = "0.7.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<bool> DebugLog;
@@ -50,7 +50,8 @@ namespace IslandsOfValheim
         void OnVanillaLocations()
         {
             ZoneManager.OnVanillaLocationsAvailable -= OnVanillaLocations;
-            foreach (IsletTier tier in IsletTier.All) IsletBuilder.Register(tier);
+            foreach (IsletTier tier in IsletTier.All)
+                for (int variant = 0; variant < IsletBuilder.Variants; variant++) IsletBuilder.Register(tier, variant);
         }
 
         internal static void Debug(string message)

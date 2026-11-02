@@ -28,7 +28,7 @@ namespace IslandsOfValheim
                     {
                         int count = 0, placed = 0;
                         foreach (ZoneSystem.LocationInstance instance in islets)
-                            if (instance.m_location.m_prefabName == tier.LocationName) { count++; if (instance.m_placed) placed++; }
+                            if (Is(instance, tier)) { count++; if (instance.m_placed) placed++; }
                         args.Context.AddString(tier.Name + ": " + count + " islets (" + placed + " already generated)");
                     }
                     islets.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
@@ -99,7 +99,7 @@ namespace IslandsOfValheim
             {
                 if (instance.m_location == null) continue;
                 foreach (IsletTier tier in IsletTier.All)
-                    if ((only == null || only == tier) && instance.m_location.m_prefabName == tier.LocationName) result.Add(instance);
+                    if ((only == null || only == tier) && Is(instance, tier)) result.Add(instance);
             }
             return result;
         }
@@ -107,8 +107,13 @@ namespace IslandsOfValheim
         static string TierName(ZoneSystem.LocationInstance instance)
         {
             foreach (IsletTier tier in IsletTier.All)
-                if (instance.m_location.m_prefabName == tier.LocationName) return tier.Name;
+                if (Is(instance, tier)) return tier.Name;
             return "?";
+        }
+
+        static bool Is(ZoneSystem.LocationInstance instance, IsletTier tier)
+        {
+            return instance.m_location.m_prefabName.StartsWith(tier.LocationPrefix);
         }
 
         static float Distance(ZoneSystem.LocationInstance instance, Vector3 from)

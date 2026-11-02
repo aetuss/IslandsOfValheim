@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- More variety: every kind of islet has two shapes and sizes, two designs for its main ruin (one is picked for each islet), and its tower, wreck, jetty, plants, pickables and loose stones are there on some islets and not on others.
+- New ruins: an abandoned fishing camp (Meadows), the mouth of a sunken crypt (Swamp), a stone ruin taken over by Fulings (Plains), a dvergr outpost (Mistlands) and Ashlands arches with twisted pillars.
+- Fixed building pieces collapsing or hanging in the air: pieces next to the floor now stand on the ground instead of just above it, and nothing rests on top of a piece that can't carry it.
+
 ## 0.6.0
 
 - Each kind of islet has its own ruins now, built from that biome's pieces: a stone hall and lookout tower (Meadows), a hut on stilts with graves (Swamp), a Fuling camp behind a palisade (Plains), a ring of black marble columns (Mistlands) and a broken grausten fortress (Ashlands).

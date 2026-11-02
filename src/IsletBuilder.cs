@@ -17,44 +17,56 @@ namespace IslandsOfValheim
     {
         internal const float PlateauHeight = 3f;
 
-        const float PlateauRadius = 9.5f;
-        const float ShoreRadius = 20f;
+        // Per variant (see Register): the two variants of a tier differ in size and shape.
+        static float plateauRadius, shoreRadius, maxRadius, seed;
         const float CliffAngle = 206f * Mathf.Deg2Rad; // the high, steep side
         const float Bottom = -30f;
         const int Segments = 72;
-        const float MaxRadius = 46f;
+
         const float RingStep = 1f;
         const float FloorTop = PlateauHeight + 0.1f;
 
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
         static readonly string[] smallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
 
+        internal const int Variants = 2;
+
         static IsletTier tier;
+        static string locationName;
         static GameObject root;
+        static Transform parent; // where new parts go: the location, or an optional group in it
         static int built;
         static int missing;
 
-        internal static void Register(IsletTier islet)
+        internal static void Register(IsletTier islet, int variant)
         {
             tier = islet;
-            root = ZoneManager.Instance.CreateLocationContainer(tier.LocationName);
+            locationName = tier.LocationName(variant);
+            seed = tier.Seed + variant * 53f;
+            float size = variant == 0 ? 1f : 1.15f;
+            plateauRadius = 9.5f * size;
+            shoreRadius = 20f * size;
+            maxRadius = shoreRadius + 26f;
+            root = ZoneManager.Instance.CreateLocationContainer(locationName);
+            parent = root.transform;
             built = 0;
             missing = 0;
 
             Material rockMaterial = BuildGround();
             PlaceRocks();
             PlaceRuins();
-            PlaceDock();
-            PlaceWreck();
+            Optional(0.7f, PlaceDock);
+            Optional(0.65f, PlaceWreck);
             PlacePlants();
             PlacePickables();
-            PlaceSpawnersAndChest();
-            Plugin.Debug(tier.LocationName + " built: " + built + " parts, " + missing + " prefabs not found. Ground material: " + Describe(rockMaterial));
+            PlaceOutsideGuard();
+            Plugin.Debug(locationName + " built: " + built + " parts, " + missing + " prefabs not found. Ground material: " + Describe(rockMaterial));
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median; // whole zone is ocean: no islets glued to a coast
-            config.Quantity = tier.Count.Value;
+            // The tier's count is shared between its variants.
+            config.Quantity = (tier.Count.Value + (variant == 0 ? 1 : 0)) / Variants;
             config.Priotized = true;
             config.SnapToWater = true;
             config.RandomRotation = true;
@@ -71,25 +83,25 @@ namespace IslandsOfValheim
             // Vanilla damages a location's building pieces at random when it spawns, so the ruins look old.
             root.AddComponent<Location>().m_applyRandomDamage = true;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
-            Plugin.Log.LogInfo("Registered location " + tier.LocationName + " (quantity " + config.Quantity + ")");
+            Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ")");
         }
 
         // ---- ground ----
 
         static float Noise(float x, float z)
         {
-            return Mathf.PerlinNoise(x + tier.Seed, z + tier.Seed * 0.7f) * 2f - 1f;
+            return Mathf.PerlinNoise(x + seed, z + seed * 0.7f) * 2f - 1f;
         }
 
         static float Shore(float angle)
         {
             float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
-            return ShoreRadius * (1f + 0.16f * Noise(c * 1.3f + 5f, s * 1.3f + 5f) + 0.08f * Noise(c * 3f + 11f, s * 3f + 11f));
+            return shoreRadius * (1f + 0.16f * Noise(c * 1.3f + 5f, s * 1.3f + 5f) + 0.08f * Noise(c * 3f + 11f, s * 3f + 11f));
         }
 
         static float Plateau(float angle)
         {
-            return PlateauRadius * (1f + 0.12f * Noise(Mathf.Cos(angle) * 2f + 21f, Mathf.Sin(angle) * 2f + 21f));
+            return plateauRadius * (1f + 0.12f * Noise(Mathf.Cos(angle) * 2f + 21f, Mathf.Sin(angle) * 2f + 21f));
         }
 
         // 1 on the cliff side, falling to 0 a quarter turn away.
@@ -137,7 +149,7 @@ namespace IslandsOfValheim
 
         static Material BuildGround()
         {
-            int rings = Mathf.RoundToInt(MaxRadius / RingStep);
+            int rings = Mathf.RoundToInt(maxRadius / RingStep);
             // Rings of Segments + 1 vertices: the last repeats the first, so the texture can wrap around
             // without a seam. Normals come from the height function, so the surface is shaded smoothly.
             int perRing = Segments + 1;
@@ -165,7 +177,7 @@ namespace IslandsOfValheim
                     verts.Add(new Vector3(x, y, z));
                     normals.Add(Normal(x, z));
                     // The terrain shader projects its textures in world space; uv only reads the paint mask.
-                    uvs.Add(new Vector2(x / (2f * MaxRadius) + 0.5f, z / (2f * MaxRadius) + 0.5f));
+                    uvs.Add(new Vector2(x / (2f * maxRadius) + 0.5f, z / (2f * maxRadius) + 0.5f));
                 }
             }
             // Vertex colour is the biome blend the terrain shader paints with.
@@ -316,7 +328,15 @@ namespace IslandsOfValheim
         {
             GameObject go = Copy(new string[] { name }, euler, 0f, false);
             if (go == null) return null;
-            Move(go, LocalBounds(go), pos, alignTop);
+            Bounds b = LocalBounds(go);
+            if (!alignTop)
+            {
+                // A piece meant to stand on the ground must touch it, or it has no support and collapses.
+                // Just above the ground means "on the ground": sink it in a little.
+                float ground = GroundMin(pos.x, pos.z, 0.35f * Mathf.Max(b.size.x, b.size.z));
+                if (pos.y > ground - 0.1f && pos.y < ground + 0.6f) pos.y = ground - 0.15f;
+            }
+            Move(go, b, pos, alignTop);
             return go;
         }
 
@@ -326,7 +346,7 @@ namespace IslandsOfValheim
             GameObject prefab = Find(candidates);
             if (prefab == null) return null;
             if (!strip) prefab = PlantOrSelf(prefab.name);
-            GameObject go = Object.Instantiate(prefab, root.transform, false);
+            GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
             go.transform.localRotation = Quaternion.Euler(euler);
             go.transform.localPosition = Vector3.zero;
@@ -406,10 +426,13 @@ namespace IslandsOfValheim
                 float r = (PlateauAt(slope[i]) + ShoreAt(slope[i])) * 0.5f;
                 OnGround(bigRocks, Polar(slope[i], r), slope[i] * 2f, slopeSizes[i], 0.5f);
             }
-            // Loose stones.
+            // Loose stones, a different few on every islet.
             float[] small = { 40f, 75f, 170f, 250f, 310f, 345f };
             for (int i = 0; i < small.Length; i++)
-                OnGround(smallRocks, Polar(small[i], ShoreAt(small[i]) - 4f - i % 3), small[i], 1.2f + (i % 3) * 0.6f, 0.3f);
+            {
+                int k = i;
+                Optional(0.6f, () => OnGround(smallRocks, Polar(small[k], ShoreAt(small[k]) - 4f - k % 3), small[k], 1.2f + (k % 3) * 0.6f, 0.3f));
+            }
         }
 
         // An old wooden jetty on the low side: one plank section on land, one over the water, and the
@@ -452,35 +475,90 @@ namespace IslandsOfValheim
         {
             float[] angles = { 60f, 110f, 170f, 235f, 280f, 345f };
             for (int i = 0; i < angles.Length; i++)
-                OnGround(tier.Bushes, Polar(angles[i], PlateauAt(angles[i]) + 1.5f + i % 2), angles[i] * 5f, 0f, 0.15f, false);
-            OnGround(tier.Trees, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f, false);
-            OnGround(tier.SmallTrees, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f, false);
+            {
+                int k = i;
+                Optional(0.7f, () => OnGround(tier.Bushes, Polar(angles[k], PlateauAt(angles[k]) + 1.5f + k % 2), angles[k] * 5f, 0f, 0.15f, false));
+            }
+            Optional(0.8f, () => OnGround(tier.Trees, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f, false));
+            Optional(0.6f, () => OnGround(tier.Trees, Polar(30f, PlateauAt(30f) + 2f), 160f, 0f, 0.05f, false));
+            Optional(0.7f, () => OnGround(tier.SmallTrees, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f, false));
         }
 
         // Vanilla pickables: they respawn on their own like anywhere else.
         static void PlacePickables()
         {
-            PlaceNetworked(tier.Berries, Polar(80f, PlateauAt(80f) + 1f), 30f, 0f);
-            PlaceNetworked(tier.Berries, Polar(255f, PlateauAt(255f) + 2f), 200f, 0f);
-            PlaceNetworked(tier.Mushrooms, Polar(130f, PlateauAt(130f) + 0.5f), 0f, 0f);
-            PlaceNetworked(tier.Mushrooms, Polar(300f, PlateauAt(300f) + 1.5f), 0f, 0f);
+            Optional(0.8f, () => PlaceNetworked(tier.Berries, Polar(80f, PlateauAt(80f) + 1f), 30f, 0f));
+            Optional(0.8f, () => PlaceNetworked(tier.Berries, Polar(255f, PlateauAt(255f) + 2f), 200f, 0f));
+            Optional(0.6f, () => PlaceNetworked(tier.Berries, Polar(170f, PlateauAt(170f) + 1.5f), 90f, 0f));
+            Optional(0.7f, () => PlaceNetworked(tier.Mushrooms, Polar(130f, PlateauAt(130f) + 0.5f), 0f, 0f));
+            Optional(0.7f, () => PlaceNetworked(tier.Mushrooms, Polar(300f, PlateauAt(300f) + 1.5f), 0f, 0f));
             float[] shore = { 15f, 105f, 160f, 245f, 315f };
             for (int i = 0; i < shore.Length; i++)
-                PlaceNetworked(new[] { i % 2 == 0 ? "Pickable_Flint" : "Pickable_Stone" }, Polar(shore[i], ShoreAt(shore[i]) - 3f), shore[i], 0f);
-            PlaceNetworked(new[] { "Pickable_Branch" }, Polar(25f, ShoreAt(25f) - 4f), 80f, 0f);
-            PlaceNetworked(new[] { "Pickable_Branch" }, Polar(185f, PlateauAt(185f) + 2f), 10f, 0f);
+            {
+                int k = i;
+                Optional(0.75f, () => PlaceNetworked(new[] { k % 2 == 0 ? "Pickable_Flint" : "Pickable_Stone" }, Polar(shore[k], ShoreAt(shore[k]) - 3f), shore[k], 0f));
+            }
+            Optional(0.7f, () => PlaceNetworked(new[] { "Pickable_Branch" }, Polar(25f, ShoreAt(25f) - 4f), 80f, 0f));
+            Optional(0.7f, () => PlaceNetworked(new[] { "Pickable_Branch" }, Polar(185f, PlateauAt(185f) + 2f), 10f, 0f));
         }
 
-        static void PlaceSpawnersAndChest()
+        // The chest and the three guards in the main ruin. Called by each ruin design, inside its group,
+        // so they come and go with it.
+        static void CourtyardGuardsAndChest(float floor, Vector3 chest, float chestRotY)
         {
-            float y = ruinFloor + 0.2f;
+            float y = floor + 0.2f;
             string[] guards = tier.Guards;
             PlaceNetworked(IsletTier.SpawnerName(guards[0]), new Vector3(1.5f, y, 0.5f), 0f);
             PlaceNetworked(IsletTier.SpawnerName(guards[1]), new Vector3(-1f, y, -1.5f), 0f);
             PlaceNetworked(IsletTier.SpawnerName(guards[2]), new Vector3(0f, y, 1.5f), 0f);
-            PlaceNetworked(new[] { IsletTier.SpawnerName(guards[3]) }, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
-            PlaceNetworked(new[] { IsletTier.SpawnerName(guards[4]) }, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
-            PlaceNetworked(tier.ChestName, chestPos, chestRotY);
+            PlaceNetworked(tier.ChestName, chest, chestRotY);
+        }
+
+        // The fourth guard keeps watch near the wreck side; the fifth is with the ridge structure.
+        static void PlaceOutsideGuard()
+        {
+            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[3]) }, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
+        }
+
+        static void RidgeGuard()
+        {
+            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[4]) }, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
+        }
+
+        // ---- variety: vanilla's own per-instance randomness for location parts ----
+
+        // Parts built in build are there on some islets and not on others (RandomSpawn).
+        static void Optional(float chance, System.Action build)
+        {
+            GameObject group = new GameObject("IoV_Optional");
+            group.transform.SetParent(parent, false);
+            group.AddComponent<RandomSpawn>().m_chanceToSpawn = chance * 100f;
+            Transform outer = parent;
+            parent = group.transform;
+            build();
+            parent = outer;
+        }
+
+        // Exactly one of the designs is there on each islet (RandomObject).
+        static void OneOf(params System.Action[] designs)
+        {
+            GameObject holder = new GameObject("IoV_OneOf");
+            holder.transform.SetParent(parent, false);
+            RandomObject random = holder.AddComponent<RandomObject>();
+            random.m_objects = new List<RandomObject.ObjectEntry>();
+            Transform outer = parent;
+            foreach (System.Action design in designs)
+            {
+                GameObject group = new GameObject("IoV_Design");
+                group.transform.SetParent(holder.transform, false);
+                RandomObject.ObjectEntry entry = new RandomObject.ObjectEntry();
+                entry.m_object = group;
+                entry.m_weight = 1f;
+                random.m_objects.Add(entry);
+                parent = group.transform;
+                design();
+            }
+            parent = outer;
         }
 
         // The first of the candidates that exists, on the ground at (x, z).
@@ -508,7 +586,7 @@ namespace IslandsOfValheim
                 Plugin.Debug("Prefab " + name + " missing");
                 return;
             }
-            GameObject go = Object.Instantiate(prefab, root.transform, false);
+            GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
             go.transform.localPosition = pos;
             go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);

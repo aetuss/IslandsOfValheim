@@ -2,28 +2,30 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // What was built on the islet, one design per tier, each from that biome's own vanilla pieces: a main
-    // ruin on the plateau (where the chest and three guards are) and a smaller one on the cliff ridge.
-    // Building pieces are networked (they can be broken for their materials); props are static decor.
+    // What was built on the islet, from that biome's own vanilla pieces: a main ruin on the plateau (with the
+    // chest and three guards), two designs per tier of which each islet gets one, and on most islets a
+    // smaller structure on the cliff ridge. Building pieces are networked (they can be broken for their
+    // materials); props are static decor.
     static partial class IsletBuilder
     {
         internal enum RuinStyle { StoneHall, StiltHut, FulingCamp, DvergrRuin, GraustenFort }
-
-        // Set by the main ruin: where the guards in it stand and where the chest goes.
-        static float ruinFloor;
-        static Vector3 chestPos;
-        static float chestRotY;
 
         static void PlaceRuins()
         {
             switch (tier.Style)
             {
-                case RuinStyle.StoneHall: StoneHall(); StoneTower(); break;
-                case RuinStyle.StiltHut: StiltHut(); Graves(); break;
-                case RuinStyle.FulingCamp: FulingCamp(); FulingLookout(); break;
-                case RuinStyle.DvergrRuin: DvergrRuin(); DvergrColumn(); break;
-                case RuinStyle.GraustenFort: GraustenFort(); GraustenPillar(); break;
+                case RuinStyle.StoneHall: OneOf(StoneHall, FishingCamp); Ridge(StoneTower); break;
+                case RuinStyle.StiltHut: OneOf(StiltHut, SunkenShrine); Ridge(Graves); break;
+                case RuinStyle.FulingCamp: OneOf(FulingCamp, FulingRuin); Ridge(FulingLookout); break;
+                case RuinStyle.DvergrRuin: OneOf(DvergrRuin, DvergrOutpost); Ridge(DvergrColumn); break;
+                case RuinStyle.GraustenFort: OneOf(GraustenFort, AshlandsArches); Ridge(GraustenPillar); break;
             }
+        }
+
+        // The ridge structure and its guard, on three islets out of four.
+        static void Ridge(System.Action build)
+        {
+            Optional(0.75f, () => { build(); RidgeGuard(); });
         }
 
         // ---- Meadows: a stone hall and a lookout tower ----
@@ -68,9 +70,7 @@ namespace IslandsOfValheim
             At("stone_wall_1x1", new Vector3(-6f, PlateauHeight - 0.15f, 1f), new Vector3(10f, 35f, 80f), false);
             At("stone_wall_1x1", new Vector3(2.5f, PlateauHeight - 0.15f, 6.2f), new Vector3(-8f, 60f, 5f), false);
 
-            ruinFloor = FloorTop;
-            chestPos = new Vector3(-2f, FloorTop, 2.8f); // against the inside of the north wall
-            chestRotY = 180f;
+            CourtyardGuardsAndChest(FloorTop, new Vector3(-2f, FloorTop, 2.8f), 180f); // chest against the north wall
         }
 
         // A ruined lookout tower on the cliff ridge, its door facing the courtyard.
@@ -119,10 +119,10 @@ namespace IslandsOfValheim
             At("woodwall", new Vector3(2f, floor, 1f), new Vector3(0f, 90f, 0f), false);
             At("woodwall", new Vector3(-1f, floor, -3f), Vector3.zero, false);
             At("wood_wall_half", new Vector3(2f, floor, -2f), new Vector3(0f, 90f, 0f), false);
-            // What's left of the roof: one slope still up on the north wall, one in the mud.
-            At("wood_roof", new Vector3(0f, floor + 2f, 2f), Vector3.zero, false);
+            // The roof fell in: one slope lies on the floor, one in the mud, a beam across the doorway.
+            At("wood_roof", new Vector3(0.5f, floor, -0.5f), new Vector3(10f, 20f, 0f), false);
             At("wood_roof", new Vector3(4f, PlateauHeight - 0.1f, -1f), new Vector3(15f, 80f, 20f), false);
-            At("wood_beam", new Vector3(0f, floor + 2f, 0f), new Vector3(0f, 0f, 0f), false);
+            At("wood_beam", new Vector3(1f, floor, -2.5f), new Vector3(0f, 30f, 0f), false);
             // A rotten fence and bones around it.
             At("wood_fence", new Vector3(-4.5f, PlateauHeight - 0.05f, -2f), new Vector3(0f, 80f, 0f), false);
             At("wood_fence", new Vector3(-4f, PlateauHeight - 0.05f, -5f), new Vector3(0f, 30f, 8f), false);
@@ -130,9 +130,7 @@ namespace IslandsOfValheim
             Prop(new[] { "bone_stack", "Skull1" }, new Vector2(-4f, 3.5f), 110f, 0.1f);
             Prop(new[] { "Skull1" }, new Vector2(3f, -4.5f), 200f, 0.05f);
 
-            ruinFloor = floor;
-            chestPos = new Vector3(-1f, floor, 2.2f);
-            chestRotY = 180f;
+            CourtyardGuardsAndChest(floor, new Vector3(-1f, floor, 2.2f), 180f);
         }
 
         static void Graves()
@@ -178,9 +176,7 @@ namespace IslandsOfValheim
             Prop(new[] { "goblin_trashpile" }, new Vector2(4f, 3.5f), 60f, 0.1f);
             Prop(new[] { "fire_pit" }, new Vector2(0f, -1f), 0f, 0.05f);
 
-            ruinFloor = PlateauHeight;
-            chestPos = new Vector3(-0.8f, PlateauHeight, 2.4f);
-            chestRotY = 180f;
+            CourtyardGuardsAndChest(PlateauHeight, new Vector3(-0.8f, PlateauHeight, 2.4f), 180f);
         }
 
         static void FulingLookout()
@@ -233,9 +229,7 @@ namespace IslandsOfValheim
             Prop(new[] { "dvergrprops_barrel" }, new Vector2(-2.8f, 1.5f), 0f, 0.05f);
             Prop(new[] { "blackmarble_pile" }, new Vector2(-5f, -2.5f), 70f, 0.2f);
 
-            ruinFloor = FloorTop;
-            chestPos = new Vector3(0.2f, FloorTop, 1.6f);
-            chestRotY = 180f;
+            CourtyardGuardsAndChest(FloorTop, new Vector3(0.2f, FloorTop, 1.6f), 180f);
         }
 
 
@@ -257,8 +251,9 @@ namespace IslandsOfValheim
             float b = FloorTop - 0.05f;
             At("Ashlands_Ruins_Wall_Broken3_4x6", new Vector3(-1f, b, 3.5f), Vector3.zero, false);
             At("Ashlands_Ruins_Wall_Window_4x6_broken2", new Vector3(-3.5f, b, 0.5f), new Vector3(0f, 90f, 0f), false);
-            float pillar = Top(At("Ashlands_Pillar4", new Vector3(3.5f, b, 3.5f), Vector3.zero, false), b + 4f);
-            At("Ashlands_Pillar4_tip_broken1", new Vector3(3.5f, pillar, 3.5f), Vector3.zero, false);
+            // A pillar whose top broke off and lies next to it.
+            At("Ashlands_Pillar4", new Vector3(3.5f, b, 3.5f), Vector3.zero, false);
+            Prop(new[] { "Ashlands_Pillar4_tip_broken1" }, new Vector2(5.5f, 2f), 70f, 0.2f);
             At("Ashlands_Arch2_Broken1", new Vector3(0.5f, b, -3.5f), Vector3.zero, false);
             // Rubble.
             At("Piece_grausten_wall_2x2", new Vector3(5f, PlateauHeight - 0.15f, -1f), new Vector3(0f, 30f, 85f), false);
@@ -267,18 +262,136 @@ namespace IslandsOfValheim
             Prop(new[] { "ashland_pot1_red" }, new Vector2(-2f, 2f), 0f, 0.02f);
             Prop(new[] { "ashland_pot2_green" }, new Vector2(2.4f, 2.4f), 40f, 0.02f);
 
-            ruinFloor = FloorTop;
-            chestPos = new Vector3(-1.5f, FloorTop, 2.2f);
-            chestRotY = 180f;
+            CourtyardGuardsAndChest(FloorTop, new Vector3(-1.5f, FloorTop, 2.2f), 180f);
         }
 
         static void GraustenPillar()
         {
             Vector2 c; Quaternion turn; float b;
             RidgeSpot(2f, out c, out turn, out b);
-            float top = Top(Local("Ashlands_Fortress_Wall_Pillar_base_frac", c, turn, 0f, 0f, b, 0f), b + 2f);
-            Local("Ashlands_Fortress_Wall_Pillar_frac", c, turn, 0f, 0f, top, 0f);
+            // Only the base still stands; the top stone lies at its foot.
+            Local("Ashlands_Fortress_Wall_Pillar_base", c, turn, 0f, 0f, b, 0f);
+            Vector3 off = turn * new Vector3(2f, 0f, -1.5f);
+            Prop(new[] { "Ashlands_Fortress_Wall_PillarTopStone", "Ashlands_Ruins_TopStone" }, new Vector2(c.x + off.x, c.y + off.z), 40f, 0.2f);
             LyingBeams("Piece_grausten_pillarbeam_small", "Piece_grausten_pillarbeam_medium");
+        }
+
+        // ---- second designs ----
+
+        // Meadows: an abandoned fishing camp, a plank shack with drying racks and a cold fire pit.
+        static void FishingCamp()
+        {
+            float floor = PlateauHeight + 0.05f;
+            for (int ix = -1; ix <= 1; ix += 2)
+                for (int iz = 1; iz <= 3; iz += 2)
+                    At("wood_floor", new Vector3(ix, floor, iz + 0.5f), Vector3.zero, true);
+            At("woodwall", new Vector3(-1f, floor, 4.5f), Vector3.zero, false);
+            At("woodwall", new Vector3(1f, floor, 4.5f), Vector3.zero, false);
+            At("woodwall", new Vector3(-2f, floor, 3.5f), new Vector3(0f, 90f, 0f), false);
+            At("woodwall", new Vector3(-2f, floor, 1.5f), new Vector3(0f, 90f, 0f), false);
+            At("woodwall", new Vector3(2f, floor, 3.5f), new Vector3(0f, 90f, 0f), false);
+            At("woodwall", new Vector3(1f, floor, 0.5f), Vector3.zero, false); // doorway on the left
+            At("wood_roof", new Vector3(0.3f, floor, 2.2f), new Vector3(8f, 15f, 0f), false); // fell in
+            // Two drying racks: poles with a beam across.
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -4.5f + i * 1.2f, z = -1.5f - i * 1.5f;
+                float top = Top(At("wood_pole2", new Vector3(x, PlateauHeight, z - 1f), Vector3.zero, false), PlateauHeight + 1.9f);
+                At("wood_pole2", new Vector3(x, PlateauHeight, z + 1f), Vector3.zero, false);
+                At("wood_beam", new Vector3(x, top - 0.25f, z), new Vector3(0f, 90f, 0f), false);
+            }
+            Prop(new[] { "fire_pit" }, new Vector2(2.5f, -2f), 0f, 0.05f);
+            Prop(new[] { "barrell_static", "barrell" }, new Vector2(3f, 1.5f), 20f, 0.05f);
+            Prop(new[] { "barrell_static", "barrell" }, new Vector2(3.6f, 0.6f), 80f, 0.05f);
+            Prop(new[] { "wood_stack" }, new Vector2(-3.2f, 3f), 90f, 0.05f);
+            CourtyardGuardsAndChest(floor, new Vector3(0.6f, floor, 3.6f), 180f);
+        }
+
+        // Swamp: the stone mouth of a sunken crypt, half swallowed by the ground.
+        static void SunkenShrine()
+        {
+            for (int ix = -2; ix <= 2; ix += 2)
+                for (int iz = -2; iz <= 2; iz += 2)
+                    if (!(ix == 2 && iz == -2)) At("stone_floor_2x2", new Vector3(ix, FloorTop, iz), Vector3.zero, true);
+            float b = FloorTop - 0.05f;
+            At("SunkenKit_int_wall_2x4", new Vector3(-1f, b, 3.4f), Vector3.zero, false);
+            At("SunkenKit_int_wall_2x4", new Vector3(1f, b, 3.4f), Vector3.zero, false);
+            At("SunkenKit_int_wall_1x4", new Vector3(-3.4f, b, 1.5f), new Vector3(0f, 90f, 0f), false);
+            At("SunkenKit_int_wall_1x2", new Vector3(3.4f, b, 2f), new Vector3(0f, 90f, 0f), false);
+            At("SunkenKit_int_arch", new Vector3(0f, b, -3.4f), Vector3.zero, false);
+            Prop(new[] { "sunken_crypt_gate" }, new Vector2(0f, 2.7f), 0f, 0.1f);
+            Prop(new[] { "crypt_skeleton_laying" }, new Vector2(2f, -1f), 60f, 0.05f);
+            Prop(new[] { "bone_stack", "Skull1" }, new Vector2(-2.5f, -2.5f), 10f, 0.1f);
+            Prop(new[] { "skull_pile" }, new Vector2(4.5f, -3f), 140f, 0.1f);
+            CourtyardGuardsAndChest(FloorTop, new Vector3(-2f, FloorTop, 1.2f), 90f);
+        }
+
+        // Plains: Fulings moved into an old stone ruin and fenced it with sharpened stakes.
+        static void FulingRuin()
+        {
+            float b = PlateauHeight - 0.05f;
+            At("stone_wall_4x2", new Vector3(-2f, b, 4f), Vector3.zero, false);
+            At("stone_wall_2x1", new Vector3(1f, b, 4f), Vector3.zero, false);
+            At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false);
+            At("stone_wall_2x1", new Vector3(-4f, b + 2f, 2.5f), new Vector3(0f, 90f, 0f), false);
+            At("stone_pillar", new Vector3(3.5f, b, 3.5f), Vector3.zero, false);
+            At("goblin_woodwall_2m", new Vector3(3f, b, 4f), Vector3.zero, false);
+            At("goblin_pole", new Vector3(-4f, b, -2f), Vector3.zero, false);
+            At("goblin_banner", new Vector3(-1f, b, -5f), new Vector3(0f, 180f, 0f), false);
+            float[] stakes = { 200f, 240f, 300f, 340f, 20f, 60f };
+            foreach (float deg in stakes)
+            {
+                Vector2 p = Polar(deg, 6.2f);
+                At("piece_sharpstakes", new Vector3(p.x, Height(p.x, p.y) - 0.1f, p.y), new Vector3(0f, 90f - deg, 0f), false);
+            }
+            Prop(new[] { "goblin_strawpile" }, new Vector2(-2.5f, 2.2f), 10f, 0.1f);
+            Prop(new[] { "goblin_strawpile" }, new Vector2(2.5f, 1.8f), 200f, 0.1f);
+            Prop(new[] { "goblin_trashpile" }, new Vector2(4f, -2.5f), 0f, 0.1f);
+            Prop(new[] { "fire_pit" }, new Vector2(0.5f, -1.5f), 0f, 0.05f);
+            Prop(new[] { "goblin_stepladder" }, new Vector2(-1f, 3.2f), 0f, 0.05f);
+            CourtyardGuardsAndChest(PlateauHeight, new Vector3(0.5f, PlateauHeight, 3.1f), 180f);
+        }
+
+        // Mistlands: a dvergr outpost, plank walls and stake fences around a black marble floor, crates left behind.
+        static void DvergrOutpost()
+        {
+            for (int ix = -1; ix <= 1; ix += 2)
+                for (int iz = -1; iz <= 1; iz += 2)
+                    At("blackmarble_floor", new Vector3(ix, FloorTop, iz), Vector3.zero, true);
+            float b = PlateauHeight - 0.05f;
+            At("dvergrprops_wood_wall", new Vector3(-1.2f, b, 3.2f), Vector3.zero, false);
+            At("dvergrprops_wood_wall", new Vector3(1.4f, b, 3.2f), Vector3.zero, false);
+            At("dvergrprops_wood_wall", new Vector3(-3.2f, b, 0.8f), new Vector3(0f, 90f, 0f), false);
+            float[] stakes = { 240f, 300f, 340f, 20f };
+            foreach (float deg in stakes)
+            {
+                Vector2 p = Polar(deg, 5.5f);
+                At("dvergrprops_wood_stakewall", new Vector3(p.x, Height(p.x, p.y) - 0.1f, p.y), new Vector3(0f, -(deg + 90f), 0f), false);
+            }
+            Prop(new[] { "dvergrprops_crate" }, new Vector2(2.6f, 2f), 15f, 0.05f);
+            Prop(new[] { "dvergrprops_crate_long" }, new Vector2(-2.4f, -2.6f), 80f, 0.05f);
+            Prop(new[] { "dvergrprops_barrel" }, new Vector2(-2.6f, 2.2f), 0f, 0.05f);
+            Prop(new[] { "dvergrprops_barrel" }, new Vector2(3.2f, -1.2f), 0f, 0.05f);
+            Prop(new[] { "dvergrprops_lantern_standing" }, new Vector2(2f, -3f), 0f, 0.05f);
+            Prop(new[] { "dvergrprops_table" }, new Vector2(0.3f, -2.6f), 10f, 0.05f);
+            CourtyardGuardsAndChest(FloorTop, new Vector3(0f, FloorTop, 2f), 180f);
+        }
+
+        // Ashlands: arches and broken twisted pillars around a cracked floor.
+        static void AshlandsArches()
+        {
+            for (int ix = -1; ix <= 1; ix += 2)
+                for (int iz = -1; iz <= 1; iz += 2)
+                    At(ix == 1 && iz == 1 ? "Ashlands_Ruins_Floor_3x3_broken1" : "Ashlands_Ruins_Floor_3x3", new Vector3(ix * 1.5f, FloorTop, iz * 1.5f), Vector3.zero, true);
+            At("Ashlands_Arch1", new Vector3(0f, PlateauHeight, 4f), Vector3.zero, false);
+            At("Ashlands_Arch2_Broken2", new Vector3(-4f, PlateauHeight, 0f), new Vector3(0f, 90f, 0f), false);
+            At("Ashlands_Ruins_twist_PillarBase", new Vector3(4f, PlateauHeight, 3f), Vector3.zero, false);
+            At("Ashlands_Ruins_twist_PillarBaseSmall", new Vector3(4.2f, PlateauHeight, -2.5f), Vector3.zero, false);
+            Prop(new[] { "Ashlands_Ruins_TopStone" }, new Vector2(-2.5f, -4.5f), 30f, 0.2f);
+            Prop(new[] { "grausten_pile" }, new Vector2(5.5f, 0.5f), 0f, 0.2f);
+            Prop(new[] { "ashland_pot3_red" }, new Vector2(-2f, 2.4f), 0f, 0.02f);
+            Prop(new[] { "ashland_pot1_green" }, new Vector2(2.6f, -2.8f), 0f, 0.02f);
+            CourtyardGuardsAndChest(FloorTop, new Vector3(-1f, FloorTop, 1.6f), 180f);
         }
 
         // ---- helpers ----

@@ -35,7 +35,8 @@ namespace IslandsOfValheim
 
         internal ConfigEntry<int> Count;
 
-        internal string LocationName { get { return "IoV_Islet_" + Name; } }
+        internal string LocationName(int variant) { return LocationPrefix + (variant + 1); }
+        internal string LocationPrefix { get { return "IoV_Islet_" + Name; } }
         internal string ChestName { get { return "IoV_TreasureChest_" + Name; } }
         internal static string SpawnerName(string creature) { return "IoV_Spawner_" + creature; }
 

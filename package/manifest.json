@@ -1,6 +1,6 @@
 {
   "name": "IslandsOfValheim",
-  "version_number": "0.6.0",
+  "version_number": "0.7.0",
   "website_url": "https://github.com/aetuss/IslandsOfValheim",
   "description": "Small islands out at sea with old ruins, guards and treasure, tougher the further you sail from the centre. Gives you a reason to sail.",
   "dependencies": [
