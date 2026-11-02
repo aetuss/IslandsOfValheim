@@ -13,7 +13,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<bool> DebugLog;
@@ -34,6 +34,7 @@ namespace IslandsOfValheim
             DebugLog = Config.Bind("2 - Debug", "DebugLog", false,
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
+            SeaChart.AddTranslations();
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
@@ -44,6 +45,7 @@ namespace IslandsOfValheim
         void OnVanillaPrefabs()
         {
             PrefabManager.OnVanillaPrefabsAvailable -= OnVanillaPrefabs;
+            SeaChart.Register(); // before the chests, whose loot includes it
             IsletPrefabs.Register();
         }
 

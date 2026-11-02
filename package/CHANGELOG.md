@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- Sea vegvisir shards: island chests sometimes have one. Use it (right-click) and it marks the closest islet nobody has visited yet on your map, one of these waters' kind or a tougher one. Works in multiplayer.
+- Gulls circle over islets by day, and a fire burns on their cliff at night, so you can spot one from your boat.
+- With Expand World Size the islet rings follow the world radius (that mod already moves every location; the shard uses the same radius).
+
 ## 1.0.0
 
 - First release: small islands in the open ocean, in five kinds by distance from the world centre (Meadows, Swamp, Plains, Mistlands, Ashlands), each with its own ground, plants, ruins, guards and loot.

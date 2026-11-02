@@ -128,6 +128,16 @@ namespace IslandsOfValheim
                 drop.m_weight = loot.Weight;
                 table.m_drops.Add(drop);
             }
+            // Sometimes a sea vegvisir shard, pointing to the next islet.
+            if (SeaChart.Prefab != null)
+            {
+                DropTable.DropData shard = new DropTable.DropData();
+                shard.m_item = SeaChart.Prefab;
+                shard.m_stackMin = 1;
+                shard.m_stackMax = hoard ? 2 : 1;
+                shard.m_weight = 1f;
+                table.m_drops.Add(shard);
+            }
             return table;
         }
 
