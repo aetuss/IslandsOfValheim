@@ -137,9 +137,19 @@ namespace IslandsOfValheim
             foreach (IsletTier tier in All)
                 tier.Count = config.Bind("1 - World generation", tier.Name + "Islets", tier.DefaultCount,
                     new ConfigDescription("How many " + tier.Name + "-level islets the game tries to place, " +
-                        (int)tier.MinDistance + "-" + (int)tier.MaxDistance + " m from the world centre. 0 turns them off. " +
+                        (int)tier.MinDistance + "-" + (int)tier.MaxDistance + " m from the world centre (in a vanilla-sized world; " +
+                        "Expand World Size moves the rings with its world radius). 0 turns them off. " +
                         "Only used when a world's locations are generated (a new world, or the genloc command). Needs a restart.",
                         new AcceptableValueRange<int>(0, 200)));
+        }
+
+        // Index of the tier whose ring a point this far from the world centre is in, for this world's size.
+        internal static int IndexAt(float distance)
+        {
+            float scale = WorldSize.Scale;
+            for (int i = 0; i < All.Count - 1; i++)
+                if (distance < All[i].MaxDistance * scale) return i;
+            return All.Count - 1;
         }
 
         // All the vanilla objects any tier places that may drop themselves onto the terrain (see IsletPrefabs).

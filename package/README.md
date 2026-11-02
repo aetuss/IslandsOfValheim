@@ -35,6 +35,10 @@ Valheim decides where locations go when a world is created, and only builds them
 - **New world:** islets are there from the start.
 - **Existing world:** run `genloc` once in the console (needs `devcommands`, as the host or in single player). Islets then appear in ocean areas nobody has visited yet. Ocean you've already sailed through doesn't get any.
 
+## Bigger worlds
+
+The distances above are for a vanilla-sized world. With [Expand World Size](https://thunderstore.io/c/valheim/p/JereKuusela/Expand_World_Size/) the rings grow with the world radius (that mod moves every location's distances itself), so a Meadows islet is still near the centre and Ashlands islets are still far out.
+
 ## Configuration
 
 - `MeadowsIslets`, `SwampIslets`, `PlainsIslets`, `MistlandsIslets`, `AshlandsIslets`: how many islets of each kind the game tries to place (0 turns a kind off). Only used when locations are generated (new world or `genloc`).

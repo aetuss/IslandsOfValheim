@@ -31,6 +31,9 @@ namespace IslandsOfValheim
                             if (Is(instance, tier)) { count++; if (instance.m_placed) placed++; }
                         args.Context.AddString(tier.Name + ": " + count + " islets (" + placed + " already generated)");
                     }
+                    if (WorldSize.Scale != 1f)
+                        args.Context.AddString("World radius " + WorldSize.Radius.ToString("0", CultureInfo.InvariantCulture) + " m (Expand World Size): the tier rings are " +
+                            WorldSize.Scale.ToString("0.##", CultureInfo.InvariantCulture) + " times as far out as in vanilla.");
                     islets.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
                     args.Context.AddString("Closest:");
                     for (int i = 0; i < islets.Count && i < 5; i++)
@@ -92,7 +95,7 @@ namespace IslandsOfValheim
         }
 
         // All islet location instances, or only those of one tier.
-        static List<ZoneSystem.LocationInstance> Islets(IsletTier only)
+        internal static List<ZoneSystem.LocationInstance> Islets(IsletTier only)
         {
             List<ZoneSystem.LocationInstance> result = new List<ZoneSystem.LocationInstance>();
             foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
@@ -111,12 +114,12 @@ namespace IslandsOfValheim
             return "?";
         }
 
-        static bool Is(ZoneSystem.LocationInstance instance, IsletTier tier)
+        internal static bool Is(ZoneSystem.LocationInstance instance, IsletTier tier)
         {
             return instance.m_location.m_prefabName.StartsWith(tier.LocationPrefix);
         }
 
-        static float Distance(ZoneSystem.LocationInstance instance, Vector3 from)
+        internal static float Distance(ZoneSystem.LocationInstance instance, Vector3 from)
         {
             Vector3 p = instance.m_position;
             return new Vector2(p.x - from.x, p.z - from.z).magnitude;
