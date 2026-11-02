@@ -208,7 +208,7 @@ namespace IslandsOfValheim
             Material material = null;
             Heightmap terrain = ZoneSystem.instance != null && ZoneSystem.instance.m_zonePrefab != null
                 ? ZoneSystem.instance.m_zonePrefab.GetComponentInChildren<Heightmap>(true) : null;
-            if (terrain != null && terrain.m_material != null)
+            if (terrain != null && terrain.m_material != null && Plugin.GroundStyle.Value == Plugin.GroundTerrain)
             {
                 material = new Material(terrain.m_material);
                 material.name = "IoV_IsletTerrain";
@@ -219,11 +219,15 @@ namespace IslandsOfValheim
                 mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
                 mask.Apply();
                 material.SetTexture("_ClearedMaskTex", mask);
+                // Real terrain sets this per renderer while the game runs (Heightmap.ApplySettings); left at 0,
+                // the shader hides the islet at any distance.
+                material.SetFloat("_LodHideDistance", 10000f);
+                LogProperties(material);
                 renderer.sharedMaterial = material;
                 Plugin.Debug("Ground uses the terrain material " + terrain.m_material.name);
                 return material;
             }
-            Plugin.Log.LogWarning("Terrain material not found, the islet ground falls back to a rock material.");
+            if (Plugin.GroundStyle.Value == Plugin.GroundTerrain) Plugin.Log.LogWarning("Terrain material not found, the islet ground falls back to a rock material.");
             foreach (string name in bigRocks)
             {
                 GameObject prefab = PrefabManager.Instance.GetPrefab(name);
@@ -237,6 +241,14 @@ namespace IslandsOfValheim
                 }
             }
             if (material != null) renderer.sharedMaterial = material;
+            // The rock shader maps its texture by uv: project from above, shifted along the slope so steep
+            // faces aren't stretched. Values stay small; large ones streak in the shader.
+            for (int i = 0; i < verts.Count; i++)
+            {
+                float lift = Mathf.Clamp(verts[i].y, -6f, PlateauHeight + 3f);
+                uvs[i] = new Vector2(verts[i].x + normals[i].x * lift, verts[i].z + normals[i].z * lift) / 8f;
+            }
+            mesh.SetUVs(0, uvs);
             return material;
         }
 
@@ -316,6 +328,7 @@ namespace IslandsOfValheim
         {
             GameObject prefab = Find(candidates);
             if (prefab == null) return null;
+            if (!strip) prefab = PlantOrSelf(prefab.name);
             GameObject go = Object.Instantiate(prefab, root.transform, false);
             go.name = prefab.name;
             go.transform.localRotation = Quaternion.Euler(euler);
@@ -555,9 +568,16 @@ namespace IslandsOfValheim
             PlaceNetworked(name, new Vector3(at.x, Height(at.x, at.y) + lift, at.y), rotY);
         }
 
+        // The islet's own copy of a vanilla plant if there is one (see IsletPrefabs), else the prefab itself.
+        static GameObject PlantOrSelf(string name)
+        {
+            GameObject plant = PrefabManager.Instance.GetPrefab(IsletPrefabs.PlantName(name));
+            return plant != null ? plant : PrefabManager.Instance.GetPrefab(name);
+        }
+
         static void PlaceNetworked(string name, Vector3 pos, float rotY)
         {
-            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            GameObject prefab = PlantOrSelf(name);
             if (prefab == null)
             {
                 missing++;
@@ -565,11 +585,26 @@ namespace IslandsOfValheim
                 return;
             }
             GameObject go = Object.Instantiate(prefab, root.transform, false);
-            go.name = name;
+            go.name = prefab.name;
             go.transform.localPosition = pos;
             go.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
             built++;
             Plugin.Debug("  " + name + " at " + pos.ToString("F1"));
+        }
+
+        static void LogProperties(Material m)
+        {
+            if (!Plugin.DebugLog.Value || m.shader == null) return;
+            List<string> props = new List<string>();
+            for (int i = 0; i < m.shader.GetPropertyCount(); i++)
+            {
+                string name = m.shader.GetPropertyName(i);
+                UnityEngine.Rendering.ShaderPropertyType type = m.shader.GetPropertyType(i);
+                if (type == UnityEngine.Rendering.ShaderPropertyType.Float || type == UnityEngine.Rendering.ShaderPropertyType.Range)
+                    props.Add(name + "=" + m.GetFloat(name));
+                else props.Add(name + "(" + type + ")");
+            }
+            Plugin.Debug("Terrain shader " + m.shader.name + " keywords [" + string.Join(" ", m.shaderKeywords) + "] properties: " + string.Join(", ", props.ToArray()));
         }
 
         static string Describe(Material m)

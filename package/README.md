@@ -24,6 +24,7 @@ Valheim decides where locations go when a world is created, and only builds them
 ## Configuration
 
 - `IsletCount`: how many islets the game tries to place in a new world (default 30). Only used when locations are generated (new world or `genloc`).
+- `GroundStyle`: how the islet ground looks: `Terrain` (like the game's own land) or `Rock` (bare stone). Needs a restart.
 - `DebugLog`: writes how the islands were built and where they are to the BepInEx log.
 
 ## Console commands

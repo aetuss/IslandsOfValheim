@@ -16,11 +16,32 @@ namespace IslandsOfValheim
 
         static readonly string[] chestBases = { "TreasureChest_meadows", "TreasureChest_blackforest", "piece_chest_wood" };
 
+        // Vanilla plants that go on the islet. Their StaticPhysics drops them onto the terrain, which out
+        // here is the sea floor, so the islet gets copies without it ("IoV_" + name).
+        static readonly string[] plants = {
+            "Bush01", "Bush02_en", "shrub_2", "Bush01_heath",
+            "FirTree_small_dead", "FirTree_small", "Pinetree_01", "Beech_small1", "Beech_small2",
+            "RaspberryBush", "Pickable_Mushroom", "Pickable_Flint", "Pickable_Stone", "Pickable_Branch" };
+
         internal static void Register()
         {
             AddSpawner(GreydwarfSpawner, "Greydwarf", 1, 2, 15f);
             AddSpawner(ShamanSpawner, "Greydwarf_Shaman", 1, 2, 10f);
             AddChest();
+            foreach (string plant in plants) AddPlant(plant);
+        }
+
+        internal static string PlantName(string vanilla)
+        {
+            return "IoV_" + vanilla;
+        }
+
+        static void AddPlant(string name)
+        {
+            if (PrefabManager.Instance.GetPrefab(name) == null) return;
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(PlantName(name), name);
+            foreach (StaticPhysics physics in go.GetComponentsInChildren<StaticPhysics>(true)) Object.DestroyImmediate(physics);
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
         static void AddSpawner(string name, string creature, int minLevel, int maxLevel, float levelUpChance)

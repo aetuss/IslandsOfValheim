@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Fixed the islet ground being invisible with the terrain look.
+- Fixed trees and other plants sinking through the islet towards the sea floor.
+- New setting GroundStyle: Terrain (default) or Rock.
+
 ## 0.4.0
 
 - The islet ground now uses Valheim's own terrain look (grass on flat ground, sand by the water, rock on steep slopes) instead of a rock texture, which streaked in places.
