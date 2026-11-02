@@ -82,28 +82,30 @@ namespace IslandsOfValheim
             At("stone_floor_2x2", new Vector3(-5.5f, PlateauHeight + 0.2f, -4.5f), new Vector3(-5f, 70f, 7f), true);
 
             float b = FloorTop - 0.05f;
+            // Every upper piece sits on the measured top of the one below: the lower ones are sunk into the
+            // ground by however much it takes, so a fixed height would leave a gap and the upper one would fall.
             // North wall: two storeys, crumbling from the east end.
-            At("stone_wall_4x2", new Vector3(-2f, b, 4f), Vector3.zero, false);
-            At("stone_wall_4x2", new Vector3(2f, b, 4f), Vector3.zero, false);
-            At("stone_wall_4x2", new Vector3(-2f, b + 2f, 4f), Vector3.zero, false);
-            At("stone_wall_2x1", new Vector3(1f, b + 2f, 4f), Vector3.zero, false);
-            At("stone_wall_1x1", new Vector3(-3.5f, b + 4f, 4f), Vector3.zero, false);
+            float west = Top(At("stone_wall_4x2", new Vector3(-2f, b, 4f), Vector3.zero, false), b + 2f);
+            float east = Top(At("stone_wall_4x2", new Vector3(2f, b, 4f), Vector3.zero, false), b + 2f);
+            float upper = Top(At("stone_wall_4x2", new Vector3(-2f, west, 4f), Vector3.zero, false), west + 2f);
+            At("stone_wall_2x1", new Vector3(1f, east, 4f), Vector3.zero, false);
+            At("stone_wall_1x1", new Vector3(-3.5f, upper, 4f), Vector3.zero, false);
             // West wall: lower and broken in the middle.
-            At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false);
-            At("stone_wall_2x1", new Vector3(-4f, b + 2f, 3f), new Vector3(0f, 90f, 0f), false);
+            float side = Top(At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false), b + 2f);
+            At("stone_wall_2x1", new Vector3(-4f, side, 3f), new Vector3(0f, 90f, 0f), false);
             At("stone_wall_2x1", new Vector3(-4f, b, -1f), new Vector3(0f, 90f, 0f), false);
             At("stone_wall_1x1", new Vector3(-4f, b, -3.5f), new Vector3(0f, 90f, 0f), false);
             // East side: only pillars are left standing, one fell over.
-            At("stone_pillar", new Vector3(4f, b, 4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(4f, b + 2f, 4f), Vector3.zero, false);
+            float pillar = Top(At("stone_pillar", new Vector3(4f, b, 4f), Vector3.zero, false), b + 2f);
+            At("stone_pillar", new Vector3(4f, pillar, 4f), Vector3.zero, false);
             At("stone_pillar", new Vector3(4f, b, 0f), Vector3.zero, false);
             At("stone_pillar", new Vector3(5.6f, PlateauHeight - 0.1f, -1.5f), new Vector3(0f, 25f, 90f), false);
-            // South gate: two tall pillars with an arch on top.
-            At("stone_pillar", new Vector3(-1.5f, b, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(-1.5f, b + 2f, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(1.5f, b, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(1.5f, b + 2f, -4f), Vector3.zero, false);
-            At("stone_arch", new Vector3(0f, b + 4f, -4f), Vector3.zero, true);
+            // South gate: two tall pillars with an arch on top, level with the lower of the two.
+            float left = Top(At("stone_pillar", new Vector3(-1.5f, b, -4f), Vector3.zero, false), b + 2f);
+            left = Top(At("stone_pillar", new Vector3(-1.5f, left, -4f), Vector3.zero, false), left + 2f);
+            float right = Top(At("stone_pillar", new Vector3(1.5f, b, -4f), Vector3.zero, false), b + 2f);
+            right = Top(At("stone_pillar", new Vector3(1.5f, right, -4f), Vector3.zero, false), right + 2f);
+            At("stone_arch", new Vector3(0f, Mathf.Min(left, right), -4f), Vector3.zero, true);
             // Fallen blocks.
             At("stone_wall_1x1", new Vector3(-6f, PlateauHeight - 0.15f, 1f), new Vector3(10f, 35f, 80f), false);
             At("stone_wall_1x1", new Vector3(2.5f, PlateauHeight - 0.15f, 6.2f), new Vector3(-8f, 60f, 5f), false);
@@ -198,14 +200,15 @@ namespace IslandsOfValheim
             }
             // A hut against the north side.
             float b = PlateauHeight - 0.05f;
-            At("goblin_woodwall_2m", new Vector3(-1f, b, 3.5f), Vector3.zero, false);
-            At("goblin_woodwall_2m", new Vector3(1f, b, 3.5f), Vector3.zero, false);
+            float back = Mathf.Min(Top(At("goblin_woodwall_2m", new Vector3(-1f, b, 3.5f), Vector3.zero, false), b + 2f),
+                Top(At("goblin_woodwall_2m", new Vector3(1f, b, 3.5f), Vector3.zero, false), b + 2f));
             At("goblin_woodwall_2m_ribs", new Vector3(-2f, b, 2.5f), new Vector3(0f, 90f, 0f), false);
             At("goblin_woodwall_2m", new Vector3(2f, b, 2.5f), new Vector3(0f, 90f, 0f), false);
             At("goblin_pole", new Vector3(-2f, b, 3.5f), Vector3.zero, false);
             At("goblin_pole", new Vector3(2f, b, 3.5f), Vector3.zero, false);
-            At("goblin_roof_45d", new Vector3(0f, b + 2f, 3f), Vector3.zero, false);
-            At("goblin_roof_45d", new Vector3(0f, b + 2f, 2f), new Vector3(0f, 180f, 0f), false);
+            // The roof rests on the walls as they ended up, sunk into the ground.
+            At("goblin_roof_45d", new Vector3(0f, back, 3f), Vector3.zero, false);
+            At("goblin_roof_45d", new Vector3(0f, back, 2f), new Vector3(0f, 180f, 0f), false);
             // The camp: totem by the gate, banner, beds, rubbish and a fire pit.
             At("goblin_totempole", new Vector3(2.5f, b, -5.2f), new Vector3(0f, 160f, 0f), false);
             At("goblin_banner", new Vector3(-2.5f, b, -5.5f), new Vector3(0f, 200f, 0f), false);
@@ -370,8 +373,8 @@ namespace IslandsOfValheim
             float b = PlateauHeight - 0.05f;
             At("stone_wall_4x2", new Vector3(-2f, b, 4f), Vector3.zero, false);
             At("stone_wall_2x1", new Vector3(1f, b, 4f), Vector3.zero, false);
-            At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false);
-            At("stone_wall_2x1", new Vector3(-4f, b + 2f, 2.5f), new Vector3(0f, 90f, 0f), false);
+            float side = Top(At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false), b + 2f);
+            At("stone_wall_2x1", new Vector3(-4f, side, 2.5f), new Vector3(0f, 90f, 0f), false);
             At("stone_pillar", new Vector3(3.5f, b, 3.5f), Vector3.zero, false);
             At("goblin_woodwall_2m", new Vector3(3f, b, 4f), Vector3.zero, false);
             At("goblin_pole", new Vector3(-4f, b, -2f), Vector3.zero, false);
