@@ -1,16 +1,26 @@
 # IslandsOfValheim
 
-Small rocky islands out at sea, with old stone ruins, creatures guarding them and a treasure chest.
+Small islands out at sea with old ruins, guards and treasure, tougher the further you sail from the centre.
 
 ## What changes?
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
 
 - **Rocky islets** in the open sea, away from the coasts. Each one has the ruins of a stone hall on top, a crumbling lookout tower on its cliff, an old jetty and a wrecked ship on its shore, plus berries, mushrooms, flint and branches to pick up.
-- **Guards.** Greydwarfs and a Greydwarf Shaman live on each islet. They show up when you come close, once: killed guards don't come back.
-- **Treasure.** One chest per islet with Meadows / Black Forest loot: coins, amber, amber pearls, sometimes rubies, fire arrows, resin, feathers.
+- **Guards** that show up when you come close, once: killed guards don't come back.
+- **Treasure.** One chest per islet.
 
-This first version has one kind of islet, at Meadows / Black Forest level, within about 4.5 km of the world centre. Islands further out, with tougher guards and better loot, are planned.
+The further from the world centre, the tougher the islet:
+
+| Islet | Distance from the centre | Guards | Loot |
+|---|---|---|---|
+| Meadows | 300-2200 m | Greydwarfs, a Greydwarf Shaman | coins, amber, amber pearls, rubies, fire arrows |
+| Swamp | 2200-4000 m | Draugr, a Draugr archer, a Draugr Elite | coins, iron scrap, chain, withered bones, iron arrows |
+| Plains | 4000-5800 m | Fulings, a Fuling archer and shaman | coins, black metal scrap, silver necklaces, needle and obsidian arrows |
+| Mistlands | 5800-7500 m | Seekers, a Seeker Brute | coins, soft tissue, black marble, black cores, carapace arrows |
+| Ashlands | 7500 m and further | Charred warriors, an archer and a mage | coins, flametal ore, grausten, gemstones, molten cores, charred arrows |
+
+Each kind has its own ground, painted like its biome, and its own plants and berries.
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
 
