@@ -368,7 +368,7 @@ namespace IslandsOfValheim
         {
             GameObject go = Copy(new string[] { name }, euler, 0f, false);
             if (go == null) return null;
-            Bounds b = LocalBounds(go);
+            Bounds b = SolidBounds(go);
             if (!alignTop)
             {
                 // A piece meant to stand on the ground must touch it, or it has no support and collapses.
@@ -441,6 +441,33 @@ namespace IslandsOfValheim
                 }
             }
             return result;
+        }
+
+        // Bounds of a piece's colliders (what support is worked out from) in the location's space; the
+        // mesh can be bumpier than its collider, so stacking by the mesh would leave a gap. Falls back to
+        // the mesh bounds for a piece without colliders.
+        static Bounds SolidBounds(GameObject go)
+        {
+            bool any = false;
+            Bounds result = new Bounds();
+            foreach (Collider collider in go.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider.isTrigger || !ActiveBelow(collider.transform, go.transform)) continue;
+                Bounds local;
+                BoxCollider box = collider as BoxCollider;
+                MeshCollider mesh = collider as MeshCollider;
+                if (box != null) local = new Bounds(box.center, box.size);
+                else if (mesh != null && mesh.sharedMesh != null) local = mesh.sharedMesh.bounds;
+                else continue;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = local.center + Vector3.Scale(local.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = root.transform.InverseTransformPoint(collider.transform.TransformPoint(corner));
+                    if (!any) { result = new Bounds(p, Vector3.zero); any = true; }
+                    else result.Encapsulate(p);
+                }
+            }
+            return any ? result : LocalBounds(go);
         }
 
         static bool ActiveBelow(Transform t, Transform top)

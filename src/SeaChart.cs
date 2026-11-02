@@ -116,6 +116,12 @@ namespace IslandsOfValheim
             Plugin.Debug("Sea chart: sent " + count + " islets to " + sender);
         }
 
+        static System.Collections.IEnumerator ShowLater(Vector3 islet)
+        {
+            yield return new WaitForSeconds(0.3f);
+            if (Minimap.instance != null && !InventoryGui.IsVisible()) Minimap.instance.ShowPointOnMap(islet);
+        }
+
         static int TierIndex(ZoneSystem.LocationInstance instance)
         {
             for (int i = 0; i < IsletTier.All.Count; i++)
@@ -137,8 +143,12 @@ namespace IslandsOfValheim
                 ItemDrop.ItemData shard = player.GetInventory().GetItem(Token, -1, false);
                 if (shard == null) return;
                 player.GetInventory().RemoveOneItem(shard);
-                Minimap.instance.DiscoverLocation(islet, Minimap.PinType.Icon3, PinName, true);
+                Minimap.instance.DiscoverLocation(islet, Minimap.PinType.Icon3, PinName, false);
                 player.Message(MessageHud.MessageType.Center, "$iov_seachart_found", 0, null, false);
+                // The shard is used from the inventory: opening the map on top of it locks the game's input,
+                // so close the inventory first and open the map a moment later.
+                if (InventoryGui.IsVisible()) InventoryGui.instance.Hide();
+                Plugin.Instance.StartCoroutine(ShowLater(islet));
                 return;
             }
             player.Message(MessageHud.MessageType.Center, "$iov_seachart_none", 0, null, false);

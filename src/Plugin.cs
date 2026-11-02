@@ -22,10 +22,12 @@ namespace IslandsOfValheim
         internal const string GroundRock = "Rock";
 
         internal static BepInEx.Logging.ManualLogSource Log;
+        internal static Plugin Instance;
 
         void Awake()
         {
             Log = Logger;
+            Instance = this;
 
             IsletTier.BindConfig(Config);
             GroundStyle = Config.Bind("1 - World generation", "GroundStyle", GroundTerrain,

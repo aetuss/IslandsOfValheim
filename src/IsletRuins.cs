@@ -454,10 +454,11 @@ namespace IslandsOfValheim
             return At(name, new Vector3(centre.x + off.x, y, centre.y + off.z), new Vector3(0f, turn.eulerAngles.y + rotY, 0f), false);
         }
 
-        // Top of a placed piece, to stack the next one on it; fallback if the piece doesn't exist.
+        // Top of a placed piece's colliders, to stack the next one on it, a little lower so the two overlap
+        // and the upper one is carried; fallback if the piece doesn't exist.
         static float Top(GameObject piece, float fallback)
         {
-            return piece != null ? LocalBounds(piece).max.y : fallback;
+            return piece != null ? SolidBounds(piece).max.y - 0.05f : fallback;
         }
 
         // Debris below the ridge structure.
