@@ -6,13 +6,13 @@ Small rocky islands out at sea, with old stone ruins, creatures guarding them an
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
 
-- **Rocky islets** in the open sea, away from the coasts. Each one has the remains of a small stone building on top, a fallen lookout and sometimes a wrecked ship on its shore, plus berries, mushrooms, flint and branches to pick up.
+- **Rocky islets** in the open sea, away from the coasts. Each one has the ruins of a stone hall on top, a crumbling lookout tower on its cliff, an old jetty and a wrecked ship on its shore, plus berries, mushrooms, flint and branches to pick up.
 - **Guards.** Greydwarfs and a Greydwarf Shaman live on each islet. They show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet with Meadows / Black Forest loot: coins, amber, amber pearls, sometimes rubies, fire arrows, resin, feathers.
 
 This first version has one kind of islet, at Meadows / Black Forest level, within about 4.5 km of the world centre. Islands further out, with tougher guards and better loot, are planned.
 
-The islands are built from the game's own rocks and building pieces, so they look like they belong. Their ruins can't be torn down for materials.
+The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
 
 ## New worlds and existing worlds
 

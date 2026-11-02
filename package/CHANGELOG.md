@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- Smoother, more natural ground: no more sharp facets or triangle-shaped moss, and the rock texture no longer stretches on steep faces.
+- Fixed a wall-like step around the courtyard on the cliff side.
+- The ruins are real building pieces now: like vanilla ruins they can be broken for stone and wood, and they start out worn.
+- Bigger ruin: an 8x8 m courtyard with two-storey walls, a tall gate with an arch, standing and fallen pillars.
+- A ruined lookout tower on the cliff ridge and an old wooden jetty on the low side to moor a boat.
+
 ## 0.2.0
 
 - Bigger islet (about 40 m across) with rough, chiselled rock ground and a high cliff side.
