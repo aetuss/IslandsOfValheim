@@ -13,7 +13,7 @@ namespace IslandsOfValheim
     // down, and since players can't dive, nobody sees that it doesn't touch the sea floor. Rocks and the
     // wreck are static copies of vanilla prefabs with their scripts removed. Ruin pieces, plants,
     // pickables, spawners and the chest are networked objects that behave like their vanilla selves.
-    static class IsletBuilder
+    static partial class IsletBuilder
     {
         internal const float PlateauHeight = 3f;
 
@@ -43,8 +43,7 @@ namespace IslandsOfValheim
 
             Material rockMaterial = BuildGround();
             PlaceRocks();
-            PlaceRuin();
-            PlaceTower();
+            PlaceRuins();
             PlaceDock();
             PlaceWreck();
             PlacePlants();
@@ -212,7 +211,8 @@ namespace IslandsOfValheim
                 Texture2D mask = new Texture2D(2, 2);
                 mask.name = "IoV_IsletPaintMask";
                 mask.wrapMode = TextureWrapMode.Clamp;
-                Color nothing = new Color(0f, 0f, 0f, 1f);
+                // Alpha is lava where the ground is painted as Ashlands, so it stays 0 there.
+                Color nothing = new Color(0f, 0f, 0f, tier.Biome == Heightmap.Biome.AshLands ? 0f : 1f);
                 mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
                 mask.Apply();
                 material.SetTexture("_ClearedMaskTex", mask);
@@ -412,83 +412,6 @@ namespace IslandsOfValheim
                 OnGround(smallRocks, Polar(small[i], ShoreAt(small[i]) - 4f - i % 3), small[i], 1.2f + (i % 3) * 0.6f, 0.3f);
         }
 
-        static void PlaceRuin()
-        {
-            // An 8x8 m stone courtyard with some tiles missing; the tiles are 1 m thick, so they sink into the ground.
-            for (int ix = -3; ix <= 3; ix += 2)
-                for (int iz = -3; iz <= 3; iz += 2)
-                {
-                    if ((ix == 3 && iz == 3) || (ix == -3 && iz == -1) || (ix == 1 && iz == -3) || (ix == 3 && iz == -1)) continue;
-                    At("stone_floor_2x2", new Vector3(ix, FloorTop, iz), Vector3.zero, true);
-                }
-            // Tiles that slid off, tilted.
-            At("stone_floor_2x2", new Vector3(6f, PlateauHeight + 0.25f, 3.5f), new Vector3(8f, 30f, -6f), true);
-            At("stone_floor_2x2", new Vector3(-5.5f, PlateauHeight + 0.2f, -4.5f), new Vector3(-5f, 70f, 7f), true);
-
-            float b = FloorTop - 0.05f;
-            // North wall: two storeys, crumbling from the east end.
-            At("stone_wall_4x2", new Vector3(-2f, b, 4f), Vector3.zero, false);
-            At("stone_wall_4x2", new Vector3(2f, b, 4f), Vector3.zero, false);
-            At("stone_wall_4x2", new Vector3(-2f, b + 2f, 4f), Vector3.zero, false);
-            At("stone_wall_2x1", new Vector3(1f, b + 2f, 4f), Vector3.zero, false);
-            At("stone_wall_1x1", new Vector3(-3.5f, b + 4f, 4f), Vector3.zero, false);
-            // West wall: lower and broken in the middle.
-            At("stone_wall_4x2", new Vector3(-4f, b, 2f), new Vector3(0f, 90f, 0f), false);
-            At("stone_wall_2x1", new Vector3(-4f, b + 2f, 3f), new Vector3(0f, 90f, 0f), false);
-            At("stone_wall_2x1", new Vector3(-4f, b, -1f), new Vector3(0f, 90f, 0f), false);
-            At("stone_wall_1x1", new Vector3(-4f, b, -3.5f), new Vector3(0f, 90f, 0f), false);
-            // East side: only pillars are left standing, one fell over.
-            At("stone_pillar", new Vector3(4f, b, 4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(4f, b + 2f, 4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(4f, b, 0f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(5.6f, PlateauHeight - 0.1f, -1.5f), new Vector3(0f, 25f, 90f), false);
-            // South gate: two tall pillars with an arch on top.
-            At("stone_pillar", new Vector3(-1.5f, b, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(-1.5f, b + 2f, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(1.5f, b, -4f), Vector3.zero, false);
-            At("stone_pillar", new Vector3(1.5f, b + 2f, -4f), Vector3.zero, false);
-            At("stone_arch", new Vector3(0f, b + 4f, -4f), Vector3.zero, true);
-            // Fallen blocks.
-            At("stone_wall_1x1", new Vector3(-6f, PlateauHeight - 0.15f, 1f), new Vector3(10f, 35f, 80f), false);
-            At("stone_wall_1x1", new Vector3(2.5f, PlateauHeight - 0.15f, 6.2f), new Vector3(-8f, 60f, 5f), false);
-        }
-
-        // A ruined lookout tower on the cliff ridge, its door facing the courtyard.
-        static void PlaceTower()
-        {
-            const float deg = 206f;
-            float r = PlateauAt(deg) + 3f;
-            Vector2 c = Polar(deg, r);
-            float yaw = 90f - deg;
-            Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-            float b = GroundMin(c.x, c.y, 2.8f) - 0.3f;
-            // Local frame: +z points out to sea, -z (the door) back towards the courtyard.
-            TowerPiece("stone_wall_4x2", c, turn, 0f, 1.5f, b, 0f);          // sea side
-            TowerPiece("stone_wall_4x2", c, turn, -1.5f, 0f, b, 90f);        // left
-            TowerPiece("stone_wall_4x2", c, turn, 1.5f, 0f, b, 90f);         // right
-            TowerPiece("stone_wall_1x1", c, turn, -1.5f, -1.5f, b, 0f);      // door frame
-            TowerPiece("stone_wall_1x1", c, turn, -1.5f, -1.5f, b + 1f, 0f);
-            TowerPiece("stone_wall_1x1", c, turn, 1.5f, -1.5f, b, 0f);
-            // Second storey, mostly gone.
-            TowerPiece("stone_wall_4x2", c, turn, 0f, 1.5f, b + 2f, 0f);
-            TowerPiece("stone_wall_4x2", c, turn, -1.5f, 0f, b + 2f, 90f);
-            TowerPiece("stone_wall_2x1", c, turn, 1.5f, 1f, b + 2f, 90f);
-            TowerPiece("stone_wall_1x1", c, turn, -0.5f, 1.5f, b + 4f, 0f);
-            // Its wooden floor came down.
-            Vector2 q = Polar(deg - 9f, r - 3.5f);
-            At("wood_beam", new Vector3(q.x, Height(q.x, q.y) - 0.05f, q.y), new Vector3(0f, 70f, 0f), false);
-            Vector2 w = Polar(deg + 8f, r - 3.2f);
-            At("wood_pole2", new Vector3(w.x, Height(w.x, w.y) - 0.05f, w.y), new Vector3(0f, 150f, 85f), false);
-            Vector2 v = Polar(deg + 2f, r - 4.5f);
-            At("wood_beam", new Vector3(v.x, Height(v.x, v.y) - 0.05f, v.y), new Vector3(4f, 10f, -3f), false);
-        }
-
-        static void TowerPiece(string name, Vector2 centre, Quaternion turn, float lx, float lz, float y, float rotY)
-        {
-            Vector3 off = turn * new Vector3(lx, 0f, lz);
-            At(name, new Vector3(centre.x + off.x, y, centre.y + off.z), new Vector3(0f, turn.eulerAngles.y + rotY, 0f), false);
-        }
-
         // An old wooden jetty on the low side: one plank section on land, one over the water, and the
         // poles of a third that's gone. Boats can moor next to it.
         static void PlaceDock()
@@ -502,7 +425,7 @@ namespace IslandsOfValheim
             for (int i = 0; i < 2; i++)
             {
                 Vector2 p = u * (s - 1f + i * 2f);
-                At("wood_floor", new Vector3(p.x, top, p.y), new Vector3(0f, yaw, 0f), true);
+                At(tier.JettyFloor, new Vector3(p.x, top, p.y), new Vector3(0f, yaw, 0f), true);
             }
             float[] along = { s + 0.1f, s + 1.9f, s + 3.9f };
             for (int i = 0; i < along.Length; i++)
@@ -513,16 +436,16 @@ namespace IslandsOfValheim
                     float ground = GroundMin(p.x, p.y, 0.2f) - 0.3f;
                     int count = Mathf.Max(1, Mathf.CeilToInt((poleTop - ground) / 2f));
                     for (int n = 0; n < count; n++)
-                        At("wood_pole2", new Vector3(p.x, poleTop - 2f * (count - n), p.y), new Vector3(0f, yaw, 0f), false);
+                        At(tier.JettyPole, new Vector3(p.x, poleTop - 2f * (count - n), p.y), new Vector3(0f, yaw, 0f), false);
                 }
         }
 
-        // A wrecked karve on the low side of the islet. Skipped quietly if this game version names its parts differently.
+        // A wrecked ship on the low side of the islet: bow, stern and something in between.
         static void PlaceWreck()
         {
-            OnGround(new string[] { "shipwreck_karve_bow" }, Polar(32f, ShoreAt(32f) - 3f), 120f, 0f, 0.25f);
-            OnGround(new string[] { "shipwreck_karve_stern" }, Polar(48f, ShoreAt(48f) - 1.5f), 160f, 0f, 0.3f);
-            OnGround(new string[] { "shipwreck_karve_bottomboards" }, Polar(40f, ShoreAt(40f) - 2.5f), 140f, 0f, 0.2f);
+            OnGround(new[] { tier.Wreck[0] }, Polar(32f, ShoreAt(32f) - 3f), 120f, 0f, 0.25f);
+            OnGround(new[] { tier.Wreck[1] }, Polar(48f, ShoreAt(48f) - 1.5f), 160f, 0f, 0.3f);
+            OnGround(new[] { tier.Wreck[2] }, Polar(40f, ShoreAt(40f) - 2.5f), 140f, 0f, 0.2f);
         }
 
         static void PlacePlants()
@@ -550,15 +473,14 @@ namespace IslandsOfValheim
 
         static void PlaceSpawnersAndChest()
         {
-            float y = FloorTop + 0.2f;
+            float y = ruinFloor + 0.2f;
             string[] guards = tier.Guards;
             PlaceNetworked(IsletTier.SpawnerName(guards[0]), new Vector3(1.5f, y, 0.5f), 0f);
             PlaceNetworked(IsletTier.SpawnerName(guards[1]), new Vector3(-1f, y, -1.5f), 0f);
             PlaceNetworked(IsletTier.SpawnerName(guards[2]), new Vector3(0f, y, 1.5f), 0f);
             PlaceNetworked(new[] { IsletTier.SpawnerName(guards[3]) }, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
             PlaceNetworked(new[] { IsletTier.SpawnerName(guards[4]) }, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
-            // Against the inside of the north wall, facing the courtyard.
-            PlaceNetworked(tier.ChestName, new Vector3(-2f, FloorTop, 2.8f), 180f);
+            PlaceNetworked(tier.ChestName, chestPos, chestRotY);
         }
 
         // The first of the candidates that exists, on the ground at (x, z).

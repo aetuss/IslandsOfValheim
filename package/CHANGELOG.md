@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Each kind of islet has its own ruins now, built from that biome's pieces: a stone hall and lookout tower (Meadows), a hut on stilts with graves (Swamp), a Fuling camp behind a palisade (Plains), a ring of black marble columns (Mistlands) and a broken grausten fortress (Ashlands).
+- Plains, Mistlands and Ashlands islets have a wrecked longship instead of a karve; Ashlands islets have an ashwood jetty.
+- Ashlands islets no longer look like a lake of lava.
+
 ## 0.5.0
 
 - Five kinds of islets, tougher the further they are from the world centre: Meadows (300-2200 m), Swamp (2200-4000 m), Plains (4000-5800 m), Mistlands (5800-7500 m) and Ashlands (7500 m and further).

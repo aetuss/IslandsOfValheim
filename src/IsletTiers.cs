@@ -23,6 +23,13 @@ namespace IslandsOfValheim
         internal int DropMin = 3, DropMax = 5;
         internal List<Loot> Loot = new List<Loot>();
 
+        internal IsletBuilder.RuinStyle Style;
+        internal string JettyFloor = "wood_floor", JettyPole = "wood_pole2";
+        internal string[] Wreck = KarveWreck;
+
+        static readonly string[] KarveWreck = { "shipwreck_karve_bow", "shipwreck_karve_stern", "shipwreck_karve_bottomboards" };
+        static readonly string[] LongshipWreck = { "shipwreck_vikingship_front", "shipwreck_vikingship_rear", "shipwreck_vikingship_mast1" };
+
         // Candidate lists: the first prefab that exists is used.
         internal string[] Trees, SmallTrees, Bushes, Berries, Mushrooms;
 
@@ -45,6 +52,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Meadows", Biome = Heightmap.Biome.Meadows, MinDistance = 300f, MaxDistance = 2200f, DefaultCount = 20, Seed = 0f,
+                Style = IsletBuilder.RuinStyle.StoneHall,
                 Guards = new[] { "Greydwarf", "Greydwarf", "Greydwarf_Shaman", "Greydwarf", "Greydwarf" },
                 ChestBases = new[] { "TreasureChest_meadows" },
                 Trees = new[] { "FirTree_small_dead", "FirTree_small", "Pinetree_01" },
@@ -58,6 +66,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Swamp", Biome = Heightmap.Biome.Swamp, MinDistance = 2200f, MaxDistance = 4000f, DefaultCount = 25, Seed = 137f,
+                Style = IsletBuilder.RuinStyle.StiltHut,
                 Guards = new[] { "Draugr", "Draugr", "Draugr_Ranged", "Draugr", "Draugr_Elite" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_swamp", "TreasureChest_meadows" },
@@ -72,6 +81,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Plains", Biome = Heightmap.Biome.Plains, MinDistance = 4000f, MaxDistance = 5800f, DefaultCount = 25, Seed = 271f,
+                Style = IsletBuilder.RuinStyle.FulingCamp, Wreck = LongshipWreck,
                 Guards = new[] { "Goblin", "Goblin", "GoblinShaman", "GoblinArcher", "Goblin" },
                 LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_plains_stone", "TreasureChest_heath", "TreasureChest_meadows" },
@@ -86,6 +96,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Mistlands", Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 25, Seed = 409f,
+                Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck,
                 Guards = new[] { "Seeker", "Seeker", "SeekerBrute", "Seeker", "Seeker" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_dvergrtower", "TreasureChest_meadows" },
@@ -100,11 +111,13 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Ashlands", Biome = Heightmap.Biome.AshLands, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 20, Seed = 557f,
+                Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck,
+                JettyFloor = "ashwood_floor_2x2", JettyPole = "ashwood_pole_2m",
                 Guards = new[] { "Charred_Melee", "Charred_Melee", "Charred_Mage", "Charred_Archer", "Charred_Melee" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_charredfortress", "TreasureChest_meadows" },
                 Trees = new[] { "AshlandsTree3", "AshlandsTree4", "AshlandsTree1", "FirTree_small_dead" },
-                SmallTrees = new[] { "AshlandsTree5", "AshlandsBush1", "FirTree_small_dead" },
+                SmallTrees = new[] { "AshlandsTree5", "AshlandsTree6", "AshlandsBush1" },
                 Bushes = new[] { "AshlandsBush1", "AshlandsBush2", "shrub_2" },
                 Berries = new[] { "Pickable_SmokePuff", "Pickable_Fiddlehead" },
                 Mushrooms = new[] { "Pickable_Fiddlehead", "Pickable_SmokePuff" },

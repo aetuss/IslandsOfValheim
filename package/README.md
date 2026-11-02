@@ -6,7 +6,7 @@ Small islands out at sea with old ruins, guards and treasure, tougher the furthe
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
 
-- **Rocky islets** in the open sea, away from the coasts. Each one has the ruins of a stone hall on top, a crumbling lookout tower on its cliff, an old jetty and a wrecked ship on its shore, plus berries, mushrooms, flint and branches to pick up.
+- **Islets** in the open sea, away from the coasts, with ruins on top, something on the cliff, an old jetty and a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
 - **Guards** that show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet.
 
@@ -20,7 +20,7 @@ The further from the world centre, the tougher the islet:
 | Mistlands | 5800-7500 m | Seekers, a Seeker Brute | coins, soft tissue, black marble, black cores, carapace arrows |
 | Ashlands | 7500 m and further | Charred warriors, an archer and a mage | coins, flametal ore, grausten, gemstones, molten cores, charred arrows |
 
-Each kind has its own ground, painted like its biome, and its own plants and berries.
+Each kind has its own ground, painted like its biome, its own plants and its own ruins: a stone hall and lookout tower (Meadows), a hut on stilts and graves (Swamp), a Fuling camp behind a palisade (Plains), a ring of black marble columns (Mistlands), a broken grausten fortress (Ashlands).
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
 
