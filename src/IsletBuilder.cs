@@ -26,7 +26,6 @@ namespace IslandsOfValheim
         const int Segments = 72;
         const float MaxRadius = 46f;
         const float RingStep = 1f;
-        const float TextureMetres = 8f; // one repeat of the rock texture
         const float FloorTop = PlateauHeight + 0.1f;
 
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
@@ -169,12 +168,14 @@ namespace IslandsOfValheim
                     float y = Height(x, z);
                     verts.Add(new Vector3(x, y, z));
                     normals.Add(Normal(x, z));
-                    // Unwrapped around the islet and down its slope, so steep faces aren't stretched.
-                    float around = (float)seg / Segments * Mathf.PI * 2f * r;
-                    float down = r + (PlateauHeight + 3f - y);
-                    uvs.Add(new Vector2(around / TextureMetres, down / TextureMetres));
+                    // The terrain shader projects its textures in world space; uv only reads the paint mask.
+                    uvs.Add(new Vector2(x / (2f * MaxRadius) + 0.5f, z / (2f * MaxRadius) + 0.5f));
                 }
             }
+            // Vertex colour is the biome blend the terrain shader paints with.
+            Color32 biome = Heightmap.GetBiomeColor(Heightmap.Biome.Meadows);
+            List<Color32> colors = new List<Color32>(verts.Count);
+            for (int i = 0; i < verts.Count; i++) colors.Add(biome);
             for (int ring = 0; ring < rings; ring++)
             {
                 int inner = ring * perRing, outer = (ring + 1) * perRing;
@@ -190,6 +191,7 @@ namespace IslandsOfValheim
             mesh.SetVertices(verts);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
+            mesh.SetColors(colors);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateTangents();
             mesh.RecalculateBounds();
@@ -201,7 +203,27 @@ namespace IslandsOfValheim
             MeshRenderer renderer = ground.AddComponent<MeshRenderer>();
             ground.AddComponent<MeshCollider>().sharedMesh = mesh;
 
+            // Valheim's own terrain material: grass on flat ground, sand by the water, rock on steep slopes,
+            // like any other shore. Its paint mask is left blank (nothing dug, cultivated or paved).
             Material material = null;
+            Heightmap terrain = ZoneSystem.instance != null && ZoneSystem.instance.m_zonePrefab != null
+                ? ZoneSystem.instance.m_zonePrefab.GetComponentInChildren<Heightmap>(true) : null;
+            if (terrain != null && terrain.m_material != null)
+            {
+                material = new Material(terrain.m_material);
+                material.name = "IoV_IsletTerrain";
+                Texture2D mask = new Texture2D(2, 2);
+                mask.name = "IoV_IsletPaintMask";
+                mask.wrapMode = TextureWrapMode.Clamp;
+                Color nothing = new Color(0f, 0f, 0f, 1f);
+                mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
+                mask.Apply();
+                material.SetTexture("_ClearedMaskTex", mask);
+                renderer.sharedMaterial = material;
+                Plugin.Debug("Ground uses the terrain material " + terrain.m_material.name);
+                return material;
+            }
+            Plugin.Log.LogWarning("Terrain material not found, the islet ground falls back to a rock material.");
             foreach (string name in bigRocks)
             {
                 GameObject prefab = PrefabManager.Instance.GetPrefab(name);
@@ -264,7 +286,13 @@ namespace IslandsOfValheim
         // and the copy is sunk by sink times its height below the lowest ground under it.
         static GameObject OnGround(string[] candidates, Vector2 at, float rotY, float size, float sink)
         {
-            GameObject go = Copy(candidates, new Vector3(0f, rotY, 0f), size, true);
+            return OnGround(candidates, at, rotY, size, sink, true);
+        }
+
+        // strip false keeps the vanilla object as it is (networked: trees can be chopped).
+        static GameObject OnGround(string[] candidates, Vector2 at, float rotY, float size, float sink, bool strip)
+        {
+            GameObject go = Copy(candidates, new Vector3(0f, rotY, 0f), size, strip);
             if (go == null) return null;
             Bounds b = LocalBounds(go);
             float footprint = 0.4f * Mathf.Max(b.size.x, b.size.z);
@@ -491,9 +519,9 @@ namespace IslandsOfValheim
         {
             float[] angles = { 60f, 110f, 170f, 235f, 280f, 345f };
             for (int i = 0; i < angles.Length; i++)
-                OnGround(bushes, Polar(angles[i], PlateauAt(angles[i]) + 1.5f + i % 2), angles[i] * 5f, 0f, 0.15f);
-            OnGround(firs, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f);
-            OnGround(beeches, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f);
+                OnGround(bushes, Polar(angles[i], PlateauAt(angles[i]) + 1.5f + i % 2), angles[i] * 5f, 0f, 0.15f, false);
+            OnGround(firs, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f, false);
+            OnGround(beeches, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f, false);
         }
 
         // Vanilla pickables: they respawn on their own like anywhere else.

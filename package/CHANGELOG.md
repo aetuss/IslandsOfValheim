@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- The islet ground now uses Valheim's own terrain look (grass on flat ground, sand by the water, rock on steep slopes) instead of a rock texture, which streaked in places.
+- Trees and bushes on the islet are the normal vanilla ones: trees can be chopped for wood.
+
 ## 0.3.0
 
 - Smoother, more natural ground: no more sharp facets or triangle-shaped moss, and the rock texture no longer stretches on steep faces.
