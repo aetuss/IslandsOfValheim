@@ -13,9 +13,8 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "0.4.1";
+        public const string Version = "0.5.0";
 
-        internal static ConfigEntry<int> IsletCount;
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<bool> DebugLog;
 
@@ -28,10 +27,7 @@ namespace IslandsOfValheim
         {
             Log = Logger;
 
-            IsletCount = Config.Bind("1 - World generation", "IsletCount", 30,
-                new ConfigDescription("How many rocky islets the game tries to place in the ocean of a new world. " +
-                    "Only used when a world's locations are generated (a new world, or the genloc command). Needs a restart.",
-                    new AcceptableValueRange<int>(0, 200)));
+            IsletTier.BindConfig(Config);
             GroundStyle = Config.Bind("1 - World generation", "GroundStyle", GroundTerrain,
                 new ConfigDescription("How the islet ground looks: Terrain (like the game's own land: grass, sand, cliff rock) or Rock (bare stone). Needs a restart.",
                     new AcceptableValueList<string>(GroundTerrain, GroundRock)));
@@ -54,7 +50,7 @@ namespace IslandsOfValheim
         void OnVanillaLocations()
         {
             ZoneManager.OnVanillaLocationsAvailable -= OnVanillaLocations;
-            IsletBuilder.Register();
+            foreach (IsletTier tier in IsletTier.All) IsletBuilder.Register(tier);
         }
 
         internal static void Debug(string message)

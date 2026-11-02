@@ -5,59 +5,66 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // iov_info lists how many islets the world has and the closest ones. To go to one, use the vanilla
-    // command `findtp IoV_Islet_Meadows` (needs devcommands).
+    // iov_info lists how many islets of each tier the world has and the closest ones; iov_goto (cheat)
+    // teleports to the closest islet nobody has been to yet, optionally of one tier.
     [HarmonyPatch(typeof(Terminal), "InitTerminal")]
     static class Commands
     {
         static void Postfix()
         {
             new Terminal.ConsoleCommand("iov_info",
-                "- IslandsOfValheim: show how many islets this world has and where the closest ones are",
+                "- IslandsOfValheim: show how many islets of each tier this world has and where the closest ones are",
                 args =>
                 {
-                    if (ZoneSystem.instance == null || ZNet.instance == null || !ZNet.instance.IsServer())
+                    if (!OnServer(args.Context)) return;
+                    Vector3 from = Player.m_localPlayer != null ? Player.m_localPlayer.transform.position : Vector3.zero;
+                    List<ZoneSystem.LocationInstance> islets = Islets(null);
+                    if (islets.Count == 0)
                     {
-                        args.Context.AddString("Island positions are only known on the server (single player or the host).");
+                        args.Context.AddString("This world has no islets. An existing world only gets them after `genloc` (devcommands), and only in ocean nobody has visited yet.");
                         return;
                     }
-                    Vector3 from = Player.m_localPlayer != null ? Player.m_localPlayer.transform.position : Vector3.zero;
-                    List<ZoneSystem.LocationInstance> islets = new List<ZoneSystem.LocationInstance>();
-                    foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
-                        if (instance.m_location != null && instance.m_location.m_prefabName == IsletBuilder.LocationName)
-                            islets.Add(instance);
+                    foreach (IsletTier tier in IsletTier.All)
+                    {
+                        int count = 0, placed = 0;
+                        foreach (ZoneSystem.LocationInstance instance in islets)
+                            if (instance.m_location.m_prefabName == tier.LocationName) { count++; if (instance.m_placed) placed++; }
+                        args.Context.AddString(tier.Name + ": " + count + " islets (" + placed + " already generated)");
+                    }
                     islets.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
-
-                    int placed = 0;
-                    foreach (ZoneSystem.LocationInstance instance in islets) if (instance.m_placed) placed++;
-                    args.Context.AddString("This world has " + islets.Count + " islets (" + placed + " already generated).");
-                    if (islets.Count == 0)
-                        args.Context.AddString("An existing world only gets islets after `genloc` (devcommands), and only in ocean nobody has visited yet.");
+                    args.Context.AddString("Closest:");
                     for (int i = 0; i < islets.Count && i < 5; i++)
                     {
                         Vector3 p = islets[i].m_position;
-                        args.Context.AddString("  " + Distance(islets[i], from).ToString("0", CultureInfo.InvariantCulture) + " m away at (" +
+                        args.Context.AddString("  " + TierName(islets[i]) + ", " + Distance(islets[i], from).ToString("0", CultureInfo.InvariantCulture) + " m away at (" +
                             p.x.ToString("0", CultureInfo.InvariantCulture) + ", " + p.z.ToString("0", CultureInfo.InvariantCulture) + ")" +
                             (islets[i].m_placed ? ", generated" : ""));
                     }
-                    if (islets.Count > 0) args.Context.AddString("Teleport to the closest new one: iov_goto (needs devcommands)");
+                    args.Context.AddString("Teleport to the closest new one: iov_goto [tier] (needs devcommands)");
                 });
 
             new Terminal.ConsoleCommand("iov_goto",
-                "- IslandsOfValheim: teleport to the closest islet that hasn't been generated yet, so you see the current version of it",
+                "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: Meadows, Swamp, Plains, Mistlands, Ashlands)",
                 args =>
                 {
-                    if (ZoneSystem.instance == null || ZNet.instance == null || !ZNet.instance.IsServer() || Player.m_localPlayer == null)
+                    if (!OnServer(args.Context) || Player.m_localPlayer == null) return;
+                    IsletTier wanted = null;
+                    if (args.Length > 1)
                     {
-                        args.Context.AddString("Only works in single player or as the host.");
-                        return;
+                        foreach (IsletTier tier in IsletTier.All)
+                            if (string.Equals(tier.Name, args[1], System.StringComparison.OrdinalIgnoreCase)) wanted = tier;
+                        if (wanted == null)
+                        {
+                            args.Context.AddString("Unknown tier " + args[1] + ". Use Meadows, Swamp, Plains, Mistlands or Ashlands.");
+                            return;
+                        }
                     }
                     Vector3 from = Player.m_localPlayer.transform.position;
                     bool found = false;
                     ZoneSystem.LocationInstance best = new ZoneSystem.LocationInstance();
-                    foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
+                    foreach (ZoneSystem.LocationInstance instance in Islets(wanted))
                     {
-                        if (instance.m_placed || instance.m_location == null || instance.m_location.m_prefabName != IsletBuilder.LocationName) continue;
+                        if (instance.m_placed) continue;
                         if (!found || Distance(instance, from) < Distance(best, from)) best = instance;
                         found = true;
                     }
@@ -68,8 +75,40 @@ namespace IslandsOfValheim
                     }
                     Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.PlateauHeight + 3f, best.m_position.z);
                     Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
-                    args.Context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to a new islet.");
-                }, true);
+                    args.Context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to a new " + TierName(best) + " islet.");
+                }, true, optionsFetcher: () =>
+                {
+                    List<string> names = new List<string>();
+                    foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
+                    return names;
+                });
+        }
+
+        static bool OnServer(Terminal context)
+        {
+            if (ZoneSystem.instance != null && ZNet.instance != null && ZNet.instance.IsServer()) return true;
+            context.AddString("Island positions are only known on the server (single player or the host).");
+            return false;
+        }
+
+        // All islet location instances, or only those of one tier.
+        static List<ZoneSystem.LocationInstance> Islets(IsletTier only)
+        {
+            List<ZoneSystem.LocationInstance> result = new List<ZoneSystem.LocationInstance>();
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
+            {
+                if (instance.m_location == null) continue;
+                foreach (IsletTier tier in IsletTier.All)
+                    if ((only == null || only == tier) && instance.m_location.m_prefabName == tier.LocationName) result.Add(instance);
+            }
+            return result;
+        }
+
+        static string TierName(ZoneSystem.LocationInstance instance)
+        {
+            foreach (IsletTier tier in IsletTier.All)
+                if (instance.m_location.m_prefabName == tier.LocationName) return tier.Name;
+            return "?";
         }
 
         static float Distance(ZoneSystem.LocationInstance instance, Vector3 from)

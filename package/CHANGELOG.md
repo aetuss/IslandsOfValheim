@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Five kinds of islets, tougher the further they are from the world centre: Meadows (300-2200 m), Swamp (2200-4000 m), Plains (4000-5800 m), Mistlands (5800-7500 m) and Ashlands (7500 m and further).
+- Each kind has its own ground (painted like its biome), shape, guards, plants, chest and loot.
+- One setting per kind for how many islets the world gets (replaces IsletCount).
+- iov_goto takes a kind: iov_goto swamp. iov_info counts each kind.
+
 ## 0.4.1
 
 - Fixed the islet ground being invisible with the terrain look.

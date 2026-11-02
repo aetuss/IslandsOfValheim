@@ -6,17 +6,15 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // Builds the islet location at runtime from vanilla assets, so the mod needs no asset bundle.
+    // Builds an islet location for one tier at runtime from vanilla assets, so the mod needs no asset bundle.
     //
-    // The ground is a generated rock mesh. The location snaps to the water surface (y = 0 here is sea
-    // level), so it works in deep water; the mesh's skirt reaches 30 m down, and since players can't
-    // dive, nobody sees that it doesn't touch the sea floor. Rocks, ruin pieces and plants are static
-    // copies of vanilla prefabs with all their scripts removed: they render and collide for everyone
-    // but aren't networked, can't be broken and don't drop anything. Pickables, spawners and the chest
-    // are networked objects.
+    // The ground is a generated mesh painted with Valheim's terrain material. The location snaps to the
+    // water surface (y = 0 here is sea level), so it works in deep water; the mesh's skirt reaches 30 m
+    // down, and since players can't dive, nobody sees that it doesn't touch the sea floor. Rocks and the
+    // wreck are static copies of vanilla prefabs with their scripts removed. Ruin pieces, plants,
+    // pickables, spawners and the chest are networked objects that behave like their vanilla selves.
     static class IsletBuilder
     {
-        internal const string LocationName = "IoV_Islet_Meadows";
         internal const float PlateauHeight = 3f;
 
         const float PlateauRadius = 9.5f;
@@ -30,17 +28,16 @@ namespace IslandsOfValheim
 
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
         static readonly string[] smallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
-        static readonly string[] bushes = { "Bush01", "Bush02_en", "shrub_2", "Bush01_heath" };
-        static readonly string[] firs = { "FirTree_small_dead", "FirTree_small", "Pinetree_01" };
-        static readonly string[] beeches = { "Beech_small1", "Beech_small2", "Bush01" };
 
+        static IsletTier tier;
         static GameObject root;
         static int built;
         static int missing;
 
-        internal static void Register()
+        internal static void Register(IsletTier islet)
         {
-            root = ZoneManager.Instance.CreateLocationContainer(LocationName);
+            tier = islet;
+            root = ZoneManager.Instance.CreateLocationContainer(tier.LocationName);
             built = 0;
             missing = 0;
 
@@ -53,12 +50,12 @@ namespace IslandsOfValheim
             PlacePlants();
             PlacePickables();
             PlaceSpawnersAndChest();
-            Plugin.Debug("Islet built: " + built + " parts, " + missing + " prefabs not found. Ground material: " + Describe(rockMaterial));
+            Plugin.Debug(tier.LocationName + " built: " + built + " parts, " + missing + " prefabs not found. Ground material: " + Describe(rockMaterial));
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median; // whole zone is ocean: no islets glued to a coast
-            config.Quantity = Plugin.IsletCount.Value;
+            config.Quantity = tier.Count.Value;
             config.Priotized = true;
             config.SnapToWater = true;
             config.RandomRotation = true;
@@ -68,21 +65,21 @@ namespace IslandsOfValheim
             config.MaxAltitude = -6f; // at least 6 m of water: open sea, not a beach
             config.MinTerrainDelta = 0f;
             config.MaxTerrainDelta = 1000f; // the sea floor under it doesn't matter
-            config.MinDistance = 300f;
-            config.MaxDistance = 4500f; // Meadows / Black Forest tier: the inner ring of the world
+            config.MinDistance = tier.MinDistance;
+            config.MaxDistance = tier.MaxDistance;
             config.Group = "IoV_Islets";
             config.MinDistanceFromSimilar = 300f;
             // Vanilla damages a location's building pieces at random when it spawns, so the ruins look old.
             root.AddComponent<Location>().m_applyRandomDamage = true;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
-            Plugin.Log.LogInfo("Registered location " + LocationName + " (quantity " + config.Quantity + ")");
+            Plugin.Log.LogInfo("Registered location " + tier.LocationName + " (quantity " + config.Quantity + ")");
         }
 
         // ---- ground ----
 
         static float Noise(float x, float z)
         {
-            return Mathf.PerlinNoise(x, z) * 2f - 1f;
+            return Mathf.PerlinNoise(x + tier.Seed, z + tier.Seed * 0.7f) * 2f - 1f;
         }
 
         static float Shore(float angle)
@@ -173,7 +170,7 @@ namespace IslandsOfValheim
                 }
             }
             // Vertex colour is the biome blend the terrain shader paints with.
-            Color32 biome = Heightmap.GetBiomeColor(Heightmap.Biome.Meadows);
+            Color32 biome = Heightmap.GetBiomeColor(tier.Biome);
             List<Color32> colors = new List<Color32>(verts.Count);
             for (int i = 0; i < verts.Count; i++) colors.Add(biome);
             for (int ring = 0; ring < rings; ring++)
@@ -532,39 +529,44 @@ namespace IslandsOfValheim
         {
             float[] angles = { 60f, 110f, 170f, 235f, 280f, 345f };
             for (int i = 0; i < angles.Length; i++)
-                OnGround(bushes, Polar(angles[i], PlateauAt(angles[i]) + 1.5f + i % 2), angles[i] * 5f, 0f, 0.15f, false);
-            OnGround(firs, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f, false);
-            OnGround(beeches, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f, false);
+                OnGround(tier.Bushes, Polar(angles[i], PlateauAt(angles[i]) + 1.5f + i % 2), angles[i] * 5f, 0f, 0.15f, false);
+            OnGround(tier.Trees, Polar(320f, PlateauAt(320f) + 0.5f), 45f, 0f, 0.05f, false);
+            OnGround(tier.SmallTrees, Polar(140f, PlateauAt(140f) + 1f), 200f, 0f, 0.05f, false);
         }
 
         // Vanilla pickables: they respawn on their own like anywhere else.
         static void PlacePickables()
         {
-            PlaceNetworked("RaspberryBush", Polar(80f, PlateauAt(80f) + 1f), 30f, 0f);
-            PlaceNetworked("RaspberryBush", Polar(255f, PlateauAt(255f) + 2f), 200f, 0f);
-            PlaceNetworked("Pickable_Mushroom", Polar(130f, PlateauAt(130f) + 0.5f), 0f, 0f);
-            PlaceNetworked("Pickable_Mushroom", Polar(300f, PlateauAt(300f) + 1.5f), 0f, 0f);
+            PlaceNetworked(tier.Berries, Polar(80f, PlateauAt(80f) + 1f), 30f, 0f);
+            PlaceNetworked(tier.Berries, Polar(255f, PlateauAt(255f) + 2f), 200f, 0f);
+            PlaceNetworked(tier.Mushrooms, Polar(130f, PlateauAt(130f) + 0.5f), 0f, 0f);
+            PlaceNetworked(tier.Mushrooms, Polar(300f, PlateauAt(300f) + 1.5f), 0f, 0f);
             float[] shore = { 15f, 105f, 160f, 245f, 315f };
             for (int i = 0; i < shore.Length; i++)
-                PlaceNetworked(i % 2 == 0 ? "Pickable_Flint" : "Pickable_Stone", Polar(shore[i], ShoreAt(shore[i]) - 3f), shore[i], 0f);
-            PlaceNetworked("Pickable_Branch", Polar(25f, ShoreAt(25f) - 4f), 80f, 0f);
-            PlaceNetworked("Pickable_Branch", Polar(185f, PlateauAt(185f) + 2f), 10f, 0f);
+                PlaceNetworked(new[] { i % 2 == 0 ? "Pickable_Flint" : "Pickable_Stone" }, Polar(shore[i], ShoreAt(shore[i]) - 3f), shore[i], 0f);
+            PlaceNetworked(new[] { "Pickable_Branch" }, Polar(25f, ShoreAt(25f) - 4f), 80f, 0f);
+            PlaceNetworked(new[] { "Pickable_Branch" }, Polar(185f, PlateauAt(185f) + 2f), 10f, 0f);
         }
 
         static void PlaceSpawnersAndChest()
         {
             float y = FloorTop + 0.2f;
-            PlaceNetworked(IsletPrefabs.GreydwarfSpawner, new Vector3(1.5f, y, 0.5f), 0f);
-            PlaceNetworked(IsletPrefabs.GreydwarfSpawner, new Vector3(-1f, y, -1.5f), 0f);
-            PlaceNetworked(IsletPrefabs.ShamanSpawner, new Vector3(0f, y, 1.5f), 0f);
-            PlaceNetworked(IsletPrefabs.GreydwarfSpawner, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
-            PlaceNetworked(IsletPrefabs.GreydwarfSpawner, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
+            string[] guards = tier.Guards;
+            PlaceNetworked(IsletTier.SpawnerName(guards[0]), new Vector3(1.5f, y, 0.5f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName(guards[1]), new Vector3(-1f, y, -1.5f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName(guards[2]), new Vector3(0f, y, 1.5f), 0f);
+            PlaceNetworked(new[] { IsletTier.SpawnerName(guards[3]) }, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
+            PlaceNetworked(new[] { IsletTier.SpawnerName(guards[4]) }, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
             // Against the inside of the north wall, facing the courtyard.
-            PlaceNetworked(IsletPrefabs.Chest, new Vector3(-2f, FloorTop, 2.8f), 180f);
+            PlaceNetworked(tier.ChestName, new Vector3(-2f, FloorTop, 2.8f), 180f);
         }
 
-        static void PlaceNetworked(string name, Vector2 at, float rotY, float lift)
+        // The first of the candidates that exists, on the ground at (x, z).
+        static void PlaceNetworked(string[] candidates, Vector2 at, float rotY, float lift)
         {
+            string name = candidates[0];
+            foreach (string candidate in candidates)
+                if (PlantOrSelf(candidate) != null) { name = candidate; break; }
             PlaceNetworked(name, new Vector3(at.x, Height(at.x, at.y) + lift, at.y), rotY);
         }
 

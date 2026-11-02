@@ -23,14 +23,14 @@ Valheim decides where locations go when a world is created, and only builds them
 
 ## Configuration
 
-- `IsletCount`: how many islets the game tries to place in a new world (default 30). Only used when locations are generated (new world or `genloc`).
+- `MeadowsIslets`, `SwampIslets`, `PlainsIslets`, `MistlandsIslets`, `AshlandsIslets`: how many islets of each kind the game tries to place (0 turns a kind off). Only used when locations are generated (new world or `genloc`).
 - `GroundStyle`: how the islet ground looks: `Terrain` (like the game's own land) or `Rock` (bare stone). Needs a restart.
 - `DebugLog`: writes how the islands were built and where they are to the BepInEx log.
 
 ## Console commands
 
-- `iov_info`: how many islets this world has and how far the closest ones are (host or single player).
-- `iov_goto` (needs `devcommands`): teleports you to the closest islet nobody has been to yet.
+- `iov_info`: how many islets of each kind this world has and how far the closest ones are (host or single player).
+- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`.
 
 ## Multiplayer
 
