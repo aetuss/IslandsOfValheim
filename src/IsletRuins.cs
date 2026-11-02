@@ -3,9 +3,9 @@ using UnityEngine;
 namespace IslandsOfValheim
 {
     // What was built on the islet, from that biome's own vanilla pieces: a main ruin on the plateau (with the
-    // chest and three guards), two designs per tier of which each islet gets one, and on most islets a
-    // smaller structure on the cliff ridge. Building pieces are networked (they can be broken for their
-    // materials); props are static decor.
+    // chest and three guards) and on most islets a smaller structure on the cliff ridge. Each islet gets one
+    // of the tier's two ruin designs, turned one of two ways, or on some tiers a creature nest instead.
+    // Building pieces are networked (they can be broken for their materials); props are static decor.
     static partial class IsletBuilder
     {
         internal enum RuinStyle { StoneHall, StiltHut, FulingCamp, DvergrRuin, GraustenFort }
@@ -14,12 +14,49 @@ namespace IslandsOfValheim
         {
             switch (tier.Style)
             {
-                case RuinStyle.StoneHall: OneOf(StoneHall, FishingCamp); Ridge(StoneTower); break;
-                case RuinStyle.StiltHut: OneOf(StiltHut, SunkenShrine); Ridge(Graves); break;
-                case RuinStyle.FulingCamp: OneOf(FulingCamp, FulingRuin); Ridge(FulingLookout); break;
-                case RuinStyle.DvergrRuin: OneOf(DvergrRuin, DvergrOutpost); Ridge(DvergrColumn); break;
-                case RuinStyle.GraustenFort: OneOf(GraustenFort, AshlandsArches); Ridge(GraustenPillar); break;
+                case RuinStyle.StoneHall: MainRuin(StoneHall, FishingCamp); Ridge(StoneTower); break;
+                case RuinStyle.StiltHut: MainRuin(StiltHut, SunkenShrine); Ridge(Graves); break;
+                case RuinStyle.FulingCamp: MainRuin(FulingCamp, FulingRuin); Ridge(FulingLookout); break;
+                case RuinStyle.DvergrRuin: MainRuin(DvergrRuin, DvergrOutpost); Ridge(DvergrColumn); break;
+                case RuinStyle.GraustenFort: MainRuin(GraustenFort, AshlandsArches); Ridge(GraustenPillar); break;
             }
+        }
+
+        // Each design turned two ways; a nest instead on about one islet in four, where the tier has one.
+        static void MainRuin(System.Action a, System.Action b)
+        {
+            if (tier.Nest == null)
+                OneOf(Turned(a, 0f), Turned(a, 180f), Turned(b, 90f), Turned(b, 270f));
+            else
+                OneOf(new[] { 0.19f, 0.19f, 0.19f, 0.19f, 0.24f }, Turned(a, 0f), Turned(a, 180f), Turned(b, 90f), Turned(b, 270f), NestSite);
+        }
+
+        // Builds the design unturned (the layout code works in plateau coordinates), then turns its whole
+        // group around the plateau's centre. The plateau is flat, so everything still sits on the ground.
+        static System.Action Turned(System.Action design, float yaw)
+        {
+            return () => { design(); parent.localRotation = Quaternion.Euler(0f, yaw, 0f); };
+        }
+
+        // A creature nest (or a clutch of them) in a ring of rocks: break it before it sends more.
+        static void NestSite()
+        {
+            Vector2[] spots;
+            switch (tier.NestCount)
+            {
+                case 1: spots = new[] { Vector2.zero }; break;
+                case 2: spots = new[] { new Vector2(-1.6f, 0.3f), new Vector2(1.7f, -0.4f) }; break;
+                default: spots = new[] { new Vector2(-1.4f, 1.2f), new Vector2(1.5f, 1f), new Vector2(-1.2f, -1.5f), new Vector2(1.3f, -1.3f) }; break;
+            }
+            for (int i = 0; i < spots.Length; i++)
+                PlaceNetworked(new[] { tier.Nest }, spots[i], i * 77f, 0f);
+            float[] rocks = { 30f, 140f, 250f, 320f };
+            for (int i = 0; i < rocks.Length; i++)
+                OnGround(bigRocks, Polar(rocks[i], 4.8f), rocks[i] * 2f, 2f + (i % 2) * 0.8f, 0.4f);
+            Prop(new[] { "bone_stack", "Skull1" }, Polar(95f, 3.6f), 30f, 0.1f);
+            Prop(new[] { "Skull2", "Skull1" }, Polar(290f, 3.2f), 200f, 0.05f);
+            Vector2 chest = Polar(200f, 3.2f);
+            CourtyardGuardsAndChest(PlateauHeight, new Vector3(chest.x, PlateauHeight, chest.y), 20f);
         }
 
         // The ridge structure and its guard, on three islets out of four.
@@ -398,12 +435,11 @@ namespace IslandsOfValheim
 
         // A spot on the cliff ridge facing the plateau: centre, rotation (+z out to sea) and base height
         // (lowest ground under radius, a little sunk).
-        const float RidgeAngle = 206f;
 
         static void RidgeSpot(float radius, out Vector2 centre, out Quaternion turn, out float bottom)
         {
-            centre = Polar(RidgeAngle, PlateauAt(RidgeAngle) + 3f);
-            turn = Quaternion.Euler(0f, 90f - RidgeAngle, 0f);
+            centre = Polar(cliffDeg, PlateauAt(cliffDeg) + 3f);
+            turn = Quaternion.Euler(0f, 90f - cliffDeg, 0f);
             bottom = GroundMin(centre.x, centre.y, radius) - 0.3f;
         }
 
@@ -423,12 +459,12 @@ namespace IslandsOfValheim
         // Debris below the ridge structure.
         static void LyingBeams(string beam, string pole)
         {
-            float r = PlateauAt(RidgeAngle) + 3f;
-            Vector2 q = Polar(RidgeAngle - 9f, r - 3.5f);
+            float r = PlateauAt(cliffDeg) + 3f;
+            Vector2 q = Polar(cliffDeg - 9f, r - 3.5f);
             At(beam, new Vector3(q.x, Height(q.x, q.y) - 0.05f, q.y), new Vector3(0f, 70f, 0f), false);
-            Vector2 w = Polar(RidgeAngle + 8f, r - 3.2f);
+            Vector2 w = Polar(cliffDeg + 8f, r - 3.2f);
             At(pole, new Vector3(w.x, Height(w.x, w.y) - 0.05f, w.y), new Vector3(0f, 150f, 85f), false);
-            Vector2 v = Polar(RidgeAngle + 2f, r - 4.5f);
+            Vector2 v = Polar(cliffDeg + 2f, r - 4.5f);
             At(beam, new Vector3(v.x, Height(v.x, v.y) - 0.05f, v.y), new Vector3(4f, 10f, -3f), false);
         }
 

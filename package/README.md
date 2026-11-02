@@ -20,7 +20,9 @@ The further from the world centre, the tougher the islet:
 | Mistlands | 5800-7500 m | Seekers, a Seeker Brute | coins, soft tissue, black marble, black cores, carapace arrows |
 | Ashlands | 7500 m and further | Charred warriors, an archer and a mage | coins, flametal ore, grausten, gemstones, molten cores, charred arrows |
 
-Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or a dvergr outpost (Mistlands), a grausten fortress or broken arches (Ashlands). Every kind also comes in two shapes, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
+Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or a dvergr outpost (Mistlands), a grausten fortress or broken arches (Ashlands). Every kind comes in four shapes (round, long, with a bay, with two humps), the ruin is turned differently from islet to islet, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
+
+About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**, a second, richer chest among the rocks. Some have a runestone.
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
 

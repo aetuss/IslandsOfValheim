@@ -67,12 +67,19 @@ namespace IslandsOfValheim
 
         static void AddChest(IsletTier tier)
         {
+            AddChest(tier, tier.ChestName, false);
+            AddChest(tier, tier.HoardName, true);
+        }
+
+        // hoard: the rare hidden chest, with more of everything.
+        static void AddChest(IsletTier tier, string name, bool hoard)
+        {
             GameObject go = null;
             foreach (string baseName in tier.ChestBases)
             {
                 if (PrefabManager.Instance.GetPrefab(baseName) == null) continue;
-                go = PrefabManager.Instance.CreateClonedPrefab(tier.ChestName, baseName);
-                Plugin.Debug("Chest " + tier.ChestName + " cloned from " + baseName);
+                go = PrefabManager.Instance.CreateClonedPrefab(name, baseName);
+                Plugin.Debug("Chest " + name + " cloned from " + baseName);
                 break;
             }
             if (go == null)
@@ -82,7 +89,7 @@ namespace IslandsOfValheim
             }
 
             Container container = go.GetComponent<Container>();
-            container.m_defaultItems = LootTable(tier);
+            container.m_defaultItems = LootTable(tier, hoard);
             // A location chest must not be picked up or deconstructed for its wood.
             Piece piece = go.GetComponent<Piece>();
             if (piece != null) piece.m_canBeRemoved = false;
@@ -90,11 +97,11 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
-        static DropTable LootTable(IsletTier tier)
+        static DropTable LootTable(IsletTier tier, bool hoard)
         {
             DropTable table = new DropTable();
-            table.m_dropMin = tier.DropMin;
-            table.m_dropMax = tier.DropMax;
+            table.m_dropMin = tier.DropMin + (hoard ? 2 : 0);
+            table.m_dropMax = tier.DropMax + (hoard ? 3 : 0);
             table.m_dropChance = 1f;
             table.m_oneOfEach = true;
             table.m_drops = new List<DropTable.DropData>();
@@ -108,8 +115,9 @@ namespace IslandsOfValheim
                 }
                 DropTable.DropData drop = new DropTable.DropData();
                 drop.m_item = prefab;
-                drop.m_stackMin = loot.Min;
-                drop.m_stackMax = loot.Max;
+                int scale = hoard ? 2 : 1;
+                drop.m_stackMin = loot.Min * scale;
+                drop.m_stackMax = loot.Max * scale;
                 drop.m_weight = loot.Weight;
                 table.m_drops.Add(drop);
             }

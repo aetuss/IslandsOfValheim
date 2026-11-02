@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Four shapes for every kind of islet: round, long and narrow, one with a bay, one with two humps. Each has its cliff on a different side.
+- The main ruin is turned a different way from islet to islet, and the jetty and the wreck each turn up at one of two spots on the shore, or not at all.
+- About one islet in four has a creature nest instead of a ruin: a Greydwarf nest (Meadows), a bone pile (Swamp), Seeker eggs (Mistlands) or Charred twitcher nests (Ashlands). Break it before it sends more.
+- About one islet in eight hides a hoard: a second chest among the rocks with more of everything.
+- Some islets have a runestone.
+
 ## 0.7.0
 
 - More variety: every kind of islet has two shapes and sizes, two designs for its main ruin (one is picked for each islet), and its tower, wreck, jetty, plants, pickables and loose stones are there on some islets and not on others.

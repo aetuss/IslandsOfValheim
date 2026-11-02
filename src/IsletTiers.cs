@@ -24,6 +24,9 @@ namespace IslandsOfValheim
         internal List<Loot> Loot = new List<Loot>();
 
         internal IsletBuilder.RuinStyle Style;
+        internal string Nest;          // vanilla creature nest used instead of a ruin on some islets; null: none
+        internal int NestCount = 1;
+        internal string RuneStone;
         internal string JettyFloor = "wood_floor", JettyPole = "wood_pole2";
         internal string[] Wreck = KarveWreck;
 
@@ -38,6 +41,7 @@ namespace IslandsOfValheim
         internal string LocationName(int variant) { return LocationPrefix + (variant + 1); }
         internal string LocationPrefix { get { return "IoV_Islet_" + Name; } }
         internal string ChestName { get { return "IoV_TreasureChest_" + Name; } }
+        internal string HoardName { get { return "IoV_TreasureHoard_" + Name; } }
         internal static string SpawnerName(string creature) { return "IoV_Spawner_" + creature; }
 
         IsletTier Drop(string item, int min, int max, float weight)
@@ -53,7 +57,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Meadows", Biome = Heightmap.Biome.Meadows, MinDistance = 300f, MaxDistance = 2200f, DefaultCount = 20, Seed = 0f,
-                Style = IsletBuilder.RuinStyle.StoneHall,
+                Style = IsletBuilder.RuinStyle.StoneHall, Nest = "Spawner_GreydwarfNest", RuneStone = "RuneStone_Meadows",
                 Guards = new[] { "Greydwarf", "Greydwarf", "Greydwarf_Shaman", "Greydwarf", "Greydwarf" },
                 ChestBases = new[] { "TreasureChest_meadows" },
                 Trees = new[] { "FirTree_small_dead", "FirTree_small", "Pinetree_01" },
@@ -67,7 +71,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Swamp", Biome = Heightmap.Biome.Swamp, MinDistance = 2200f, MaxDistance = 4000f, DefaultCount = 25, Seed = 137f,
-                Style = IsletBuilder.RuinStyle.StiltHut,
+                Style = IsletBuilder.RuinStyle.StiltHut, Nest = "BonePileSpawner_swamp", RuneStone = "RuneStone_Swamps",
                 Guards = new[] { "Draugr", "Draugr", "Draugr_Ranged", "Draugr", "Draugr_Elite" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_swamp", "TreasureChest_meadows" },
@@ -82,7 +86,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Plains", Biome = Heightmap.Biome.Plains, MinDistance = 4000f, MaxDistance = 5800f, DefaultCount = 25, Seed = 271f,
-                Style = IsletBuilder.RuinStyle.FulingCamp, Wreck = LongshipWreck,
+                Style = IsletBuilder.RuinStyle.FulingCamp, Wreck = LongshipWreck, RuneStone = "RuneStone_Plains",
                 Guards = new[] { "Goblin", "Goblin", "GoblinShaman", "GoblinArcher", "Goblin" },
                 LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_plains_stone", "TreasureChest_heath", "TreasureChest_meadows" },
@@ -97,7 +101,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Mistlands", Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 25, Seed = 409f,
-                Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck,
+                Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck, Nest = "SeekerEgg", NestCount = 4, RuneStone = "RuneStone_Mistlands",
                 Guards = new[] { "Seeker", "Seeker", "SeekerBrute", "Seeker", "Seeker" },
                 MaxLevel = 2, LevelUpChance = 10f,
                 ChestBases = new[] { "TreasureChest_dvergrtower", "TreasureChest_meadows" },
@@ -112,7 +116,7 @@ namespace IslandsOfValheim
             All.Add(new IsletTier
             {
                 Name = "Ashlands", Biome = Heightmap.Biome.AshLands, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 20, Seed = 557f,
-                Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck,
+                Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck, Nest = "GraveStone_CharredTwitcherNest", NestCount = 2, RuneStone = "RuneStone_Ashlands",
                 JettyFloor = "ashwood_floor_2x2", JettyPole = "ashwood_pole_2m",
                 Guards = new[] { "Charred_Melee", "Charred_Melee", "Charred_Mage", "Charred_Archer", "Charred_Melee" },
                 MaxLevel = 2, LevelUpChance = 10f,
@@ -137,14 +141,18 @@ namespace IslandsOfValheim
                         new AcceptableValueRange<int>(0, 200)));
         }
 
-        // All the vanilla plants any tier may use.
+        // All the vanilla objects any tier places that may drop themselves onto the terrain (see IsletPrefabs).
         internal static IEnumerable<string> AllPlants()
         {
             HashSet<string> seen = new HashSet<string>();
             foreach (IsletTier tier in All)
+            {
                 foreach (string[] list in new[] { tier.Trees, tier.SmallTrees, tier.Bushes, tier.Berries, tier.Mushrooms })
                     foreach (string name in list)
                         if (seen.Add(name)) yield return name;
+                if (tier.Nest != null && seen.Add(tier.Nest)) yield return tier.Nest;
+                if (tier.RuneStone != null && seen.Add(tier.RuneStone)) yield return tier.RuneStone;
+            }
             foreach (string name in new[] { "Pickable_Flint", "Pickable_Stone", "Pickable_Branch" })
                 if (seen.Add(name)) yield return name;
         }

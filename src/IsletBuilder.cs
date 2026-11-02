@@ -17,9 +17,12 @@ namespace IslandsOfValheim
     {
         internal const float PlateauHeight = 3f;
 
-        // Per variant (see Register): the two variants of a tier differ in size and shape.
+        // Per variant (see Register): the variants of a tier differ in size, outline and features.
         static float plateauRadius, shoreRadius, maxRadius, seed;
-        const float CliffAngle = 206f * Mathf.Deg2Rad; // the high, steep side
+        static float stretchX, stretchZ;  // an oval islet
+        static float cliffDeg;            // the high, steep side; the jetty, wreck and ridge structure are placed relative to it
+        static float coveDeg = float.NaN; // a bay cut into the shore
+        static float hillDeg = float.NaN; // a second hump on the slope
         const float Bottom = -30f;
         const int Segments = 72;
 
@@ -29,7 +32,25 @@ namespace IslandsOfValheim
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
         static readonly string[] smallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
 
-        internal const int Variants = 2;
+        internal const int Variants = 4;
+
+        static void SetVariant(int variant)
+        {
+            seed = tier.Seed + variant * 53f;
+            float size = 1f;
+            stretchX = stretchZ = 1f;
+            coveDeg = hillDeg = float.NaN;
+            switch (variant)
+            {
+                case 0: cliffDeg = 206f; break;
+                case 1: size = 1.1f; stretchX = 1.3f; stretchZ = 0.82f; cliffDeg = 20f; break;  // long and narrow
+                case 2: size = 1.05f; cliffDeg = 300f; coveDeg = cliffDeg + 140f; break;        // with a bay
+                default: size = 0.95f; stretchX = 0.85f; stretchZ = 1.2f; cliffDeg = 110f; hillDeg = cliffDeg + 170f; break; // two humps
+            }
+            plateauRadius = 9.5f * size;
+            shoreRadius = 20f * size;
+            maxRadius = shoreRadius * Mathf.Max(stretchX, stretchZ) + 26f;
+        }
 
         static IsletTier tier;
         static string locationName;
@@ -42,11 +63,7 @@ namespace IslandsOfValheim
         {
             tier = islet;
             locationName = tier.LocationName(variant);
-            seed = tier.Seed + variant * 53f;
-            float size = variant == 0 ? 1f : 1.15f;
-            plateauRadius = 9.5f * size;
-            shoreRadius = 20f * size;
-            maxRadius = shoreRadius + 26f;
+            SetVariant(variant);
             root = ZoneManager.Instance.CreateLocationContainer(locationName);
             parent = root.transform;
             built = 0;
@@ -55,8 +72,10 @@ namespace IslandsOfValheim
             Material rockMaterial = BuildGround();
             PlaceRocks();
             PlaceRuins();
-            Optional(0.7f, PlaceDock);
-            Optional(0.65f, PlaceWreck);
+            // Jetty and wreck: one of two spots on the shore, or none.
+            OneOf(new[] { 0.35f, 0.35f, 0.3f }, () => PlaceDock(cliffDeg + 229f), () => PlaceDock(cliffDeg + 140f), () => { });
+            OneOf(new[] { 0.35f, 0.3f, 0.35f }, () => PlaceWreck(cliffDeg + 194f), () => PlaceWreck(cliffDeg + 60f), () => { });
+            PlaceHoard();
             PlacePlants();
             PlacePickables();
             PlaceOutsideGuard();
@@ -96,7 +115,15 @@ namespace IslandsOfValheim
         static float Shore(float angle)
         {
             float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
-            return shoreRadius * (1f + 0.16f * Noise(c * 1.3f + 5f, s * 1.3f + 5f) + 0.08f * Noise(c * 3f + 11f, s * 3f + 11f));
+            float oval = 1f / Mathf.Sqrt(c * c / (stretchX * stretchX) + s * s / (stretchZ * stretchZ));
+            float cove = 1f;
+            if (!float.IsNaN(coveDeg))
+            {
+                float k = Mathf.Max(0f, Mathf.Cos(angle - coveDeg * Mathf.Deg2Rad));
+                cove = 1f - 0.3f * Mathf.Pow(k, 10f);
+            }
+            float r = shoreRadius * oval * cove * (1f + 0.16f * Noise(c * 1.3f + 5f, s * 1.3f + 5f) + 0.08f * Noise(c * 3f + 11f, s * 3f + 11f));
+            return Mathf.Max(r, Plateau(angle) + 3f); // always some slope between the plateau and the sea
         }
 
         static float Plateau(float angle)
@@ -107,7 +134,7 @@ namespace IslandsOfValheim
         // 1 on the cliff side, falling to 0 a quarter turn away.
         static float Cliff(float angle)
         {
-            float c = Mathf.Max(0f, Mathf.Cos(angle - CliffAngle));
+            float c = Mathf.Max(0f, Mathf.Cos(angle - cliffDeg * Mathf.Deg2Rad));
             return c * c * c;
         }
 
@@ -132,11 +159,21 @@ namespace IslandsOfValheim
                 float smooth = tc * tc * (3f - 2f * tc);
                 float ridge = cliff * 2.4f * 4f * t * (1f - t);
                 float edge = Mathf.Clamp01(t * 4f); // no step where the plateau ends
-                return PlateauHeight * (1f - smooth) + ridge + (rough * 1.6f * Mathf.Sin(Mathf.PI * t) + fine * 0.35f + detail) * edge;
+                return PlateauHeight * (1f - smooth) + ridge + Hump(x, z, plateau, shore) * Mathf.Sin(Mathf.PI * t)
+                    + (rough * 1.6f * Mathf.Sin(Mathf.PI * t) + fine * 0.35f + detail) * edge;
             }
             float d = r - shore;
             if (d <= 7f) return -d * 0.7f + rough * 0.8f * (1f - d / 7f) + detail;
             return Mathf.Max(Bottom, -4.9f - (d - 7f) * 4f);
+        }
+
+        // The second hump of a two-humped islet: a rounded rise on the slope, fading out before the shore.
+        static float Hump(float x, float z, float plateau, float shore)
+        {
+            if (float.IsNaN(hillDeg)) return 0f;
+            Vector2 centre = Polar(hillDeg, (plateau + shore) * 0.5f);
+            float d2 = (x - centre.x) * (x - centre.x) + (z - centre.y) * (z - centre.y);
+            return 3.2f * Mathf.Exp(-d2 / (2f * 3.5f * 3.5f));
         }
 
         static Vector3 Normal(float x, float z)
@@ -413,11 +450,14 @@ namespace IslandsOfValheim
 
         static void PlaceRocks()
         {
-            // Big rocks along the shore give the islet its outline.
-            float[] angles = { 5f, 55f, 95f, 150f, 200f, 235f, 290f, 330f };
+            // Big rocks along the shore give the islet its outline; they leave room for the jetty and wreck spots.
+            float[] angles = { 159f, 209f, 249f, 304f, 354f, 29f, 84f, 124f };
             float[] sizes = { 7f, 4.5f, 6f, 5f, 9f, 7.5f, 6f, 4f };
             for (int i = 0; i < angles.Length; i++)
-                OnGround(bigRocks, Polar(angles[i], ShoreAt(angles[i]) - 2f), angles[i] * 3f, sizes[i], 0.4f);
+            {
+                float deg = cliffDeg + angles[i];
+                OnGround(bigRocks, Polar(deg, ShoreAt(deg) - 2f), deg * 3f, sizes[i], 0.4f);
+            }
             // Outcrops on the slopes, half buried.
             float[] slope = { 120f, 185f, 215f, 265f, 20f };
             float[] slopeSizes = { 4f, 5f, 4.5f, 3.5f, 3f };
@@ -437,9 +477,8 @@ namespace IslandsOfValheim
 
         // An old wooden jetty on the low side: one plank section on land, one over the water, and the
         // poles of a third that's gone. Boats can moor next to it.
-        static void PlaceDock()
+        static void PlaceDock(float deg)
         {
-            const float deg = 75f;
             float s = ShoreAt(deg);
             Vector2 u = Polar(deg, 1f), side = new Vector2(-u.y, u.x);
             float yaw = 90f - deg;
@@ -463,12 +502,30 @@ namespace IslandsOfValheim
                 }
         }
 
-        // A wrecked ship on the low side of the islet: bow, stern and something in between.
-        static void PlaceWreck()
+        // A wrecked ship on the shore around deg: bow, stern and something in between.
+        static void PlaceWreck(float deg)
         {
-            OnGround(new[] { tier.Wreck[0] }, Polar(32f, ShoreAt(32f) - 3f), 120f, 0f, 0.25f);
-            OnGround(new[] { tier.Wreck[1] }, Polar(48f, ShoreAt(48f) - 1.5f), 160f, 0f, 0.3f);
-            OnGround(new[] { tier.Wreck[2] }, Polar(40f, ShoreAt(40f) - 2.5f), 140f, 0f, 0.2f);
+            OnGround(new[] { tier.Wreck[0] }, Polar(deg - 8f, ShoreAt(deg - 8f) - 3f), deg + 88f, 0f, 0.25f);
+            OnGround(new[] { tier.Wreck[1] }, Polar(deg + 8f, ShoreAt(deg + 8f) - 1.5f), deg + 128f, 0f, 0.3f);
+            OnGround(new[] { tier.Wreck[2] }, Polar(deg, ShoreAt(deg) - 2.5f), deg + 108f, 0f, 0.2f);
+        }
+
+        // On one islet in eight: a second, richer chest hidden among rocks on the slope, with coins spilled around it.
+        static void PlaceHoard()
+        {
+            Optional(0.125f, () =>
+            {
+                float deg = cliffDeg + 95f;
+                float r = (PlateauAt(deg) + ShoreAt(deg)) * 0.5f;
+                Vector2 c = Polar(deg, r);
+                OnGround(bigRocks, Polar(deg - 9f, r + 0.5f), deg * 2f, 4.5f, 0.45f);
+                OnGround(bigRocks, Polar(deg + 9f, r - 0.5f), deg * 3f, 3.5f, 0.45f);
+                PlaceNetworked(tier.HoardName, new Vector3(c.x, GroundMin(c.x, c.y, 0.6f), c.y), 90f - deg);
+                Prop(new[] { "treasure_pile" }, Polar(deg + 3f, r + 1.3f), 0f, 0.1f);
+                Prop(new[] { "treasure_stack" }, Polar(deg - 3f, r - 1.2f), 40f, 0.05f);
+            });
+            // A runestone on some islets.
+            Optional(0.3f, () => PlaceNetworked(new[] { tier.RuneStone }, Polar(cliffDeg + 250f, PlateauAt(cliffDeg + 250f) + 1.5f), cliffDeg, 0f));
         }
 
         static void PlacePlants()
@@ -517,12 +574,14 @@ namespace IslandsOfValheim
         // The fourth guard keeps watch near the wreck side; the fifth is with the ridge structure.
         static void PlaceOutsideGuard()
         {
-            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[3]) }, Polar(40f, ShoreAt(40f) - 6f), 0f, 0.3f);
+            float deg = cliffDeg + 194f;
+            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[3]) }, Polar(deg, ShoreAt(deg) - 6f), 0f, 0.3f);
         }
 
         static void RidgeGuard()
         {
-            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[4]) }, Polar(225f, PlateauAt(225f) - 1f), 0f, 0.3f);
+            float deg = cliffDeg + 19f;
+            PlaceNetworked(new[] { IsletTier.SpawnerName(tier.Guards[4]) }, Polar(deg, PlateauAt(deg) - 1f), 0f, 0.3f);
         }
 
         // ---- variety: vanilla's own per-instance randomness for location parts ----
@@ -542,21 +601,28 @@ namespace IslandsOfValheim
         // Exactly one of the designs is there on each islet (RandomObject).
         static void OneOf(params System.Action[] designs)
         {
+            float[] weights = new float[designs.Length];
+            for (int i = 0; i < weights.Length; i++) weights[i] = 1f;
+            OneOf(weights, designs);
+        }
+
+        static void OneOf(float[] weights, params System.Action[] designs)
+        {
             GameObject holder = new GameObject("IoV_OneOf");
             holder.transform.SetParent(parent, false);
             RandomObject random = holder.AddComponent<RandomObject>();
             random.m_objects = new List<RandomObject.ObjectEntry>();
             Transform outer = parent;
-            foreach (System.Action design in designs)
+            for (int i = 0; i < designs.Length; i++)
             {
                 GameObject group = new GameObject("IoV_Design");
                 group.transform.SetParent(holder.transform, false);
                 RandomObject.ObjectEntry entry = new RandomObject.ObjectEntry();
                 entry.m_object = group;
-                entry.m_weight = 1f;
+                entry.m_weight = weights[i];
                 random.m_objects.Add(entry);
                 parent = group.transform;
-                design();
+                designs[i]();
             }
             parent = outer;
         }
