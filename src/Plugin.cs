@@ -13,7 +13,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.3.0";
+        public const string Version = "1.4.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<bool> DebugLog;
@@ -50,6 +50,7 @@ namespace IslandsOfValheim
             SeaChart.Register(); // before the chests, whose loot includes it
             IsletPrefabs.Register();
             IsletBeacons.Register();
+            IsletFishing.Register();
         }
 
         void OnVanillaLocations()

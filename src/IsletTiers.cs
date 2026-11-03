@@ -52,6 +52,11 @@ namespace IslandsOfValheim
         internal List<Cost[]> BeaconFuel = new List<Cost[]>();
         internal List<WaveGroup> BeaconWave = new List<WaveGroup>();
 
+        // The fishing ground around some islets (IsletFishing): vanilla fish species with their weights,
+        // and their levels (more stars further out).
+        internal List<FishKind> Fishes = new List<FishKind>();
+        internal int FishMinLevel = 1, FishMaxLevel = 2;
+
         static readonly string[] KarveWreck = { "shipwreck_karve_bow", "shipwreck_karve_stern", "shipwreck_karve_bottomboards" };
         static readonly string[] LongshipWreck = { "shipwreck_vikingship_front", "shipwreck_vikingship_rear", "shipwreck_vikingship_mast1" };
 
@@ -82,6 +87,19 @@ namespace IslandsOfValheim
             return this;
         }
 
+        IsletTier AddFish(string prefab, float weight)
+        {
+            Fishes.Add(new FishKind { Prefab = prefab, Weight = weight });
+            return this;
+        }
+
+        IsletTier FishLevels(int min, int max)
+        {
+            FishMinLevel = min;
+            FishMaxLevel = max;
+            return this;
+        }
+
         // fromSky: they fly in (or drop) instead of climbing out of the sea.
         IsletTier Wave(string creature, int count, bool fromSky)
         {
@@ -106,7 +124,8 @@ namespace IslandsOfValheim
                 Mushrooms = new[] { "Pickable_Mushroom" },
             }.Drop("Coins", 20, 45, 3f).Drop("Amber", 1, 3, 2f).Drop("AmberPearl", 1, 2, 1.5f).Drop("Ruby", 1, 2, 0.8f)
              .Drop("ArrowFire", 10, 20, 1f).Drop("Resin", 5, 10, 1f).Drop("Feathers", 4, 8, 1f)
-             .Fuel("Wood", 10, "Resin", 5).Wave("Neck", 4, false));
+             .Fuel("Wood", 10, "Resin", 5).Wave("Neck", 4, false)
+             .AddFish("Fish1", 3f).AddFish("Fish2", 1f).FishLevels(1, 2));
 
             All.Add(new IsletTier
             {
@@ -122,7 +141,8 @@ namespace IslandsOfValheim
                 Mushrooms = new[] { "Pickable_Mushroom" },
             }.Drop("Coins", 30, 60, 3f).Drop("IronScrap", 3, 6, 2f).Drop("AmberPearl", 1, 3, 1.5f).Drop("Ruby", 1, 2, 1f)
              .Drop("Chain", 1, 1, 0.8f).Drop("ArrowIron", 10, 20, 1f).Drop("WitheredBone", 1, 2, 1f)
-             .Fuel("SurtlingCore", 1, "Coal", 5).Wave("Draugr", 3, false).Wave("Draugr_Ranged", 1, false));
+             .Fuel("SurtlingCore", 1, "Coal", 5).Wave("Draugr", 3, false).Wave("Draugr_Ranged", 1, false)
+             .AddFish("Fish5", 3f).AddFish("Fish2", 1.5f).FishLevels(1, 2));
 
             All.Add(new IsletTier
             {
@@ -138,7 +158,8 @@ namespace IslandsOfValheim
                 Mushrooms = new[] { "Pickable_Barley_Wild", "Pickable_Flax_Wild", "Pickable_Mushroom" },
             }.Drop("Coins", 60, 120, 3f).Drop("BlackMetalScrap", 3, 6, 2f).Drop("SilverNecklace", 1, 1, 1.2f).Drop("Ruby", 1, 3, 1.2f)
              .Drop("AmberPearl", 2, 3, 1f).Drop("ArrowNeedle", 10, 20, 1f).Drop("ArrowObsidian", 10, 20, 1f)
-             .Fuel("SurtlingCore", 2, "Coal", 10).Wave("Deathsquito", 2, true).Wave("Goblin", 2, false));
+             .Fuel("SurtlingCore", 2, "Coal", 10).Wave("Deathsquito", 2, true).Wave("Goblin", 2, false)
+             .AddFish("Fish7", 3f).AddFish("Fish3", 1.5f).AddFish("Fish5", 1f).FishLevels(1, 3));
 
             All.Add(new IsletTier
             {
@@ -155,7 +176,8 @@ namespace IslandsOfValheim
                 Mushrooms = new[] { "Pickable_Mushroom_Magecap", "Pickable_Mushroom" },
             }.Drop("Coins", 100, 180, 3f).Drop("Softtissue", 3, 6, 2f).Drop("BlackMarble", 4, 8, 1.5f).Drop("BlackCore", 1, 1, 0.6f)
              .Drop("SilverNecklace", 1, 1, 1f).Drop("Ruby", 2, 3, 1f).Drop("ArrowCarapace", 10, 20, 1f)
-             .Fuel("BlackCore", 1).Fuel("SurtlingCore", 3).Wave("Tick", 2, true).Wave("Seeker", 2, false));
+             .Fuel("BlackCore", 1).Fuel("SurtlingCore", 3).Wave("Tick", 2, true).Wave("Seeker", 2, false)
+             .AddFish("Fish9", 3f).AddFish("Fish8", 1.5f).AddFish("Fish3", 1f).FishLevels(1, 3));
 
             // Dvergr live on these, in the same ring as the Seeker islets: leave them in peace, or raid them.
             All.Add(new IsletTier
@@ -175,7 +197,8 @@ namespace IslandsOfValheim
                 Mushrooms = new[] { "Pickable_Mushroom_Magecap", "Pickable_Mushroom" },
             }.Drop("Coins", 150, 250, 3f).Drop("BlackCore", 1, 2, 1.2f).Drop("DvergrNeedle", 1, 1, 0.8f).Drop("Lantern", 1, 1, 0.5f)
              .Drop("Softtissue", 4, 8, 1.5f).Drop("Iron", 4, 8, 1.2f).Drop("Copper", 6, 10, 1f).Drop("YggdrasilWood", 6, 10, 1f).Drop("Ruby", 2, 3, 1f)
-             .Fuel("Lantern", 1).Fuel("BlackCore", 2).Wave("Seeker", 3, false).Wave("SeekerBrute", 1, false));
+             .Fuel("Lantern", 1).Fuel("BlackCore", 2).Wave("Seeker", 3, false).Wave("SeekerBrute", 1, false)
+             .AddFish("Fish9", 3f).AddFish("Fish8", 1.5f).AddFish("Fish3", 1f).FishLevels(1, 3));
 
             // The outer ring is split like the world itself: Ashlands to the south, Deep North to the north.
             All.Add(new IsletTier
@@ -196,7 +219,8 @@ namespace IslandsOfValheim
             }.Drop("Coins", 150, 260, 3f).Drop("FlametalOreNew", 2, 4, 1.5f).Drop("Grausten", 6, 12, 1.5f).Drop("MoltenCore", 1, 1, 0.6f)
              .Drop("GemstoneRed", 1, 1, 0.5f).Drop("GemstoneGreen", 1, 1, 0.5f).Drop("GemstoneBlue", 1, 1, 0.5f)
              .Drop("ArrowCharred", 10, 20, 1f).Drop("CharredBone", 3, 6, 1f)
-             .Fuel("MoltenCore", 1).Fuel("SurtlingCore", 5).Wave("Volture", 2, true).Wave("Charred_Melee", 2, false));
+             .Fuel("MoltenCore", 1).Fuel("SurtlingCore", 5).Wave("Volture", 2, true).Wave("Charred_Melee", 2, false)
+             .AddFish("Fish11", 3f).AddFish("Fish12", 1f).AddFish("Fish8", 1f).FishLevels(2, 4));
 
             All.Add(new IsletTier
             {
@@ -218,7 +242,8 @@ namespace IslandsOfValheim
             }.Drop("Coins", 180, 300, 3f).Drop("Frostwood", 6, 12, 1.5f).Drop("Ice", 4, 8, 1.5f).Drop("FrostCore", 1, 1, 0.6f)
              .Drop("Crystal", 2, 4, 1f).Drop("Silver", 3, 6, 1f).Drop("FreezeGland", 2, 4, 1f).Drop("SpiceDeepNorth", 1, 2, 0.8f)
              .Drop("ArrowFrost", 10, 20, 1f)
-             .Fuel("Frostwood", 10, "SurtlingCore", 2).Wave("Ulv", 3, false).Wave("Fenring_Cultist", 1, false));
+             .Fuel("Frostwood", 10, "SurtlingCore", 2).Wave("Ulv", 3, false).Wave("Fenring_Cultist", 1, false)
+             .AddFish("Fish10", 3f).AddFish("Fish6", 1.5f).AddFish("Fish12", 0.5f).FishLevels(2, 4));
         }
 
         // Whether a kind may be placed at this point. The game puts the Deep North beyond 12 km from a point
@@ -280,6 +305,12 @@ namespace IslandsOfValheim
     {
         internal string Item;
         internal int Amount;
+    }
+
+    class FishKind
+    {
+        internal string Prefab;
+        internal float Weight;
     }
 
     class WaveGroup

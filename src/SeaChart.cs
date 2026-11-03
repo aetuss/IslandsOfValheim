@@ -67,6 +67,7 @@ namespace IslandsOfValheim
                 { "iov_seachart_none", "Parça sessiz: gidilmemiş adacık kalmadı." },
             });
             IsletBeacons.AddTranslations(localization);
+            IsletFishing.AddTranslations(localization);
         }
 
         internal static long ServerPeer()
