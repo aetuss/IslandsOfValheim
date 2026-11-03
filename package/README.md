@@ -11,6 +11,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Treasure.** One chest per islet. Sometimes it holds a **sea vegvisir shard**: use it (right-click in your inventory) and it marks the closest islet nobody has visited yet on your map, one of the kind of the waters you're in or a tougher one, so one islet leads you to the next. If none is left, the shard isn't used up.
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 - **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
+- **Fishing grounds** around about half the islets (see below).
 
 The further from the world centre, the tougher the islet:
 
@@ -45,6 +46,21 @@ About one islet in three has a broken beacon tower up by the cliff, with a cold 
 | Deep North | 10 frostwood and 2 surtling cores | Ulvs and a Cultist come ashore |
 
 Once lit, a beacon burns for good, for everyone. Its light marks every islet within about 700 m on your map (the game's map can't show the islets themselves, only open sea) and clears the fog around it. Anyone who comes to a lit beacon later gets the same. The small wave of creatures comes only once per beacon. A sea vegvisir shard points to one islet further away; a beacon shows the ones around it.
+
+## Fishing grounds
+
+About half the islets have more fish in the shallow water around them than the open sea has. Watch for a ripple now and then. They're the game's own fish, so each one bites on its own vanilla bait, and the further out you go, the rarer the fish and the more stars they have:
+
+| Islet | Fish | Levels |
+|---|---|---|
+| Meadows | perch, sometimes pike | 1-2 |
+| Swamp | trollfish, pike | 1-2 |
+| Plains | grouper, tuna, trollfish | 1-3 |
+| Mistlands and dvergr outposts | anglerfish, coral cod, tuna | 1-3 |
+| Ashlands | magmafish, pufferfish, coral cod | 2-4 |
+| Deep North | northern salmon, giant herring, pufferfish | 2-4 |
+
+There aren't endless fish: a ground holds a few at a time and puts one back every few minutes. Now and then your hook brings up a sodden pouch instead of a fish, with some coins and a small piece of the islet's treasure, and very rarely a sea vegvisir shard.
 
 ## Dvergr outposts
 

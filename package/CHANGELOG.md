@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+- Fishing grounds: about half the islets have more fish in the shallow water around them, the tier's vanilla species (perch near the centre, up to northern salmon and magmafish far out), with more stars further out. A ground holds a few fish at a time and puts one back every few minutes, only while someone is near.
+- Now and then the hook brings up a sodden pouch instead of a fish: some coins and a small piece of the islet's treasure, very rarely a sea vegvisir shard.
+- Fishing grounds only appear around islets nobody had visited before the update (all of them in a new world).
+
 ## 1.3.0
 
 - Old beacons: about one islet in three has a broken beacon tower with a cold brazier on top. Pay its fuel (wood and resin in the Meadows, up to molten cores in the Ashlands) and it burns for good, for everyone. Its light marks the islets within about 700 m on the map and clears the fog around it; anyone who comes to a lit beacon later gets the same.
