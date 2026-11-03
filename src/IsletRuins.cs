@@ -120,18 +120,19 @@ namespace IslandsOfValheim
         {
             Vector2 c; Quaternion turn; float b;
             RidgeSpot(2.8f, out c, out turn, out b);
-            // Local frame: +z points out to sea, -z (the door) back towards the courtyard.
-            Local("stone_wall_4x2", c, turn, 0f, 1.5f, b, 0f);          // sea side
-            Local("stone_wall_4x2", c, turn, -1.5f, 0f, b, 90f);        // left
-            Local("stone_wall_4x2", c, turn, 1.5f, 0f, b, 90f);         // right
-            Local("stone_wall_1x1", c, turn, -1.5f, -1.5f, b, 0f);      // door frame
-            Local("stone_wall_1x1", c, turn, -1.5f, -1.5f, b + 1f, 0f);
+            // Local frame: +z points out to sea, -z (the door) back towards the courtyard. Every upper piece
+            // sits on the measured top of the one below, so nothing hangs over a gap.
+            float sea = Top(Local("stone_wall_4x2", c, turn, 0f, 1.5f, b, 0f), b + 2f);     // sea side
+            float left = Top(Local("stone_wall_4x2", c, turn, -1.5f, 0f, b, 90f), b + 2f);  // left
+            float right = Top(Local("stone_wall_4x2", c, turn, 1.5f, 0f, b, 90f), b + 2f);  // right
+            float frame = Top(Local("stone_wall_1x1", c, turn, -1.5f, -1.5f, b, 0f), b + 1f); // door frame
+            Local("stone_wall_1x1", c, turn, -1.5f, -1.5f, frame, 0f);
             Local("stone_wall_1x1", c, turn, 1.5f, -1.5f, b, 0f);
             // Second storey, mostly gone.
-            Local("stone_wall_4x2", c, turn, 0f, 1.5f, b + 2f, 0f);
-            Local("stone_wall_4x2", c, turn, -1.5f, 0f, b + 2f, 90f);
-            Local("stone_wall_2x1", c, turn, 1.5f, 1f, b + 2f, 90f);
-            Local("stone_wall_1x1", c, turn, -0.5f, 1.5f, b + 4f, 0f);
+            float seaUp = Top(Local("stone_wall_4x2", c, turn, 0f, 1.5f, sea, 0f), sea + 2f);
+            Local("stone_wall_4x2", c, turn, -1.5f, 0f, left, 90f);
+            Local("stone_wall_2x1", c, turn, 1.5f, 1f, right, 90f);
+            Local("stone_wall_1x1", c, turn, -0.5f, 1.5f, seaUp, 0f);
             // Its wooden floor came down.
             LyingBeams("wood_beam", "wood_pole2");
         }

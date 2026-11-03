@@ -215,12 +215,10 @@ namespace IslandsOfValheim
                 int level = tier.MinLevel + (Random.Range(0f, 100f) < tier.LevelUpChance ? 1 : 0);
                 character.SetLevel(Mathf.Min(level, tier.MaxLevel));
             }
+            // Alerted, so they look for whoever lit it; not set to hunt players, which would keep them alert
+            // for good (they stay on the islet afterwards, like its guards).
             BaseAI ai = go.GetComponent<BaseAI>();
-            if (ai != null)
-            {
-                ai.SetHuntPlayer(true);
-                ai.Alert();
-            }
+            if (ai != null) ai.Alert();
             Effect(fromSky ? "vfx_spawn" : "fx_WaterImpact_Big", pos);
             Effect("sfx_spawn", pos);
         }
