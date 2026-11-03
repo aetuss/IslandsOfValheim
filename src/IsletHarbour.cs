@@ -22,6 +22,7 @@ namespace IslandsOfValheim
 
         // The harbour's frame: centre, towards the jetty (forward), and across (side).
         static Vector2 hc, hf, hs;
+        static float jettyLand; // how far out from the middle the jetty starts, on dry land
 
         internal static void RegisterHarbour(int count)
         {
@@ -38,10 +39,11 @@ namespace IslandsOfValheim
             built = 0;
             missing = 0;
 
-            BuildGround();
+            Material ground = BuildGround();
             float jetty = cliffDeg + 229f; // the low side, between two of the shore rocks
             HarbourRocks();
             PlaceHarbour(jetty);
+            Pave(ground, PavedPath(jetty), 0.8f);
             Plugin.Debug(locationName + " built: " + built + " parts, " + missing + " prefabs not found");
 
             LocationConfig config = new LocationConfig();
@@ -93,49 +95,43 @@ namespace IslandsOfValheim
         {
             hf = Polar(j, 1f);
             hs = new Vector2(-hf.y, hf.x);
-            hc = Polar(j + 180f, 2.5f); // the shelter stands back from the plateau's middle
+            hc = Polar(j + 180f, 2.5f); // the house stands back from the plateau's middle
             float face = 90f - j;       // a piece's +z towards the jetty
 
             HarbourJetty(j);
-            Shelter(face);
+            House(face);
 
-            // The trader at his counter in front of the shelter, looking down to the jetty.
-            Vector2 trader = H(0.6f, 3.4f);
+            // The trader at his counter in front of the house, looking down to the jetty.
+            Vector2 trader = H(0.6f, 4.1f);
             PlaceNetworked(SeaTrader.PrefabName, new Vector3(trader.x, Height(trader.x, trader.y), trader.y), face);
-            GameObject counter = OnGround(new[] { "piece_table", "piece_table_oak" }, H(-1.2f, 3.6f), face + 90f, 0f, 0.05f);
+            GameObject counter = OnGround(new[] { "piece_table", "piece_table_oak" }, H(-1.3f, 4.3f), face + 90f, 0f, 0.05f);
             OnTop(counter, new[] { "Fish1" }, -0.3f, face + 30f);
             OnTop(counter, new[] { "Fish2", "Fish1" }, 0.25f, face - 60f);
-            Prop(new[] { "barrell_static", "barrell" }, H(-2.6f, 3.3f), 30f, 0.05f);
-            GameObject crate = OnGround(new[] { "CargoCrate", "dvergrprops_crate" }, H(2.4f, 3.8f), face + 10f, 0f, 0.05f);
-            OnTop(crate, new[] { "FishingRod" }, 0f, face + 75f);
+            Prop(new[] { "barrell_static", "barrell" }, H(-2.7f, 4.1f), 30f, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(2.5f, 4.4f), face + 10f, 0.05f);
             string[] lantern = { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" };
-            Prop(lantern, H(-2.6f, 2.4f), 0f, 0.05f);
-            Prop(lantern, H(2.7f, 2.4f), 0f, 0.05f);
+            Prop(lantern, H(-2.8f, 3.3f), 0f, 0.05f);
+            Prop(lantern, H(2.8f, 3.3f), 0f, 0.05f);
 
             // A campfire with two benches on one side, the fisher's corner on the other.
-            Vector2 fire = H(-5.6f, 4.6f);
+            Vector2 fire = H(-5.8f, 5f);
             LitProp(new[] { "fire_pit", "fire_pit_haldor" }, fire, 0f, 0.05f);
             Prop(new[] { "piece_cookingstation" }, fire, face + 90f, 0.02f);
-            Bench(fire, H(-7.4f, 4.4f));
-            Bench(fire, H(-5.4f, 6.5f));
-            FishersCorner(H(5.6f, 4.2f));
+            Bench(fire, H(-7.6f, 4.8f));
+            Bench(fire, H(-5.6f, 6.9f));
+            FishersCorner(H(5.8f, 4.6f));
 
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;
-            Vector2 hull = Polar(wreck, ShoreAt(wreck) - 3.5f);
-            OnGround(new[] { "shipwreck_karve_bottomboards" }, hull, wreck + 100f, 0f, 0.15f);
-            Prop(new[] { "wood_stack" }, Polar(wreck - 9f, ShoreAt(wreck - 9f) - 5f), wreck, 0.05f);
-
-            Path(H(0.6f, 4.6f), Polar(j, ShoreAt(j) - 2.6f));
-            Optional(0.7f, () => BeachedRaft(j - 42f));
+            OnGround(new[] { "shipwreck_karve_bottomboards" }, Polar(wreck, ShoreAt(wreck) - 3.5f), wreck + 100f, 0f, 0.15f);
 
             CaptainStatue(Polar(cliffDeg + 30f, PlateauAt(cliffDeg + 30f) - 1.5f), 90f - (cliffDeg + 30f) + 180f);
             BeaconTower(cliffDeg - 20f);
 
-            // Old stones of the harbour hall that didn't make it into the shelter.
-            At("stone_wall_2x1_ruin", Ground3(H(-4.2f, -2.6f), -0.1f), new Vector3(0f, face + 8f, 0f), false);
-            At("stone_wall_1x1_ruin", Ground3(H(4.4f, -2.2f), -0.1f), new Vector3(0f, face - 12f, 0f), false);
-            At("stone_wall_1x1", Ground3(H(5.8f, -0.4f), -0.15f), new Vector3(12f, face + 40f, 80f), false);
+            // Old stones of the harbour hall that didn't make it into the house.
+            At("stone_wall_2x1_ruin", Ground3(H(-4.4f, -3.4f), -0.1f), new Vector3(0f, face + 8f, 0f), false);
+            At("stone_wall_1x1_ruin", Ground3(H(4.6f, -3f), -0.1f), new Vector3(0f, face - 12f, 0f), false);
+            At("stone_wall_1x1", Ground3(H(6f, -1f), -0.15f), new Vector3(12f, face + 40f, 80f), false);
 
             for (int i = 0; i < 2; i++)
                 PlaceNetworked(new[] { IsletPrefabs.GullSpawner }, Polar(cliffDeg + 90f + i * 150f, 3.5f), 0f, 0.3f);
@@ -151,27 +147,49 @@ namespace IslandsOfValheim
             }
             OnGround(tier.SmallTrees, Polar(cliffDeg + 200f, PlateauAt(cliffDeg + 200f) + 0.8f), 30f, 0f, 0.05f, false);
             OnGround(tier.SmallTrees, Polar(cliffDeg + 275f, PlateauAt(cliffDeg + 275f) + 0.6f), 160f, 0f, 0.05f, false);
-            Vector2[] flowers = { H(-6.5f, -0.8f), H(6.6f, 1.2f), H(-3.2f, 7.2f), H(3.6f, 7.6f), H(-7.8f, 2f) };
+            Vector2[] flowers = { H(-6.8f, -0.8f), H(6.8f, 1.2f), H(-3.4f, 7.6f), H(3.8f, 8f), H(-8f, 2f) };
             for (int i = 0; i < flowers.Length; i++)
                 PlaceNetworked("Pickable_Dandelion", Ground3(flowers[i], 0f), i * 70f);
             Peace();
         }
 
-        // Flat stones from his counter down to the jetty, lying the way the ground does.
-        static void Path(Vector2 from, Vector2 to)
+        // The paved ground, painted the way the hoe paves it: from the counter down to the jetty, and in
+        // front of the house. Pairs of points, the ends of each stretch.
+        static Vector2[] PavedPath(float j)
         {
-            Vector2 step = to - from;
-            int count = Mathf.FloorToInt(step.magnitude / 1.15f);
-            Vector2 across = new Vector2(-step.y, step.x).normalized;
-            for (int i = 0; i <= count; i++)
-            {
-                Vector2 at = from + step * (i / (float)Mathf.Max(1, count)) + across * (0.25f * Mathf.Sin(i * 2.1f));
-                GameObject stone = Copy(new[] { "stone_floor" }, new Vector3(0f, i * 37f, 0f), 0.85f + 0.15f * Mathf.Sin(i * 1.3f), true);
-                if (stone == null) return;
-                Bounds b = LocalBounds(stone);
-                Move(stone, b, new Vector3(at.x, Height(at.x, at.y) + 0.04f - b.size.y, at.y), false);
-                stone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, Normal(at.x, at.y)) * stone.transform.localRotation;
-            }
+            return new[] { H(0.4f, 3.2f), Polar(j, jettyLand + 1f), H(-3f, 3.6f), H(3f, 3.6f) };
+        }
+
+        // The terrain shader reads a paint mask: blue is paved. Drawn over the whole islet, soft at the edges.
+        static void Pave(Material ground, Vector2[] stretches, float halfWidth)
+        {
+            if (ground == null || !ground.HasProperty("_ClearedMaskTex")) return;
+            const int size = 256;
+            Texture2D mask = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            mask.name = "IoV_HarbourPaintMask";
+            mask.wrapMode = TextureWrapMode.Clamp;
+            Color[] pixels = new Color[size * size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    // The ground's uv: x / (2 * maxRadius) + 0.5 (see BuildGround).
+                    Vector2 p = new Vector2(((x + 0.5f) / size - 0.5f) * 2f * maxRadius, ((y + 0.5f) / size - 0.5f) * 2f * maxRadius);
+                    float d = float.MaxValue;
+                    for (int i = 0; i + 1 < stretches.Length; i += 2) d = Mathf.Min(d, Segment(p, stretches[i], stretches[i + 1]));
+                    float edge = halfWidth + 0.25f * Mathf.PerlinNoise(p.x * 0.7f + 3f, p.y * 0.7f + 9f);
+                    float paved = Mathf.Clamp01((edge - d) / 0.35f);
+                    pixels[y * size + x] = new Color(0f, 0f, paved, 1f);
+                }
+            mask.SetPixels(pixels);
+            mask.Apply(false, true);
+            ground.SetTexture("_ClearedMaskTex", mask);
+        }
+
+        static float Segment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(0.0001f, ab.sqrMagnitude));
+            return (p - (a + ab * t)).magnitude;
         }
 
         // A static copy of a prop lying on top of another (an item on a table, say), off its centre by along.
@@ -185,81 +203,107 @@ namespace IslandsOfValheim
             Move(go, LocalBounds(go), new Vector3(at.x, top.max.y - 0.01f, at.z), false);
         }
 
-        // A raft pulled up on the beach, its little sail down.
-        static void BeachedRaft(float deg)
-        {
-            GameObject prefab = Find(new[] { "Raft" });
-            if (prefab == null) return;
-            GameObject go = Object.Instantiate(prefab, parent, false);
-            go.name = prefab.name;
-            go.transform.localRotation = Quaternion.Euler(0f, 90f - deg + 75f, 0f);
-            go.transform.localPosition = Vector3.zero;
-            Ship ship = go.GetComponent<Ship>();
-            if (ship != null && ship.m_sailObject != null) ship.m_sailObject.SetActive(false);
-            foreach (ParticleSystem particles in go.GetComponentsInChildren<ParticleSystem>(true))
-                if (particles.GetComponent<MeshFilter>() == null) particles.gameObject.SetActive(false);
-            foreach (AudioSource sound in go.GetComponentsInChildren<AudioSource>(true)) sound.enabled = false;
-            Strip(go);
-            built++;
-            Vector2 at = Polar(deg, ShoreAt(deg) - 1.5f);
-            Bounds b = LocalBounds(go);
-            Move(go, b, new Vector3(at.x, GroundMin(at.x, at.y, 1.2f) - 0.15f, at.y), false);
-        }
-
         static Vector3 Ground3(Vector2 at, float lift)
         {
             return new Vector3(at.x, Height(at.x, at.y) + lift, at.y);
         }
 
-        // A lean-to on the old stone floor: plank wall at the back, plank walls at the back of the sides, posts at
-        // the front and a sloping roof from the back wall down to the posts. The pieces stand on the ground
-        // through the floor (a piece needs the ground for support), so they're a metre taller than they look.
-        static void Shelter(float face)
+        // A building piece as a static copy: it looks and blocks like the real one but needs no support, so it
+        // can stand on the floor as built (a real piece would have to reach down to the ground) and never falls.
+        static GameObject Static(string name, Vector2 at, float y, float yaw, bool alignTop)
         {
-            for (int ix = -1; ix <= 1; ix += 2)
-                for (int iz = -1; iz <= 1; iz += 2)
-                {
-                    Vector2 p = H(ix, iz);
-                    At("stone_floor_2x2", new Vector3(p.x, FloorTop, p.y), new Vector3(0f, face, 0f), true);
-                }
-            float b = FloorTop - 0.05f;
-            float backTop = b + 4f;
-            for (int ix = -1; ix <= 1; ix += 2)
-            {
-                Vector2 p = H(ix, -2f);
-                float top = Top(At("woodwall", new Vector3(p.x, b, p.y), new Vector3(0f, face, 0f), false), b + 2f);
-                top = Top(At("woodwall", new Vector3(p.x, top, p.y), new Vector3(0f, face, 0f), false), top + 2f);
-                backTop = Top(At("wood_wall_half", new Vector3(p.x, top, p.y), new Vector3(0f, face, 0f), false), top + 1f);
-            }
-            for (int side = -1; side <= 1; side += 2)
-            {
-                Vector2 back = H(2f * side, -1f);
-                float top = Top(At("woodwall", new Vector3(back.x, b, back.y), new Vector3(0f, face + 90f, 0f), false), b + 2f);
-                At("wood_wall_half", new Vector3(back.x, top, back.y), new Vector3(0f, face + 90f, 0f), false);
-            }
-            float frontTop = b + 3f;
-            for (int side = -1; side <= 1; side += 2)
-            {
-                Vector2 p = H(2f * side, 1.9f);
-                float top = Top(At("wood_pole2", new Vector3(p.x, b, p.y), Vector3.zero, false), b + 2f);
-                frontTop = Top(At("wood_pole", new Vector3(p.x, top, p.y), Vector3.zero, false), top + 1f);
-            }
-            // The roof rises one metre over each two: the front row rests on the posts, the back row on the wall.
-            float yaw = RoofYaw("wood_roof", face);
-            float rise = Mathf.Max(0.5f, (backTop - frontTop) * 0.5f);
-            for (int ix = -1; ix <= 1; ix += 2)
-            {
-                Vector2 front = H(ix, 1f), back = H(ix, -1f);
-                At("wood_roof", new Vector3(front.x, frontTop - 0.1f, front.y), new Vector3(0f, yaw, 0f), false);
-                At("wood_roof", new Vector3(back.x, frontTop + rise - 0.1f, back.y), new Vector3(0f, yaw, 0f), false);
-            }
-            // Inside: his things.
-            Prop(new[] { "rug_seal", "rug_deer" }, H(0f, -0.3f), face, 0f);
-            Prop(new[] { "barrell_static", "barrell" }, H(-1.4f, -1.4f), 10f, 0.05f);
-            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(1.3f, -1.3f), face, 0.05f);
-            Prop(new[] { "piece_bench01", "piece_logbench01" }, H(1.4f, 0.2f), face - 90f, 0.05f);
+            GameObject go = Copy(new[] { name }, new Vector3(0f, yaw, 0f), 0f, true);
+            if (go != null) Move(go, SolidBounds(go), new Vector3(at.x, y, at.y), alignTop);
+            return go;
         }
 
+        // His house, on the old stone floor: plank walls at the back and sides (their beams on the inside),
+        // posts and a beam over the open front where he trades, a steep thatched roof with gables, and a
+        // carved dragon over the door.
+        static void House(float face)
+        {
+            const float halfWidth = 2f, back = -3f, front = 3f, wall = 2f, rise = 2f; // 45 degree roof
+            float floor = Height(hc.x, hc.y) + 0.12f;
+            for (int ix = -1; ix <= 1; ix += 2)
+                for (int iz = -2; iz <= 2; iz += 2)
+                {
+                    Vector2 p = H(ix, iz);
+                    Static("stone_floor_2x2", p, floor, face, true);
+                }
+            float inBack = face + 180f, inRight = face - 90f, inLeft = face + 90f; // walls turned so their beams face in
+            for (int ix = -1; ix <= 1; ix += 2) Static("woodwall", H(ix, back), floor, inBack, false);
+            for (int iz = -2; iz <= 2; iz += 2)
+            {
+                Static("woodwall", H(halfWidth, iz), floor, inRight, false);
+                Static("woodwall", H(-halfWidth, iz), floor, inLeft, false);
+            }
+            for (int side = -1; side <= 1; side += 2) Static("wood_pole2", H(side * (halfWidth - 0.1f), front - 0.1f), floor, face, false);
+            for (int ix = -1; ix <= 1; ix += 2) Static("wood_beam", H(ix, front - 0.1f), floor + wall, face, true);
+
+            float eave = floor + wall;
+            float rightYaw = RoofYaw("wood_roof_45", inRight), leftYaw = RoofYaw("wood_roof_45", inLeft); // low side outwards
+            for (int iz = -2; iz <= 2; iz += 2)
+            {
+                Static("wood_roof_45", H(1f, iz), eave - 0.05f, rightYaw, false);
+                Static("wood_roof_45", H(-1f, iz), eave - 0.05f, leftYaw, false);
+                Static("wood_roof_top_45", H(0f, iz), eave + rise + 0.35f, face + 90f, true);
+            }
+            Gable(back, inBack, eave, 1);
+            Gable(front, face, eave, -1);
+            Static("wood_dragon1", H(0f, front + 0.15f), eave + 0.6f, face, false);
+
+            // Inside: his things.
+            Prop(new[] { "rug_seal", "rug_deer" }, H(0f, -0.5f), face, 0f);
+            Prop(new[] { "barrell_static", "barrell" }, H(-1.3f, -2.3f), 10f, 0.05f);
+            Prop(new[] { "barrell_static", "barrell" }, H(-0.4f, -2.4f), 70f, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(1.2f, -2.2f), face, 0.05f);
+            Prop(new[] { "piece_bench01", "piece_logbench01" }, H(1.4f, 0.3f), inRight, 0.05f);
+        }
+
+        // The triangle of wall under the roof at one end of the house. The game's gable piece is half of it (a
+        // right triangle, 2 m by 2 m); whichever side its tall edge is on, the two halves are put so the tall
+        // edges meet in the middle (one mirrored). xSign maps the piece's local x onto the house's x: +1 at
+        // the back (turned round), -1 at the front.
+        static void Gable(float lz, float yaw, float bottom, int xSign)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab("wood_wall_roof_45");
+            if (prefab == null) return;
+            int tall = TallSide(prefab);
+            for (int s = -1; s <= 1; s += 2)
+            {
+                GameObject go = Copy(new[] { "wood_wall_roof_45" }, new Vector3(0f, yaw, 0f), 0f, true);
+                if (go == null) return;
+                // The tall edge must point to the middle, i.e. away from s.
+                if (tall * xSign != -s) go.transform.localScale = new Vector3(-1f, 1f, 1f);
+                Vector2 at = H(s * 1f, lz);
+                Move(go, SolidBounds(go), new Vector3(at.x, bottom - 0.02f, at.y), false);
+            }
+        }
+
+        // Which side (+1 or -1 along local x) a triangular wall piece has its tall edge on: the mass of a right
+        // triangle's vertices lies towards it. If the mesh can't be read, +1.
+        static int TallSide(GameObject prefab)
+        {
+            MeshFilter filter = prefab.GetComponentInChildren<MeshFilter>(true);
+            if (filter == null || filter.sharedMesh == null || !filter.sharedMesh.isReadable)
+            {
+                Plugin.Debug("Gable piece " + prefab.name + ": mesh not readable, tall edge taken as +x");
+                return 1;
+            }
+            Vector3[] vertices = filter.sharedMesh.vertices;
+            Vector3 sum = Vector3.zero, min = Vector3.one * float.MaxValue, max = Vector3.one * float.MinValue;
+            foreach (Vector3 v in vertices)
+            {
+                Vector3 p = prefab.transform.InverseTransformPoint(filter.transform.TransformPoint(v));
+                sum += p;
+                min = Vector3.Min(min, p);
+                max = Vector3.Max(max, p);
+            }
+            Vector3 mean = sum / Mathf.Max(1, vertices.Length);
+            float shift = mean.x - (min.x + max.x) * 0.5f;
+            Plugin.Debug("Gable piece " + prefab.name + ": size " + (max - min).ToString("F2") + ", vertex mean off centre by " + shift.ToString("F2") + " in x");
+            return shift < 0f ? -1 : 1;
+        }
         // Which way to turn a roof piece so that it slopes down towards the front. The tilt of its collider
         // tells which side is low; a piece without a tilted collider is taken to rise towards its +z.
         static float RoofYaw(string name, float face)
@@ -340,18 +384,28 @@ namespace IslandsOfValheim
             float s = ShoreAt(deg);
             Vector2 u = Polar(deg, 1f), side = new Vector2(-u.y, u.x);
             float yaw = 90f - deg;
-            Vector2 land = u * (s - 2f);
-            float top = Mathf.Max(0.9f, GroundMin(land.x, land.y, 1f) + 0.1f);
-            for (int i = 0; i < 5; i++)
+            const float top = 1f;
+            // The first planks lie on the bank: go in from the shore line until the ground is up at the planks.
+            jettyLand = s - 2f;
+            for (float r = s; r > s - 8f; r -= 0.25f)
             {
-                Vector2 p = u * (s - 1f + i * 2f);
+                Vector2 q = u * r;
+                if (Height(q.x, q.y) >= top - 0.15f) { jettyLand = r; break; }
+            }
+            float end = s + 8f;
+            int sections = Mathf.CeilToInt((end - jettyLand) / 2f);
+            for (int i = 0; i < sections; i++)
+            {
+                Vector2 p = u * (jettyLand + 1f + i * 2f);
                 At(tier.JettyFloor, new Vector3(p.x, top, p.y), new Vector3(0f, yaw, 0f), true);
             }
-            for (int i = 0; i < 5; i++)
+            // Posts wherever the planks are well off the ground or over the water.
+            for (float along = jettyLand + 1.9f; along <= end + 0.05f; along += 1.95f)
                 for (int k = -1; k <= 1; k += 2)
                 {
-                    Vector2 p = u * (s + 0.1f + i * 1.95f) + side * (0.9f * k);
+                    Vector2 p = u * along + side * (0.9f * k);
                     float surface = GroundMin(p.x, p.y, 0.2f);
+                    if (top - surface < 0.4f) continue;
                     int count = Mathf.Max(1, Mathf.CeilToInt((top - (surface - 0.3f)) / 2f));
                     for (int n = 0; n < count; n++)
                     {
@@ -360,7 +414,7 @@ namespace IslandsOfValheim
                         At(tier.JettyPole, new Vector3(p.x, poleEnd, p.y), new Vector3(0f, yaw, 0f), true);
                     }
                 }
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, u * (s - 3f) + side * 1.6f, 0f, 0.05f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, u * (jettyLand - 0.8f) + side * 1.5f, 0f, 0.05f);
 
             MooredKarve(u * (s + 4.5f) + side * 3f, yaw);
         }
@@ -377,6 +431,13 @@ namespace IslandsOfValheim
             go.transform.localPosition = Vector3.zero;
             Ship ship = go.GetComponent<Ship>();
             if (ship != null && ship.m_sailObject != null) ship.m_sailObject.SetActive(false);
+            // The sail cloth itself is a part of its own, not under the sail object.
+            foreach (Transform part in go.GetComponentsInChildren<Transform>(true))
+                if (part != go.transform && part.name.ToLowerInvariant().Contains("sail"))
+                {
+                    Plugin.Debug("Karve part furled: " + part.name);
+                    part.gameObject.SetActive(false);
+                }
             foreach (ParticleSystem particles in go.GetComponentsInChildren<ParticleSystem>(true))
                 if (particles.GetComponent<MeshFilter>() == null) particles.gameObject.SetActive(false);
             foreach (AudioSource sound in go.GetComponentsInChildren<AudioSource>(true)) sound.enabled = false;
