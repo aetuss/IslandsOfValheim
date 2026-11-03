@@ -1,3 +1,4 @@
+using System.Text;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -19,7 +20,7 @@ namespace IslandsOfValheim
     {
         internal const string HarbourName = "IoV_SeaHarbour";
         const float PeaceRadius = 40f;
-        const float NoBuildRadius = 20f; // the plateau and its slopes, like the ground around a vendor
+        const float NoBuildRadius = 24f; // the whole islet down to the water, like the ground around a vendor
 
         // The harbour's frame: centre, towards the jetty (forward), and across (side).
         static Vector2 hc, hf, hs;
@@ -70,7 +71,7 @@ namespace IslandsOfValheim
             location.m_applyRandomDamage = false;
             location.m_noBuild = true;
             location.m_noBuildRadiusOverride = NoBuildRadius;
-            NoBuildRing();
+            Dome();
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (" + count + " possible spots, one is kept)");
         }
@@ -215,26 +216,31 @@ namespace IslandsOfValheim
             built++;
         }
 
-        // The ring a ward shows, around the ground nobody can build on.
-        static void NoBuildRing()
+        // The see-through dome the game puts over a vendor's camp, over the islet: nobody can build under it.
+        static void Dome()
         {
-            GameObject ward = PrefabManager.Instance.GetPrefab("guard_stone");
-            CircleProjector source = ward != null ? ward.GetComponentInChildren<CircleProjector>(true) : null;
-            if (source == null) return;
-            GameObject ring = Object.Instantiate(source.gameObject, root.transform, false);
-            ring.name = "IoV_HarbourRing";
-            ring.SetActive(true);
-            ring.transform.localPosition = new Vector3(0f, PlateauHeight + 1f, 0f);
-            ring.transform.localRotation = Quaternion.identity;
-            CircleProjector projector = ring.GetComponent<CircleProjector>();
-            // The ward's ring finds the ground with a ray from above that only sees terrain: here that's the sea
-            // floor under the islet. The islet's ground is static_solid.
-            projector.m_mask = LayerMask.GetMask("terrain", "static_solid");
-            Plugin.Debug("Harbour ring: radius " + NoBuildRadius + ", " + projector.m_nrOfSegments + " segments");
-            projector.m_nrOfSegments = Mathf.RoundToInt(projector.m_nrOfSegments * NoBuildRadius / Mathf.Max(1f, projector.m_radius));
-            projector.m_radius = NoBuildRadius;
+            GameObject prefab = PrefabManager.Instance.GetPrefab("ForceField");
+            if (prefab == null) { missing++; return; }
+            GameObject dome = Object.Instantiate(prefab, root.transform, false);
+            dome.name = "IoV_HarbourDome";
+            // A part of the location like the rest, not a networked object of its own.
+            foreach (ZSyncTransform sync in dome.GetComponentsInChildren<ZSyncTransform>(true)) Object.DestroyImmediate(sync);
+            foreach (ZNetView view in dome.GetComponentsInChildren<ZNetView>(true)) Object.DestroyImmediate(view);
+            dome.transform.localPosition = Vector3.zero;
+            dome.transform.localRotation = Quaternion.identity;
+            Transform outer = parent;
+            parent = root.transform;
+            Bounds b = LocalBounds(dome);
+            parent = outer;
+            float across = Mathf.Max(b.size.x, b.size.z);
+            if (across > 0.01f) dome.transform.localScale = dome.transform.localScale * (2f * NoBuildRadius / across);
+            dome.transform.localPosition = new Vector3(0f, PlateauHeight - 1f, 0f);
+            StringBuilder parts = new StringBuilder();
+            foreach (Component c in dome.GetComponentsInChildren<Component>(true))
+                if (c != null && !(c is Transform)) parts.Append(' ').Append(c.GetType().Name);
+            Plugin.Debug("Harbour dome from ForceField, " + across.ToString("F1") + " m across before scaling:" + parts);
+            built++;
         }
-
         // A static copy of a prop lying on top of another (an item on a table, say), off its centre by along.
         static void OnTop(GameObject under, string[] candidates, float along, float rotY)
         {
