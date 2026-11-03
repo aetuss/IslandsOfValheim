@@ -125,11 +125,11 @@ namespace IslandsOfValheim
             Bench(fire, H(-7.6f, 4.8f));
             Bench(fire, H(-5.6f, 6.9f));
             FishersCorner(H(5.8f, 4.6f));
+            Seal(H(2.9f, 6.6f), H(0.6f, 4.6f)); // beside the path, by the trader
 
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;
             OnGround(new[] { "shipwreck_karve_bottomboards" }, Polar(wreck, ShoreAt(wreck) - 3.5f), wreck + 100f, 0f, 0.15f);
-            Seal(j - 24f);
 
             CaptainStatue(Polar(cliffDeg + 30f, PlateauAt(cliffDeg + 30f) - 1.5f), 90f - (cliffDeg + 30f) + 180f);
             BeaconTower(cliffDeg - 20f);
@@ -198,8 +198,9 @@ namespace IslandsOfValheim
             return (p - (a + ab * t)).magnitude;
         }
 
-        // Bára, his seal, on the bank by the jetty: a seal's body without its scripts, lying there. She can be petted.
-        static void Seal(float deg)
+        // Bára, his seal, on the grass by his counter, looking towards it: a seal's body without its scripts,
+        // lying there. She can be petted.
+        static void Seal(Vector2 at, Vector2 lookAt)
         {
             GameObject prefab = Find(new[] { "Seal" });
             if (prefab == null) return;
@@ -207,9 +208,9 @@ namespace IslandsOfValheim
             go.name = "IoV_HarbourSeal";
             Strip(go);
             foreach (Animator animator in go.GetComponentsInChildren<Animator>(true)) animator.applyRootMotion = false;
-            Vector2 at = Polar(deg, ShoreAt(deg) - 2.5f);
+            Vector2 to = lookAt - at;
             go.transform.localPosition = new Vector3(at.x, GroundMin(at.x, at.y, 0.6f) - 0.05f, at.y);
-            go.transform.localRotation = Quaternion.Euler(0f, 90f - deg, 0f); // looking out to sea
+            go.transform.localRotation = Quaternion.Euler(0f, Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg, 0f);
             go.AddComponent<HarbourSeal>();
             built++;
         }
@@ -226,6 +227,10 @@ namespace IslandsOfValheim
             ring.transform.localPosition = new Vector3(0f, PlateauHeight + 1f, 0f);
             ring.transform.localRotation = Quaternion.identity;
             CircleProjector projector = ring.GetComponent<CircleProjector>();
+            // The ward's ring finds the ground with a ray from above that only sees terrain: here that's the sea
+            // floor under the islet. The islet's ground is static_solid.
+            projector.m_mask = LayerMask.GetMask("terrain", "static_solid");
+            Plugin.Debug("Harbour ring: radius " + NoBuildRadius + ", " + projector.m_nrOfSegments + " segments");
             projector.m_nrOfSegments = Mathf.RoundToInt(projector.m_nrOfSegments * NoBuildRadius / Mathf.Max(1f, projector.m_radius));
             projector.m_radius = NoBuildRadius;
         }
@@ -586,13 +591,18 @@ namespace IslandsOfValheim
         {
             if (hold || Time.time - pettedAt < 1f) return false;
             pettedAt = Time.time;
+            // The hearts of a petted animal about her size; a lox's are made for a lox, far up in the air.
             if (hearts == null && ZNetScene.instance != null)
-            {
-                GameObject lox = ZNetScene.instance.GetPrefab("Lox");
-                Tameable tame = lox != null ? lox.GetComponent<Tameable>() : null;
-                if (tame != null) hearts = tame.m_petEffect;
-            }
-            if (hearts != null) hearts.Create(transform.position + Vector3.up * 0.5f, transform.rotation, null, 1f, -1, new ZDOID());
+                foreach (string animal in new[] { "Boar", "Wolf", "Lox" })
+                {
+                    GameObject prefab = ZNetScene.instance.GetPrefab(animal);
+                    Tameable tame = prefab != null ? prefab.GetComponent<Tameable>() : null;
+                    if (tame != null && tame.m_petEffect != null && tame.m_petEffect.HasEffects()) { hearts = tame.m_petEffect; break; }
+                }
+            Vector3 over = transform.position + Vector3.up * 0.6f;
+            Renderer body = GetComponentInChildren<Renderer>();
+            if (body != null) over = new Vector3(body.bounds.center.x, body.bounds.max.y + 0.2f, body.bounds.center.z);
+            if (hearts != null) hearts.Create(over, Quaternion.identity, null, 1f, -1, new ZDOID());
             Player player = user as Player;
             if (player != null) player.Message(MessageHud.MessageType.Center, "$iov_seal_pet", 0, null, false);
             return true;
