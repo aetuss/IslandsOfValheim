@@ -22,7 +22,7 @@ namespace IslandsOfValheim
     {
         internal const string GroundKey = "IoV_FishGround"; // on a fish: 1 + the index of the tier whose ground it's from
         internal const string LastFishKey = "IoV_LastFish"; // on a ground: when it last put a fish back (or was full)
-        internal const int MaxFish = 4;
+        internal const int MaxFish = 6;
         internal const float RespawnSeconds = 180f;
         internal const float ActiveRange = 70f;            // only while a player is this close
         internal const float Radius = 55f;                 // how far from the islet its fish count as its own
@@ -225,7 +225,7 @@ namespace IslandsOfValheim
             return result;
         }
 
-        // Spots in the shallow water around the islet, 2.5-12 m deep, a little under the surface.
+        // Spots in the shallow water close around the islet, 2-8 m deep, a little under the surface: where a line cast from the shore lands.
         List<Vector3> WaterSpots()
         {
             List<Vector3> spots = new List<Vector3>();
@@ -243,11 +243,11 @@ namespace IslandsOfValheim
                     RaycastHit hit;
                     if (!Physics.Raycast(from, Vector3.down, out hit, 120f, mask)) break;
                     float depth = surface - hit.point.y;
-                    if (depth < 2.5f) continue;
-                    if (depth > 12f) break;
+                    if (depth < 2f) continue;
+                    if (depth > 8f) break;
                     spots.Add(new Vector3(hit.point.x, surface - Mathf.Min(1.5f, depth * 0.4f), hit.point.z));
                     found++;
-                    r += 5f;
+                    r += 3f;
                 }
             }
             Plugin.Debug("Fishing ground at " + transform.position.ToString("F0") + ": " + spots.Count + " spots in the water");
