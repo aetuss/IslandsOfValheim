@@ -54,11 +54,11 @@ About half the islets have more fish in the shallow water around them than the o
 | Islet | Fish | Levels |
 |---|---|---|
 | Meadows | perch, sometimes pike | 1-2 |
-| Swamp | trollfish, pike | 1-2 |
+| Swamp | giant herring, trollfish, pike | 1-2 |
 | Plains | grouper, tuna, trollfish | 1-3 |
-| Mistlands and dvergr outposts | anglerfish, coral cod, tuna | 1-3 |
+| Mistlands and dvergr outposts | anglerfish, pufferfish, coral cod | 1-3 |
 | Ashlands | magmafish, pufferfish, coral cod | 2-4 |
-| Deep North | northern salmon, giant herring, pufferfish | 2-4 |
+| Deep North | northern salmon, pufferfish, coral cod | 2-4 |
 
 There aren't endless fish: a ground holds a few at a time and puts one back every few minutes. Now and then your hook brings up a sodden pouch instead of a fish, with some coins and a small piece of the islet's treasure, and very rarely a sea vegvisir shard.
 

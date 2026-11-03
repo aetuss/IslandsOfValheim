@@ -545,11 +545,13 @@ namespace IslandsOfValheim
                     int count = Mathf.Max(1, Mathf.CeilToInt((poleTop - ground) / 2f));
                     for (int n = 0; n < count; n++)
                     {
-                        float bottom = poleTop - 2f * (count - n);
-                        // A pole entirely below the sea floor touches nothing and would break; the one
-                        // above it reaches through the floor instead.
-                        if (bottom + 2f < surface + 0.1f) continue;
-                        At(tier.JettyPole, new Vector3(p.x, bottom, p.y), new Vector3(0f, yaw, 0f), false);
+                        // Poles stack down from the top, each placed by its top so the stack has no gaps
+                        // (placing by the bottom would sink one that ends near the ground, away from
+                        // the pole above). A pole well under the sea floor touches nothing and is left out;
+                        // the one above it reaches through the floor instead.
+                        float poleEnd = poleTop - 2f * (count - 1 - n);
+                        if (poleEnd < surface - 0.25f) continue;
+                        At(tier.JettyPole, new Vector3(p.x, poleEnd, p.y), new Vector3(0f, yaw, 0f), true);
                     }
                 }
         }

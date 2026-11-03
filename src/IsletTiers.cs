@@ -142,7 +142,7 @@ namespace IslandsOfValheim
             }.Drop("Coins", 30, 60, 3f).Drop("IronScrap", 3, 6, 2f).Drop("AmberPearl", 1, 3, 1.5f).Drop("Ruby", 1, 2, 1f)
              .Drop("Chain", 1, 1, 0.8f).Drop("ArrowIron", 10, 20, 1f).Drop("WitheredBone", 1, 2, 1f)
              .Fuel("SurtlingCore", 1, "Coal", 5).Wave("Draugr", 3, false).Wave("Draugr_Ranged", 1, false)
-             .AddFish("Fish5", 3f).AddFish("Fish2", 1.5f).FishLevels(1, 2));
+             .AddFish("Fish6", 3f).AddFish("Fish5", 1.5f).AddFish("Fish2", 1f).FishLevels(1, 2));
 
             All.Add(new IsletTier
             {
@@ -177,7 +177,7 @@ namespace IslandsOfValheim
             }.Drop("Coins", 100, 180, 3f).Drop("Softtissue", 3, 6, 2f).Drop("BlackMarble", 4, 8, 1.5f).Drop("BlackCore", 1, 1, 0.6f)
              .Drop("SilverNecklace", 1, 1, 1f).Drop("Ruby", 2, 3, 1f).Drop("ArrowCarapace", 10, 20, 1f)
              .Fuel("BlackCore", 1).Fuel("SurtlingCore", 3).Wave("Tick", 2, true).Wave("Seeker", 2, false)
-             .AddFish("Fish9", 3f).AddFish("Fish8", 1.5f).AddFish("Fish3", 1f).FishLevels(1, 3));
+             .AddFish("Fish9", 3f).AddFish("Fish12", 1.5f).AddFish("Fish8", 1f).FishLevels(1, 3));
 
             // Dvergr live on these, in the same ring as the Seeker islets: leave them in peace, or raid them.
             All.Add(new IsletTier
@@ -198,7 +198,7 @@ namespace IslandsOfValheim
             }.Drop("Coins", 150, 250, 3f).Drop("BlackCore", 1, 2, 1.2f).Drop("DvergrNeedle", 1, 1, 0.8f).Drop("Lantern", 1, 1, 0.5f)
              .Drop("Softtissue", 4, 8, 1.5f).Drop("Iron", 4, 8, 1.2f).Drop("Copper", 6, 10, 1f).Drop("YggdrasilWood", 6, 10, 1f).Drop("Ruby", 2, 3, 1f)
              .Fuel("Lantern", 1).Fuel("BlackCore", 2).Wave("Seeker", 3, false).Wave("SeekerBrute", 1, false)
-             .AddFish("Fish9", 3f).AddFish("Fish8", 1.5f).AddFish("Fish3", 1f).FishLevels(1, 3));
+             .AddFish("Fish9", 3f).AddFish("Fish12", 1.5f).AddFish("Fish8", 1f).FishLevels(1, 3));
 
             // The outer ring is split like the world itself: Ashlands to the south, Deep North to the north.
             All.Add(new IsletTier
@@ -243,7 +243,7 @@ namespace IslandsOfValheim
              .Drop("Crystal", 2, 4, 1f).Drop("Silver", 3, 6, 1f).Drop("FreezeGland", 2, 4, 1f).Drop("SpiceDeepNorth", 1, 2, 0.8f)
              .Drop("ArrowFrost", 10, 20, 1f)
              .Fuel("Frostwood", 10, "SurtlingCore", 2).Wave("Ulv", 3, false).Wave("Fenring_Cultist", 1, false)
-             .AddFish("Fish10", 3f).AddFish("Fish6", 1.5f).AddFish("Fish12", 0.5f).FishLevels(2, 4));
+             .AddFish("Fish10", 3f).AddFish("Fish12", 1f).AddFish("Fish8", 1f).FishLevels(2, 4));
         }
 
         // Whether a kind may be placed at this point. The game puts the Deep North beyond 12 km from a point

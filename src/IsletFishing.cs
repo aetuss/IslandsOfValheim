@@ -152,8 +152,9 @@ namespace IslandsOfValheim
             nview = GetComponent<ZNetView>();
             if (nview == null || nview.GetZDO() == null) return;
             tierIndex = IsletFishing.TierIndex(Utils.GetPrefabName(gameObject));
+            Plugin.Debug("Fishing ground " + (Tier != null ? Tier.Name : "?") + " loaded at " + transform.position.ToString("F0"));
             InvokeRepeating("Tick", Random.Range(2f, 6f), 10f);
-            InvokeRepeating("Hint", Random.Range(15f, 30f), 27f);
+            InvokeRepeating("Hint", Random.Range(8f, 15f), 15f);
         }
 
         IsletTier Tier { get { return tierIndex >= 0 ? IsletTier.All[tierIndex] : null; } }
