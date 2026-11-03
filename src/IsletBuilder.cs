@@ -31,10 +31,11 @@ namespace IslandsOfValheim
         // ground mesh's surface, and one entirely below it touches nothing.
         const float FloorTop = PlateauHeight + 0.25f;
 
+        // Where the Rock ground style takes its material from.
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
-        static readonly string[] smallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
 
         internal const int Variants = 4;
+        internal const string Group = "IoV_Islets";
 
         static void SetVariant(int variant)
         {
@@ -74,6 +75,8 @@ namespace IslandsOfValheim
             Material rockMaterial = BuildGround();
             PlaceRocks();
             PlaceRuins();
+            if (tier.DvergrOutpost) PlaceDvergrWard();
+            if (tier.Raiders != null) PlaceRaiders();
             PlaceHints();
             // Jetty and wreck: one of two spots on the shore, or none.
             OneOf(new[] { 0.35f, 0.35f, 0.3f }, () => PlaceDock(cliffDeg + 229f), () => PlaceDock(cliffDeg + 140f), () => { });
@@ -88,7 +91,7 @@ namespace IslandsOfValheim
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median; // whole zone is ocean: no islets glued to a coast
             // The tier's count is shared between its variants.
-            config.Quantity = (tier.Count.Value + (variant == 0 ? 1 : 0)) / Variants;
+            config.Quantity = tier.Count.Value / Variants + (variant < tier.Count.Value % Variants ? 1 : 0);
             config.Priotized = true;
             config.SnapToWater = true;
             config.RandomRotation = true;
@@ -100,10 +103,11 @@ namespace IslandsOfValheim
             config.MaxTerrainDelta = 1000f; // the sea floor under it doesn't matter
             config.MinDistance = tier.MinDistance;
             config.MaxDistance = tier.MaxDistance;
-            config.Group = "IoV_Islets";
+            config.Group = Group;
             config.MinDistanceFromSimilar = 300f;
-            // Vanilla damages a location's building pieces at random when it spawns, so the ruins look old.
-            root.AddComponent<Location>().m_applyRandomDamage = true;
+            // Vanilla damages a location's building pieces at random when it spawns, so the ruins look old;
+            // an outpost someone lives in is kept up.
+            root.AddComponent<Location>().m_applyRandomDamage = tier.Ruined;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ")");
         }
@@ -487,7 +491,7 @@ namespace IslandsOfValheim
             for (int i = 0; i < angles.Length; i++)
             {
                 float deg = cliffDeg + angles[i];
-                OnGround(bigRocks, Polar(deg, ShoreAt(deg) - 2f), deg * 3f, sizes[i], 0.4f);
+                OnGround(tier.BigRocks, Polar(deg, ShoreAt(deg) - 2f), deg * 3f, sizes[i], 0.4f);
             }
             // Outcrops on the slopes, half buried.
             float[] slope = { 120f, 185f, 215f, 265f, 20f };
@@ -495,14 +499,22 @@ namespace IslandsOfValheim
             for (int i = 0; i < slope.Length; i++)
             {
                 float r = (PlateauAt(slope[i]) + ShoreAt(slope[i])) * 0.5f;
-                OnGround(bigRocks, Polar(slope[i], r), slope[i] * 2f, slopeSizes[i], 0.5f);
+                OnGround(tier.BigRocks, Polar(slope[i], r), slope[i] * 2f, slopeSizes[i], 0.5f);
             }
             // Loose stones, a different few on every islet.
             float[] small = { 40f, 75f, 170f, 250f, 310f, 345f };
             for (int i = 0; i < small.Length; i++)
             {
                 int k = i;
-                Optional(0.6f, () => OnGround(smallRocks, Polar(small[k], ShoreAt(small[k]) - 4f - k % 3), small[k], 1.2f + (k % 3) * 0.6f, 0.3f));
+                Optional(0.6f, () => OnGround(tier.SmallRocks, Polar(small[k], ShoreAt(small[k]) - 4f - k % 3), small[k], 1.2f + (k % 3) * 0.6f, 0.3f));
+            }
+            // Where the sea freezes: ice washed up on the shore.
+            if (tier.ShoreIce == null) return;
+            float[] ice = { 95f, 200f, 280f, 330f };
+            for (int i = 0; i < ice.Length; i++)
+            {
+                int k = i;
+                Optional(0.7f, () => OnGround(tier.ShoreIce, Polar(cliffDeg + ice[k], ShoreAt(cliffDeg + ice[k]) - 0.5f), ice[k] * 4f, 2f + (k % 2) * 1.2f, 0.35f));
             }
         }
 
@@ -556,8 +568,8 @@ namespace IslandsOfValheim
                 float deg = cliffDeg + 95f;
                 float r = (PlateauAt(deg) + ShoreAt(deg)) * 0.5f;
                 Vector2 c = Polar(deg, r);
-                OnGround(bigRocks, Polar(deg - 9f, r + 0.5f), deg * 2f, 4.5f, 0.45f);
-                OnGround(bigRocks, Polar(deg + 9f, r - 0.5f), deg * 3f, 3.5f, 0.45f);
+                OnGround(tier.BigRocks, Polar(deg - 9f, r + 0.5f), deg * 2f, 4.5f, 0.45f);
+                OnGround(tier.BigRocks, Polar(deg + 9f, r - 0.5f), deg * 3f, 3.5f, 0.45f);
                 PlaceNetworked(tier.HoardName, new Vector3(c.x, GroundMin(c.x, c.y, 0.6f), c.y), 90f - deg);
                 Prop(new[] { "treasure_pile" }, Polar(deg + 3f, r + 1.3f), 0f, 0.1f);
                 Prop(new[] { "treasure_stack" }, Polar(deg - 3f, r - 1.2f), 40f, 0.05f);

@@ -29,7 +29,8 @@ namespace IslandsOfValheim
                         int count = 0, placed = 0;
                         foreach (ZoneSystem.LocationInstance instance in islets)
                             if (Is(instance, tier)) { count++; if (instance.m_placed) placed++; }
-                        args.Context.AddString(tier.Name + ": " + count + " islets (" + placed + " already generated)");
+                        string where = tier.Side == IsletTier.Half.North ? ", north half" : tier.Side == IsletTier.Half.South ? ", south half" : "";
+                        args.Context.AddString(tier.Name + ": " + count + " islets (" + placed + " already generated" + where + ")");
                     }
                     if (WorldSize.Scale != 1f)
                         args.Context.AddString("World radius " + WorldSize.Radius.ToString("0", CultureInfo.InvariantCulture) + " m (Expand World Size): the tier rings are " +
@@ -47,7 +48,7 @@ namespace IslandsOfValheim
                 });
 
             new Terminal.ConsoleCommand("iov_goto",
-                "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: Meadows, Swamp, Plains, Mistlands, Ashlands)",
+                "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: " + TierNames(", ") + ")",
                 args =>
                 {
                     if (!OnServer(args.Context) || Player.m_localPlayer == null) return;
@@ -58,7 +59,7 @@ namespace IslandsOfValheim
                             if (string.Equals(tier.Name, args[1], System.StringComparison.OrdinalIgnoreCase)) wanted = tier;
                         if (wanted == null)
                         {
-                            args.Context.AddString("Unknown tier " + args[1] + ". Use Meadows, Swamp, Plains, Mistlands or Ashlands.");
+                            args.Context.AddString("Unknown tier " + args[1] + ". Use one of: " + TierNames(", ") + ".");
                             return;
                         }
                     }
@@ -105,6 +106,13 @@ namespace IslandsOfValheim
                     if ((only == null || only == tier) && Is(instance, tier)) result.Add(instance);
             }
             return result;
+        }
+
+        static string TierNames(string separator)
+        {
+            List<string> names = new List<string>();
+            foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
+            return string.Join(separator, names.ToArray());
         }
 
         static string TierName(ZoneSystem.LocationInstance instance)

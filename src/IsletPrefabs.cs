@@ -16,7 +16,9 @@ namespace IslandsOfValheim
             HashSet<string> spawners = new HashSet<string>();
             foreach (IsletTier tier in IsletTier.All)
             {
-                foreach (string creature in tier.Guards)
+                List<string> creatures = new List<string>(tier.Guards);
+                if (tier.Raiders != null) creatures.AddRange(tier.Raiders);
+                foreach (string creature in creatures)
                     if (spawners.Add(creature))
                     {
                         IsletTier first = TierOf(creature);
@@ -26,7 +28,12 @@ namespace IslandsOfValheim
             }
             // Gulls over every islet in daylight, a sign of land from a boat; they come back after a while.
             AddSpawner("Seagal", GullSpawner, 1, 1, 0f, 10f, false, 150f);
-            foreach (string plant in IsletTier.AllPlants()) AddPlant(plant);
+            HashSet<string> copied = new HashSet<string>();
+            foreach (string plant in IsletTier.AllPlants())
+                if (copied.Add(plant)) AddPlant(plant, false);
+            foreach (string piece in DvergrOutposts.Pieces)
+                if (copied.Add(piece)) AddPlant(piece, true);
+            DvergrOutposts.Register();
         }
 
         internal const string GullSpawner = "IoV_Spawner_Gull";
@@ -97,6 +104,8 @@ namespace IslandsOfValheim
 
             Container container = go.GetComponent<Container>();
             container.m_defaultItems = LootTable(tier, hoard);
+            // Inside a dvergr ward a chest that checks for wards couldn't be opened at all.
+            container.m_checkGuardStone = false;
             // A location chest must not be picked up or deconstructed for its wood.
             Piece piece = go.GetComponent<Piece>();
             if (piece != null) piece.m_canBeRemoved = false;
@@ -148,13 +157,15 @@ namespace IslandsOfValheim
             return "IoV_" + vanilla;
         }
 
-        static void AddPlant(string name)
+        // owned: a dvergr outpost's thing (DvergrOutposts.Pieces).
+        static void AddPlant(string name, bool owned)
         {
             if (PrefabManager.Instance.GetPrefab(name) == null) return;
             GameObject go = PrefabManager.Instance.CreateClonedPrefab(PlantName(name), name);
             foreach (StaticPhysics physics in go.GetComponentsInChildren<StaticPhysics>(true)) Object.DestroyImmediate(physics);
             // A nest only spawns on terrain if it asks for "ground"; the islet's ground counts as blocked.
             foreach (SpawnArea area in go.GetComponentsInChildren<SpawnArea>(true)) area.m_onGroundOnly = false;
+            if (owned) DvergrOutposts.MarkOwned(go);
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
     }

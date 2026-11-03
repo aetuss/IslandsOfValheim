@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // Building pieces are networked (they can be broken for their materials); props are static decor.
     static partial class IsletBuilder
     {
-        internal enum RuinStyle { StoneHall, StiltHut, FulingCamp, DvergrRuin, GraustenFort }
+        internal enum RuinStyle { StoneHall, StiltHut, FulingCamp, DvergrRuin, GraustenFort, DvergrCamp, FrostKeep }
 
         static void PlaceRuins()
         {
@@ -19,6 +19,8 @@ namespace IslandsOfValheim
                 case RuinStyle.FulingCamp: MainRuin(FulingCamp, FulingRuin); Ridge(FulingLookout); break;
                 case RuinStyle.DvergrRuin: MainRuin(DvergrRuin, DvergrOutpost); Ridge(DvergrColumn); break;
                 case RuinStyle.GraustenFort: MainRuin(GraustenFort, AshlandsArches); Ridge(GraustenPillar); break;
+                case RuinStyle.DvergrCamp: MainRuin(DvergrCamp, DvergrDigSite); Ridge(DvergrWatch); break;
+                case RuinStyle.FrostKeep: MainRuin(FrostKeep, FrozenCamp); Ridge(FrozenGraves); break;
             }
         }
 
@@ -52,7 +54,7 @@ namespace IslandsOfValheim
                 PlaceNetworked(new[] { tier.Nest }, spots[i], i * 77f, 0f);
             float[] rocks = { 30f, 140f, 250f, 320f };
             for (int i = 0; i < rocks.Length; i++)
-                OnGround(bigRocks, Polar(rocks[i], 4.8f), rocks[i] * 2f, 2f + (i % 2) * 0.8f, 0.4f);
+                OnGround(tier.BigRocks, Polar(rocks[i], 4.8f), rocks[i] * 2f, 2f + (i % 2) * 0.8f, 0.4f);
             // The vanilla skull props are giants' skulls; small clutter of the tier's own fits better.
             PropAtMost(tier.NestProps[0], Polar(95f, 3.6f), 30f, 0.15f, 2.4f);
             PropAtMost(tier.NestProps[1], Polar(290f, 3.2f), 200f, 0.05f, 1.6f);

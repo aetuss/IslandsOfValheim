@@ -1,18 +1,29 @@
 using System.Collections.Generic;
 using BepInEx.Configuration;
+using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // One kind of islet per ring of the world: the further from the centre, the tougher the guards and
-    // the better the loot, roughly following the biome order. Everything that differs between tiers is
-    // here; the layout itself is the same (IsletBuilder).
+    // The kinds of islet. Each ring of the world (band) has its own: the further from the centre, the
+    // tougher the guards and the better the loot, roughly following the biome order. A ring can hold two
+    // kinds, side by side (Mistlands: Seeker ruins and dvergr outposts) or split between the north and the
+    // south of the world (the outer ring: Deep North and Ashlands). Everything that differs between kinds
+    // is here; the layout itself is the same (IsletBuilder).
     class IsletTier
     {
+        internal enum Half { Any, North, South }
+
         internal string Name;
+        internal int Band;                     // which ring: kinds in the same ring count as equally tough
+        internal Half Side = Half.Any;
+        internal string Note = "";             // for the config description
         internal Heightmap.Biome Biome;        // how the ground is painted
         internal float MinDistance, MaxDistance;
         internal int DefaultCount;
         internal float Seed;                   // shifts the noise, so each tier's islet has its own shape
+        internal bool Ruined = true;           // vanilla's random damage to the pieces, so they look old
+        internal bool DvergrOutpost;           // dvergr live here: see DvergrOutposts
+        internal string[] Raiders;             // on some islets these attack it as the player arrives
 
         // Five guard slots: three in the courtyard, one by the wreck, one by the tower.
         internal string[] Guards;
@@ -30,6 +41,9 @@ namespace IslandsOfValheim
         internal string RuneStone;
         internal string JettyFloor = "wood_floor", JettyPole = "wood_pole2";
         internal string[] Wreck = KarveWreck;
+        internal string[] BigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
+        internal string[] SmallRocks = { "Rock_3", "rock4_coast", "rock1_mountain" };
+        internal string[] ShoreIce;    // ice on the shore, where the sea freezes
 
         static readonly string[] KarveWreck = { "shipwreck_karve_bow", "shipwreck_karve_stern", "shipwreck_karve_bottomboards" };
         static readonly string[] LongshipWreck = { "shipwreck_vikingship_front", "shipwreck_vikingship_rear", "shipwreck_vikingship_mast1" };
@@ -57,7 +71,7 @@ namespace IslandsOfValheim
         {
             All.Add(new IsletTier
             {
-                Name = "Meadows", Biome = Heightmap.Biome.Meadows, MinDistance = 300f, MaxDistance = 2200f, DefaultCount = 20, Seed = 0f,
+                Name = "Meadows", Band = 0, Biome = Heightmap.Biome.Meadows, MinDistance = 300f, MaxDistance = 2200f, DefaultCount = 20, Seed = 0f,
                 Style = IsletBuilder.RuinStyle.StoneHall, Nest = "Spawner_GreydwarfNest", NestProps = new[] { "root07", "root08" }, RuneStone = "RuneStone_Meadows",
                 Guards = new[] { "Greydwarf", "Greydwarf", "Greydwarf_Shaman", "Greydwarf", "Greydwarf" },
                 ChestBases = new[] { "TreasureChest_meadows" },
@@ -71,7 +85,7 @@ namespace IslandsOfValheim
 
             All.Add(new IsletTier
             {
-                Name = "Swamp", Biome = Heightmap.Biome.Swamp, MinDistance = 2200f, MaxDistance = 4000f, DefaultCount = 25, Seed = 137f,
+                Name = "Swamp", Band = 1, Biome = Heightmap.Biome.Swamp, MinDistance = 2200f, MaxDistance = 4000f, DefaultCount = 25, Seed = 137f,
                 Style = IsletBuilder.RuinStyle.StiltHut, Nest = "BonePileSpawner_swamp", NestProps = new[] { "bone_stack", "crypt_skeleton_laying" }, RuneStone = "RuneStone_Swamps",
                 Guards = new[] { "Draugr", "Draugr", "Draugr_Ranged", "Draugr", "Draugr_Elite" },
                 MaxLevel = 2, LevelUpChance = 10f,
@@ -86,7 +100,7 @@ namespace IslandsOfValheim
 
             All.Add(new IsletTier
             {
-                Name = "Plains", Biome = Heightmap.Biome.Plains, MinDistance = 4000f, MaxDistance = 5800f, DefaultCount = 25, Seed = 271f,
+                Name = "Plains", Band = 2, Biome = Heightmap.Biome.Plains, MinDistance = 4000f, MaxDistance = 5800f, DefaultCount = 25, Seed = 271f,
                 Style = IsletBuilder.RuinStyle.FulingCamp, Wreck = LongshipWreck, RuneStone = "RuneStone_Plains",
                 Guards = new[] { "Goblin", "Goblin", "GoblinShaman", "GoblinArcher", "Goblin" },
                 LevelUpChance = 10f,
@@ -101,7 +115,7 @@ namespace IslandsOfValheim
 
             All.Add(new IsletTier
             {
-                Name = "Mistlands", Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 25, Seed = 409f,
+                Name = "Mistlands", Band = 3, Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 25, Seed = 409f,
                 Style = IsletBuilder.RuinStyle.DvergrRuin, Wreck = LongshipWreck, Nest = "SeekerEgg", NestCount = 4, NestProps = new[] { "blackmarble_pile", "dvergrprops_crate" }, RuneStone = "RuneStone_Mistlands",
                 Guards = new[] { "Seeker", "Seeker", "SeekerBrute", "Seeker", "Seeker" },
                 MaxLevel = 2, LevelUpChance = 10f,
@@ -114,9 +128,29 @@ namespace IslandsOfValheim
             }.Drop("Coins", 100, 180, 3f).Drop("Softtissue", 3, 6, 2f).Drop("BlackMarble", 4, 8, 1.5f).Drop("BlackCore", 1, 1, 0.6f)
              .Drop("SilverNecklace", 1, 1, 1f).Drop("Ruby", 2, 3, 1f).Drop("ArrowCarapace", 10, 20, 1f));
 
+            // Dvergr live on these, in the same ring as the Seeker islets: leave them in peace, or raid them.
             All.Add(new IsletTier
             {
-                Name = "Ashlands", Biome = Heightmap.Biome.AshLands, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 20, Seed = 557f,
+                Name = "Dvergr", Band = 3, Biome = Heightmap.Biome.Mistlands, MinDistance = 5800f, MaxDistance = 7500f, DefaultCount = 8, Seed = 463f,
+                Note = " Dvergr outposts share the Mistlands ring with the Mistlands islets.",
+                Style = IsletBuilder.RuinStyle.DvergrCamp, Wreck = LongshipWreck, RuneStone = "RuneStone_Mistlands",
+                Ruined = false, DvergrOutpost = true, Raiders = new[] { "Seeker", "Seeker", "SeekerBrute" },
+                Guards = new[] { "Dverger", "DvergerMageFire", "DvergerMageSupport", "Dverger", "DvergerMageIce" },
+                MaxLevel = 2, LevelUpChance = 10f, DropMin = 4, DropMax = 6,
+                ChestBases = new[] { "TreasureChest_dvergrtower", "TreasureChest_meadows" },
+                Trees = new[] { "YggaShoot1", "YggaShoot2", "YggaShoot3", "FirTree_small_dead" },
+                SmallTrees = new[] { "YggaShoot_small1", "YggaShoot2", "Bush01" },
+                Bushes = new[] { "shrub_2", "Bush02_en", "Bush01" },
+                Berries = new[] { "Pickable_Mushroom_JotunPuffs", "Pickable_Mushroom_Magecap" },
+                Mushrooms = new[] { "Pickable_Mushroom_Magecap", "Pickable_Mushroom" },
+            }.Drop("Coins", 150, 250, 3f).Drop("BlackCore", 1, 2, 1.2f).Drop("DvergrNeedle", 1, 1, 0.8f).Drop("Lantern", 1, 1, 0.5f)
+             .Drop("Softtissue", 4, 8, 1.5f).Drop("Iron", 4, 8, 1.2f).Drop("Copper", 6, 10, 1f).Drop("YggdrasilWood", 6, 10, 1f).Drop("Ruby", 2, 3, 1f));
+
+            // The outer ring is split like the world itself: Ashlands to the south, Deep North to the north.
+            All.Add(new IsletTier
+            {
+                Name = "Ashlands", Band = 4, Side = Half.South, Biome = Heightmap.Biome.AshLands, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 15, Seed = 557f,
+                Note = " Only in the southern half of the world (the Deep North islets take the north).",
                 Style = IsletBuilder.RuinStyle.GraustenFort, Wreck = LongshipWreck, Nest = "GraveStone_CharredTwitcherNest", NestCount = 2, NestProps = new[] { "grausten_pile", "ashland_pot2_red" }, RuneStone = "RuneStone_Ashlands",
                 JettyFloor = "ashwood_floor_2x2", JettyPole = "ashwood_pole_2m",
                 Guards = new[] { "Charred_Melee", "Charred_Melee", "Charred_Mage", "Charred_Archer", "Charred_Melee" },
@@ -130,6 +164,37 @@ namespace IslandsOfValheim
             }.Drop("Coins", 150, 260, 3f).Drop("FlametalOreNew", 2, 4, 1.5f).Drop("Grausten", 6, 12, 1.5f).Drop("MoltenCore", 1, 1, 0.6f)
              .Drop("GemstoneRed", 1, 1, 0.5f).Drop("GemstoneGreen", 1, 1, 0.5f).Drop("GemstoneBlue", 1, 1, 0.5f)
              .Drop("ArrowCharred", 10, 20, 1f).Drop("CharredBone", 3, 6, 1f));
+
+            All.Add(new IsletTier
+            {
+                Name = "DeepNorth", Band = 4, Side = Half.North, Biome = Heightmap.Biome.DeepNorth, MinDistance = 7500f, MaxDistance = 10000f, DefaultCount = 15, Seed = 613f,
+                Note = " Only in the northern half of the world (the Ashlands islets take the south).",
+                Style = IsletBuilder.RuinStyle.FrostKeep, Wreck = LongshipWreck, RuneStone = "RuneStone_DeepNorth",
+                Guards = new[] { "Skeleton_DeepNorth", "Ulv", "Fenring_Cultist", "Ulv", "Fenring" },
+                MaxLevel = 2, LevelUpChance = 15f,
+                ChestBases = new[] { "TreasureChest_deepnorth_village", "TreasureChest_mountains", "TreasureChest_meadows" },
+                BigRocks = new[] { "Rock_4_deepnorth", "rock4_coast" },
+                SmallRocks = new[] { "Rock_3_deepnorth", "Rock_3" },
+                ShoreIce = new[] { "ice_rock1", "ice1" },
+                Trees = new[] { "Pinetree_Snow", "SnowFirTree_small", "FirTree_small_dead" },
+                SmallTrees = new[] { "SnowFirTree_small", "Pinetree_Snow_dead", "FirTree_small_dead" },
+                Bushes = new[] { "Bush01_deepnorth", "shrub_2", "Bush01" },
+                Berries = new[] { "LingonberryBush", "BlueberryBush" },
+                Mushrooms = new[] { "Pickable_Branch_Snow", "Pickable_Stone" },
+            }.Drop("Coins", 180, 300, 3f).Drop("Frostwood", 6, 12, 1.5f).Drop("Ice", 4, 8, 1.5f).Drop("FrostCore", 1, 1, 0.6f)
+             .Drop("Crystal", 2, 4, 1f).Drop("Silver", 3, 6, 1f).Drop("FreezeGland", 2, 4, 1f).Drop("SpiceDeepNorth", 1, 2, 0.8f)
+             .Drop("ArrowFrost", 10, 20, 1f));
+        }
+
+        // Whether a kind may be placed at this point. The game puts the Deep North beyond 12 km from a point
+        // 4 km south of the centre, and the Ashlands beyond 12 km from a point 4 km north of it
+        // (WorldGenerator.IsDeepnorth / IsAshlands), so the line between the two halves runs east-west through
+        // the centre. Expand World Size moves both the same way, so the line stays where it is.
+        internal bool Allows(Vector3 point)
+        {
+            if (Side == Half.North) return point.z > 0f;
+            if (Side == Half.South) return point.z <= 0f;
+            return true;
         }
 
         internal static void BindConfig(ConfigFile config)
@@ -138,18 +203,18 @@ namespace IslandsOfValheim
                 tier.Count = config.Bind("1 - World generation", tier.Name + "Islets", tier.DefaultCount,
                     new ConfigDescription("How many " + tier.Name + "-level islets the game tries to place, " +
                         (int)tier.MinDistance + "-" + (int)tier.MaxDistance + " m from the world centre (in a vanilla-sized world; " +
-                        "Expand World Size moves the rings with its world radius). 0 turns them off. " +
+                        "Expand World Size moves the rings with its world radius)." + tier.Note + " 0 turns them off. " +
                         "Only used when a world's locations are generated (a new world, or the genloc command). Needs a restart.",
                         new AcceptableValueRange<int>(0, 200)));
         }
 
-        // Index of the tier whose ring a point this far from the world centre is in, for this world's size.
-        internal static int IndexAt(float distance)
+        // The ring a point this far from the world centre is in, for this world's size.
+        internal static int BandAt(float distance)
         {
             float scale = WorldSize.Scale;
-            for (int i = 0; i < All.Count - 1; i++)
-                if (distance < All[i].MaxDistance * scale) return i;
-            return All.Count - 1;
+            foreach (IsletTier tier in All)
+                if (distance < tier.MaxDistance * scale) return tier.Band;
+            return All[All.Count - 1].Band;
         }
 
         // All the vanilla objects any tier places that may drop themselves onto the terrain (see IsletPrefabs).

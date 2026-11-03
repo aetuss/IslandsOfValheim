@@ -96,14 +96,14 @@ namespace IslandsOfValheim
         {
             if (ZNet.instance == null || !ZNet.instance.IsServer() || ZoneSystem.instance == null) return;
             Vector3 from = request.ReadVector3();
-            int here = IsletTier.IndexAt(new Vector2(from.x, from.z).magnitude);
+            int here = IsletTier.BandAt(new Vector2(from.x, from.z).magnitude);
             List<ZoneSystem.LocationInstance> unvisited = new List<ZoneSystem.LocationInstance>();
             List<ZoneSystem.LocationInstance> further = new List<ZoneSystem.LocationInstance>();
             foreach (ZoneSystem.LocationInstance instance in Commands.Islets(null))
             {
                 if (instance.m_placed) continue;
                 unvisited.Add(instance);
-                if (TierIndex(instance) >= here) further.Add(instance);
+                if (Band(instance) >= here) further.Add(instance);
             }
             List<ZoneSystem.LocationInstance> pick = further.Count > 0 ? further : unvisited;
             pick.Sort((a, b) => Commands.Distance(a, from).CompareTo(Commands.Distance(b, from)));
@@ -122,10 +122,10 @@ namespace IslandsOfValheim
             if (Minimap.instance != null && !InventoryGui.IsVisible()) Minimap.instance.ShowPointOnMap(islet);
         }
 
-        static int TierIndex(ZoneSystem.LocationInstance instance)
+        static int Band(ZoneSystem.LocationInstance instance)
         {
-            for (int i = 0; i < IsletTier.All.Count; i++)
-                if (Commands.Is(instance, IsletTier.All[i])) return i;
+            foreach (IsletTier tier in IsletTier.All)
+                if (Commands.Is(instance, tier)) return tier.Band;
             return 0;
         }
 
