@@ -20,7 +20,7 @@ namespace IslandsOfValheim
     {
         internal const string HarbourName = "IoV_SeaHarbour";
         const float PeaceRadius = 40f;
-        const float NoBuildRadius = 24f; // the whole islet down to the water, like the ground around a vendor
+        const float NoBuildRadius = 15f; // the plateau with his things, under the dome, like a vendor's camp
 
         // The harbour's frame: centre, towards the jetty (forward), and across (side).
         static Vector2 hc, hf, hs;
@@ -126,7 +126,7 @@ namespace IslandsOfValheim
             Bench(fire, H(-7.6f, 4.8f));
             Bench(fire, H(-5.6f, 6.9f));
             FishersCorner(H(5.8f, 4.6f));
-            Seal(H(2.9f, 6.6f), H(0.6f, 4.6f)); // beside the path, by the trader
+            Seal(H(-4.6f, 1.2f), fire); // beside the house, looking at the campfire
 
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;
@@ -211,7 +211,13 @@ namespace IslandsOfValheim
             foreach (Animator animator in go.GetComponentsInChildren<Animator>(true)) animator.applyRootMotion = false;
             Vector2 to = lookAt - at;
             go.transform.localPosition = new Vector3(at.x, GroundMin(at.x, at.y, 0.6f) - 0.05f, at.y);
-            go.transform.localRotation = Quaternion.Euler(0f, Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg, 0f);
+            float yaw = Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg;
+            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            // Her straw mat, and a fish in front of her nose.
+            Prop(new[] { "rug_straw", "rug_deer" }, at, yaw, 0f);
+            Vector2 nose = at + to.normalized * 1.5f;
+            GameObject fish = Copy(new[] { "Fish1" }, new Vector3(0f, yaw + 70f, 90f), 0f, true);
+            if (fish != null) fish.transform.localPosition = new Vector3(nose.x, Height(nose.x, nose.y) + 0.08f, nose.y);
             go.AddComponent<HarbourSeal>();
             built++;
         }
@@ -233,8 +239,9 @@ namespace IslandsOfValheim
             Bounds b = LocalBounds(dome);
             parent = outer;
             float across = Mathf.Max(b.size.x, b.size.z);
-            if (across > 0.01f) dome.transform.localScale = dome.transform.localScale * (2f * NoBuildRadius / across);
-            dome.transform.localPosition = new Vector3(0f, PlateauHeight - 1f, 0f);
+            // As wide as the no-build ground, and a little flattened: a dome over the camp, not a ball.
+            if (across > 0.01f) dome.transform.localScale = Vector3.Scale(dome.transform.localScale, new Vector3(1f, 0.75f, 1f)) * (2f * NoBuildRadius / across);
+            dome.transform.localPosition = new Vector3(0f, PlateauHeight - 1.5f, 0f);
             StringBuilder parts = new StringBuilder();
             foreach (Component c in dome.GetComponentsInChildren<Component>(true))
                 if (c != null && !(c is Transform)) parts.Append(' ').Append(c.GetType().Name);
