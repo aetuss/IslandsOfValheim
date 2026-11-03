@@ -1,8 +1,8 @@
 {
   "name": "IslandsOfValheim",
-  "version_number": "1.4.0",
+  "version_number": "1.5.0",
   "website_url": "https://github.com/aetuss/IslandsOfValheim",
-  "description": "Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre. Gives you a reason to sail.",
+  "description": "Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, and a sea trader. Gives you a reason to sail.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2360",
     "ValheimModding-Jotunn-2.30.2"

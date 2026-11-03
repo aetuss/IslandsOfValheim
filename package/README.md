@@ -1,6 +1,6 @@
 # IslandsOfValheim
 
-Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre.
+Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, and a sea trader on one of them.
 
 ## What changes?
 
@@ -12,6 +12,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 - **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
 - **Fishing grounds** around about half the islets (see below).
+- **The sea trader**, the last of the people who built the islet ruins, keeps a harbour on one islet (see below).
 
 The further from the world centre, the tougher the islet:
 
@@ -62,6 +63,38 @@ About half the islets have more fish in the shallow water around them than the o
 
 There aren't endless fish: a ground holds a few at a time and puts one back every few minutes. Now and then your hook brings up a sodden pouch instead of a fish, with some coins and a small piece of the islet's treasure, and very rarely a sea vegvisir shard.
 
+## The sea trader
+
+Somewhere in the Swamp or Plains waters there's one peaceful islet with a harbour: a jetty with a moored karve, a tent lit by lanterns, a campfire, a fisher's corner, a toppled statue on the ridge and a beacon that always burns. No guards, and creatures keep away from it. Sævar lives there, the last of the seafaring people whose ruins are on the other islets. He's one of the shadows of the Deep North, the ghosts of the fallen, standing by his tent.
+
+Like Haldor, the game picks several possible spots for his harbour, and the first one somebody comes near is the one that's built; the others vanish. From then on a white anchor marks it on everyone's map. He sells for coins and buys nothing. More of his goods show up as the world's bosses fall:
+
+| When | Goods |
+|---|---|
+| From the start | Sea vegvisir shard, Ancient Lure (bait for the islet fishing grounds: their fish take it readily and are often a star better; fish anywhere else ignore it), Seafarer's Cape |
+| After Bonemass | Caulking Kit (use it on board to repair your ship at sea, no workbench needed), Captain's Hat, Salted Fish |
+| After Moder | Seafarer's Vest, Deckhand's Trousers, Storm Mead, Seafarer's Hardtack |
+| After Yagluth | Rán's Blessing |
+
+**The Seafarer set** is a travel set, not a combat one: middling armour, and each piece helps at sea.
+
+| Piece | Armour | Effect |
+|---|---|---|
+| Captain's Hat | 6 | Fishing +10 |
+| Seafarer's Vest | 10 | Swimming uses 25% less stamina |
+| Deckhand's Trousers | 10 | Being wet wears off twice as fast |
+| Seafarer's Cape | 1 | Keeps the night chill and the cold of rain off you (not freezing cold) |
+| All four: Child of the Sea | | You never get wet, and you swim 25% faster |
+
+**Meads and food**, mid-strength so they don't replace a good cooked meal:
+
+- Storm Mead (10 minutes): rain and spray don't soak you, and the cold doesn't reach you (not freezing cold).
+- Rán's Blessing (10 minutes): you swim 40% faster and use 40% less stamina swimming.
+- Salted Fish: 25 health, 50 stamina, lasts 40 minutes.
+- Seafarer's Hardtack: 35 health, 35 stamina, lasts an hour.
+
+The trader only appears in a new world, or after `genloc` in ocean nobody has visited yet.
+
 ## Dvergr outposts
 
 Some islets in the Mistlands ring aren't ruins: dvergr live there. Like the dvergr camps on land, they leave you alone as long as you leave them alone, so you can land, look around and sail on in peace. Or raid them: hitting a dvergr, breaking anything of theirs (walls, crates, barrels, furniture), taking the stein or lantern off their table or the black core from its stand, or opening their chest turns the whole outpost against you. Their chest is worth it, and so is the black core. You can't build on their islet, the same as in their camps on land.
@@ -84,13 +117,20 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 ## Configuration
 
 - `MeadowsIslets`, `SwampIslets`, `PlainsIslets`, `MistlandsIslets`, `DvergrIslets`, `AshlandsIslets`, `DeepNorthIslets`: how many islets of each kind the game tries to place (0 turns a kind off). Only used when locations are generated (new world or `genloc`).
+- `SeaTraderIslets`: how many possible spots the game picks for the sea trader's harbour (only the first one somebody comes near is built). 0 turns him off.
 - `GroundStyle`: how the islet ground looks: `Terrain` (like the game's own land) or `Rock` (bare stone). Needs a restart.
 - `DebugLog`: writes how the islands were built and where they are to the BepInEx log.
 
 ## Console commands
 
 - `iov_info`: how many islets of each kind this world has and how far the closest ones are (host or single player).
-- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`.
+- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour.
+
+## Translations
+
+The mod comes in English and Turkish, and follows the game's language. Its texts are in `Translations/<Language>/IslandsOfValheim.json` in the mod's folder.
+
+To change a text, or to add a language, put a file of your own in `BepInEx/config/IslandsOfValheim/Translations/<Language>/` (for example `BepInEx/config/IslandsOfValheim/Translations/Turkish/MyTexts.json`) with only the keys you want, in the same format. Files there win over the mod's own, and an update doesn't touch them. The language folder is named like the game's languages (English, Turkish, German, French...).
 
 ## Multiplayer
 

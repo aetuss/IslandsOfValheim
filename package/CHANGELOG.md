@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+- The sea trader: Sævar, the last of the seafaring people whose ruins are on the islets, keeps a harbour on one peaceful islet in the Swamp or Plains waters (a jetty with a moored karve, his tent, a campfire, a fisher's corner, a beacon that always burns). Like Haldor, the first of several possible spots somebody comes near is built and the others vanish; a white anchor marks it on the map from then on. He sells for coins and buys nothing.
+- His goods, more after Bonemass, Moder and Yagluth: sea vegvisir shards; the Ancient Lure for the islet fishing grounds; the Seafarer set (Captain's Hat, Seafarer's Vest, Deckhand's Trousers, Seafarer's Cape), a travel set with an effect on each piece and "Child of the Sea" for all four (never wet, faster swimming); the Caulking Kit, which repairs your ship at sea; Storm Mead, Rán's Blessing, Salted Fish and Seafarer's Hardtack.
+- New setting `SeaTraderIslets`; `iov_goto trader` and `iov_info` know the harbour. The harbour appears in a new world, or after `genloc` in ocean nobody has visited yet.
+- Every text the mod shows now comes from translation files, with a full Turkish translation. Your own texts or languages in `BepInEx/config/IslandsOfValheim/Translations/<Language>/` win over the mod's and survive updates.
+
 ## 1.4.0
 
 - Fishing grounds: about half the islets have more fish in the shallow water around them, the tier's vanilla species (perch near the centre, up to northern salmon and magmafish far out), with more stars further out. A ground holds a few fish at a time and puts one back every few minutes, only while someone is near.
