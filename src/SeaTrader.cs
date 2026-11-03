@@ -194,80 +194,16 @@ namespace IslandsOfValheim
 
         // ---- the map icon: a white anchor, like the vanilla traders' icons ----
 
-        static Sprite icon;
-
         [HarmonyPatch(typeof(Minimap), "Start")]
         static class IconPatch
         {
             static void Postfix(Minimap __instance)
             {
-                if (icon == null) icon = AnchorIcon();
                 Minimap.LocationSpriteData data = new Minimap.LocationSpriteData();
                 data.m_name = IsletBuilder.HarbourName;
-                data.m_icon = icon;
+                data.m_icon = Icons.Anchor;
                 __instance.m_locationIcons.Add(data);
             }
-        }
-
-        // Drawn from shapes (a ring, the shank, the stock, the arms and their flukes), white with a soft dark edge.
-        static Sprite AnchorIcon()
-        {
-            const int size = 64;
-            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            texture.name = "IoV_AnchorIcon";
-            Color[] pixels = new Color[size * size];
-            float pixel = 2f / size;
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    float u = (x + 0.5f) / size * 2f - 1f, v = (y + 0.5f) / size * 2f - 1f;
-                    float d = Anchor(u * 1.12f, v * 1.12f) / 1.12f;
-                    float fill = Mathf.Clamp01(0.5f - d / pixel);
-                    float edge = Mathf.Clamp01(0.5f - (d - 0.08f) / pixel) * 0.7f;
-                    float alpha = Mathf.Max(fill, edge);
-                    Color c = alpha > 0f ? Color.Lerp(Color.black, Color.white, fill / alpha) : Color.clear;
-                    c.a = alpha;
-                    pixels[y * size + x] = c;
-                }
-            texture.SetPixels(pixels);
-            texture.Apply(false, true);
-            return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
-        }
-
-        // Signed distance to the anchor (negative inside), in a square from -1 to 1.
-        static float Anchor(float x, float y)
-        {
-            float ring = Mathf.Abs(Length(x, y - 0.66f) - 0.13f) - 0.055f;
-            float shank = Box(x, y + 0.02f, 0.06f, 0.56f);
-            float stock = Box(x, y - 0.36f, 0.33f, 0.055f);
-            float arc = Mathf.Abs(Length(x, y + 0.05f) - 0.55f) - 0.06f;
-            arc = Mathf.Max(arc, y + 0.2f); // only the lower part of the circle
-            float flukes = Mathf.Min(
-                Triangle(x, y, new Vector2(0.68f, 0.02f), new Vector2(0.40f, -0.16f), new Vector2(0.64f, -0.36f)),
-                Triangle(x, y, new Vector2(-0.68f, 0.02f), new Vector2(-0.64f, -0.36f), new Vector2(-0.40f, -0.16f)));
-            return Mathf.Min(Mathf.Min(ring, shank), Mathf.Min(stock, Mathf.Min(arc, flukes)));
-        }
-
-        static float Length(float x, float y) { return Mathf.Sqrt(x * x + y * y); }
-
-        static float Box(float x, float y, float hx, float hy)
-        {
-            float dx = Mathf.Abs(x) - hx, dy = Mathf.Abs(y) - hy;
-            return Length(Mathf.Max(dx, 0f), Mathf.Max(dy, 0f)) + Mathf.Min(Mathf.Max(dx, dy), 0f);
-        }
-
-        static float Triangle(float x, float y, Vector2 p0, Vector2 p1, Vector2 p2)
-        {
-            Vector2 p = new Vector2(x, y);
-            Vector2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2;
-            Vector2 v0 = p - p0, v1 = p - p1, v2 = p - p2;
-            Vector2 q0 = v0 - e0 * Mathf.Clamp01(Vector2.Dot(v0, e0) / Vector2.Dot(e0, e0));
-            Vector2 q1 = v1 - e1 * Mathf.Clamp01(Vector2.Dot(v1, e1) / Vector2.Dot(e1, e1));
-            Vector2 q2 = v2 - e2 * Mathf.Clamp01(Vector2.Dot(v2, e2) / Vector2.Dot(e2, e2));
-            float s = Mathf.Sign(e0.x * e2.y - e0.y * e2.x);
-            float dist = Mathf.Min(Vector2.Dot(q0, q0), Mathf.Min(Vector2.Dot(q1, q1), Vector2.Dot(q2, q2)));
-            float side = Mathf.Min(s * (v0.x * e0.y - v0.y * e0.x), Mathf.Min(s * (v1.x * e1.y - v1.y * e1.x), s * (v2.x * e2.y - v2.y * e2.x)));
-            return -Mathf.Sqrt(dist) * Mathf.Sign(side);
         }
     }
 

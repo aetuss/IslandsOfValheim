@@ -62,7 +62,7 @@ namespace IslandsOfValheim
                 shared.m_setSize = 4;
                 shared.m_setStatusEffect = set;
             }
-            if (set != null && Items.Count > 0) set.m_icon = Items[Items.Count - 1].GetComponent<ItemDrop>().m_itemData.GetIcon();
+            if (set != null) set.m_icon = Icons.Waves;
 
             SE_Stats storm = Effect("IoV_SE_StormMead", "iov_se_storm");  // no Wet, no Cold: see WeatherPatch
             if (storm != null) storm.m_ttl = 600f;
@@ -252,6 +252,17 @@ namespace IslandsOfValheim
         }
 
         const string LuredKey = "IoV_Lured";
+
+        // The game lists a knockback for anything used as ammo, bait included, even when it's 0.
+        [HarmonyPatch(typeof(ItemDrop.ItemData), "GetTooltip", new[] { typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool) })]
+        static class LureTooltipPatch
+        {
+            static void Postfix(ItemDrop.ItemData item, ref string __result)
+            {
+                if (item == null || item.m_shared == null || item.m_shared.m_name != "$iov_lure" || __result == null) return;
+                __result = System.Text.RegularExpressions.Regex.Replace(__result, @"\n?\$item_knockback: <color=orange>[^<]*</color>", "");
+            }
+        }
 
         // The Caulking Kit: used on board (right-click in the inventory, or a hotbar key), it repairs the ship
         // you're on. Vanilla needs a workbench nearby to repair a ship; this works at sea.

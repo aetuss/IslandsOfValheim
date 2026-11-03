@@ -289,7 +289,7 @@ namespace IslandsOfValheim
                 if (tier.Nest != null && seen.Add(tier.Nest)) yield return tier.Nest;
                 if (tier.RuneStone != null && seen.Add(tier.RuneStone)) yield return tier.RuneStone;
             }
-            foreach (string name in new[] { "Pickable_Flint", "Pickable_Stone", "Pickable_Branch" })
+            foreach (string name in new[] { "Pickable_Flint", "Pickable_Stone", "Pickable_Branch", "Pickable_Dandelion" })
                 if (seen.Add(name)) yield return name;
         }
     }

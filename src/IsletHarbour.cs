@@ -102,9 +102,12 @@ namespace IslandsOfValheim
             // The trader at his counter in front of the shelter, looking down to the jetty.
             Vector2 trader = H(0.6f, 3.4f);
             PlaceNetworked(SeaTrader.PrefabName, new Vector3(trader.x, Height(trader.x, trader.y), trader.y), face);
-            Prop(new[] { "piece_table", "piece_table_oak" }, H(-1.2f, 3.6f), face + 90f, 0.05f);
+            GameObject counter = OnGround(new[] { "piece_table", "piece_table_oak" }, H(-1.2f, 3.6f), face + 90f, 0f, 0.05f);
+            OnTop(counter, new[] { "Fish1" }, -0.3f, face + 30f);
+            OnTop(counter, new[] { "Fish2", "Fish1" }, 0.25f, face - 60f);
             Prop(new[] { "barrell_static", "barrell" }, H(-2.6f, 3.3f), 30f, 0.05f);
-            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(2.4f, 3.8f), face + 10f, 0.05f);
+            GameObject crate = OnGround(new[] { "CargoCrate", "dvergrprops_crate" }, H(2.4f, 3.8f), face + 10f, 0f, 0.05f);
+            OnTop(crate, new[] { "FishingRod" }, 0f, face + 75f);
             string[] lantern = { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" };
             Prop(lantern, H(-2.6f, 2.4f), 0f, 0.05f);
             Prop(lantern, H(2.7f, 2.4f), 0f, 0.05f);
@@ -112,6 +115,7 @@ namespace IslandsOfValheim
             // A campfire with two benches on one side, the fisher's corner on the other.
             Vector2 fire = H(-5.6f, 4.6f);
             LitProp(new[] { "fire_pit", "fire_pit_haldor" }, fire, 0f, 0.05f);
+            Prop(new[] { "piece_cookingstation" }, fire, face + 90f, 0.02f);
             Bench(fire, H(-7.4f, 4.4f));
             Bench(fire, H(-5.4f, 6.5f));
             FishersCorner(H(5.6f, 4.2f));
@@ -121,6 +125,9 @@ namespace IslandsOfValheim
             Vector2 hull = Polar(wreck, ShoreAt(wreck) - 3.5f);
             OnGround(new[] { "shipwreck_karve_bottomboards" }, hull, wreck + 100f, 0f, 0.15f);
             Prop(new[] { "wood_stack" }, Polar(wreck - 9f, ShoreAt(wreck - 9f) - 5f), wreck, 0.05f);
+
+            Path(H(0.6f, 4.6f), Polar(j, ShoreAt(j) - 2.6f));
+            Optional(0.7f, () => BeachedRaft(j - 42f));
 
             CaptainStatue(Polar(cliffDeg + 30f, PlateauAt(cliffDeg + 30f) - 1.5f), 90f - (cliffDeg + 30f) + 180f);
             BeaconTower(cliffDeg - 20f);
@@ -135,7 +142,68 @@ namespace IslandsOfValheim
             Optional(0.8f, () => OnGround(tier.Bushes, Polar(cliffDeg + 100f, PlateauAt(cliffDeg + 100f) + 1.5f), 120f, 0f, 0.15f, false));
             Optional(0.8f, () => OnGround(tier.Bushes, Polar(cliffDeg + 135f, PlateauAt(cliffDeg + 135f) + 1f), 300f, 0f, 0.15f, false));
             Optional(0.8f, () => OnGround(tier.Trees, Polar(cliffDeg - 55f, PlateauAt(cliffDeg - 55f) + 1f), 45f, 0f, 0.05f, false));
+            // Green around the edges of the plateau, in the gaps between his things.
+            float[] bushes = { 85f, 150f, 175f, 260f, 290f, 315f };
+            for (int i = 0; i < bushes.Length; i++)
+            {
+                float deg = cliffDeg + bushes[i];
+                OnGround(tier.Bushes, Polar(deg, PlateauAt(deg) + 1f + (i % 2) * 0.8f), deg * 3f, 0f, 0.15f, false);
+            }
+            OnGround(tier.SmallTrees, Polar(cliffDeg + 200f, PlateauAt(cliffDeg + 200f) + 0.8f), 30f, 0f, 0.05f, false);
+            OnGround(tier.SmallTrees, Polar(cliffDeg + 275f, PlateauAt(cliffDeg + 275f) + 0.6f), 160f, 0f, 0.05f, false);
+            Vector2[] flowers = { H(-6.5f, -0.8f), H(6.6f, 1.2f), H(-3.2f, 7.2f), H(3.6f, 7.6f), H(-7.8f, 2f) };
+            for (int i = 0; i < flowers.Length; i++)
+                PlaceNetworked("Pickable_Dandelion", Ground3(flowers[i], 0f), i * 70f);
             Peace();
+        }
+
+        // Flat stones from his counter down to the jetty, lying the way the ground does.
+        static void Path(Vector2 from, Vector2 to)
+        {
+            Vector2 step = to - from;
+            int count = Mathf.FloorToInt(step.magnitude / 1.15f);
+            Vector2 across = new Vector2(-step.y, step.x).normalized;
+            for (int i = 0; i <= count; i++)
+            {
+                Vector2 at = from + step * (i / (float)Mathf.Max(1, count)) + across * (0.25f * Mathf.Sin(i * 2.1f));
+                GameObject stone = Copy(new[] { "stone_floor" }, new Vector3(0f, i * 37f, 0f), 0.85f + 0.15f * Mathf.Sin(i * 1.3f), true);
+                if (stone == null) return;
+                Bounds b = LocalBounds(stone);
+                Move(stone, b, new Vector3(at.x, Height(at.x, at.y) + 0.04f - b.size.y, at.y), false);
+                stone.transform.localRotation = Quaternion.FromToRotation(Vector3.up, Normal(at.x, at.y)) * stone.transform.localRotation;
+            }
+        }
+
+        // A static copy of a prop lying on top of another (an item on a table, say), off its centre by along.
+        static void OnTop(GameObject under, string[] candidates, float along, float rotY)
+        {
+            if (under == null) return;
+            Bounds top = SolidBounds(under);
+            GameObject go = Copy(candidates, new Vector3(0f, rotY, 0f), 0f, true);
+            if (go == null) return;
+            Vector3 at = top.center + under.transform.localRotation * new Vector3(along, 0f, 0f);
+            Move(go, LocalBounds(go), new Vector3(at.x, top.max.y - 0.01f, at.z), false);
+        }
+
+        // A raft pulled up on the beach, its little sail down.
+        static void BeachedRaft(float deg)
+        {
+            GameObject prefab = Find(new[] { "Raft" });
+            if (prefab == null) return;
+            GameObject go = Object.Instantiate(prefab, parent, false);
+            go.name = prefab.name;
+            go.transform.localRotation = Quaternion.Euler(0f, 90f - deg + 75f, 0f);
+            go.transform.localPosition = Vector3.zero;
+            Ship ship = go.GetComponent<Ship>();
+            if (ship != null && ship.m_sailObject != null) ship.m_sailObject.SetActive(false);
+            foreach (ParticleSystem particles in go.GetComponentsInChildren<ParticleSystem>(true))
+                if (particles.GetComponent<MeshFilter>() == null) particles.gameObject.SetActive(false);
+            foreach (AudioSource sound in go.GetComponentsInChildren<AudioSource>(true)) sound.enabled = false;
+            Strip(go);
+            built++;
+            Vector2 at = Polar(deg, ShoreAt(deg) - 1.5f);
+            Bounds b = LocalBounds(go);
+            Move(go, b, new Vector3(at.x, GroundMin(at.x, at.y, 1.2f) - 0.15f, at.y), false);
         }
 
         static Vector3 Ground3(Vector2 at, float lift)
