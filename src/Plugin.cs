@@ -4,6 +4,10 @@ using HarmonyLib;
 using Jotunn.Managers;
 using Jotunn.Utils;
 
+// Thunderstore asks mods made with AI to say so here and in the README.
+[assembly: System.Reflection.AssemblyMetadata("AI_Assisted_Creation", "This assembly was fully created with the assistance of Generative AI: the code was written by Claude (Anthropic) through Claude Code.")]
+[assembly: System.Reflection.AssemblyMetadata("AI_Model_Vendor", "Anthropic")]
+
 namespace IslandsOfValheim
 {
     [BepInPlugin(Guid, ModName, Version)]
@@ -13,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.5.0";
+        public const string Version = "1.5.1";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;

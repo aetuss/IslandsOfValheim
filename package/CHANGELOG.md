@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- README: says that the mod was made with AI (Claude by Anthropic), as Thunderstore asks. The DLL carries the same note in its metadata. No gameplay changes.
+
 ## 1.5.0
 
 - The sea trader: Sævar, the last of the seafaring people whose ruins are on the islets, keeps a harbour on one peaceful islet in the Swamp or Plains waters (a thatched house on the stone floor of his people's harbour hall, a jetty with a moored karve, a campfire, a fisher's corner, a beacon tower that always burns, his seal Bára). Like Haldor, the first of several possible spots somebody comes near is built and the others vanish; a white anchor marks it on the map from then on. He sells for coins and buys nothing.
