@@ -19,6 +19,7 @@ namespace IslandsOfValheim
     {
         internal const string HarbourName = "IoV_SeaHarbour";
         const float PeaceRadius = 40f;
+        const float NoBuildRadius = 20f; // the plateau and its slopes, like the ground around a vendor
 
         // The harbour's frame: centre, towards the jetty (forward), and across (side).
         static Vector2 hc, hf, hs;
@@ -65,7 +66,11 @@ namespace IslandsOfValheim
             config.MaxDistance = IsletTier.All[2].MaxDistance;
             config.Group = HarbourName;
             config.MinDistanceFromSimilar = 1000f;
-            root.AddComponent<Location>().m_applyRandomDamage = false;
+            Location location = root.AddComponent<Location>();
+            location.m_applyRandomDamage = false;
+            location.m_noBuild = true;
+            location.m_noBuildRadiusOverride = NoBuildRadius;
+            NoBuildRing();
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (" + count + " possible spots, one is kept)");
         }
@@ -124,6 +129,7 @@ namespace IslandsOfValheim
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;
             OnGround(new[] { "shipwreck_karve_bottomboards" }, Polar(wreck, ShoreAt(wreck) - 3.5f), wreck + 100f, 0f, 0.15f);
+            Seal(j - 24f);
 
             CaptainStatue(Polar(cliffDeg + 30f, PlateauAt(cliffDeg + 30f) - 1.5f), 90f - (cliffDeg + 30f) + 180f);
             BeaconTower(cliffDeg - 20f);
@@ -190,6 +196,38 @@ namespace IslandsOfValheim
             Vector2 ab = b - a;
             float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(0.0001f, ab.sqrMagnitude));
             return (p - (a + ab * t)).magnitude;
+        }
+
+        // Bára, his seal, on the bank by the jetty: a seal's body without its scripts, lying there. She can be petted.
+        static void Seal(float deg)
+        {
+            GameObject prefab = Find(new[] { "Seal" });
+            if (prefab == null) return;
+            GameObject go = Object.Instantiate(prefab, parent, false);
+            go.name = "IoV_HarbourSeal";
+            Strip(go);
+            foreach (Animator animator in go.GetComponentsInChildren<Animator>(true)) animator.applyRootMotion = false;
+            Vector2 at = Polar(deg, ShoreAt(deg) - 2.5f);
+            go.transform.localPosition = new Vector3(at.x, GroundMin(at.x, at.y, 0.6f) - 0.05f, at.y);
+            go.transform.localRotation = Quaternion.Euler(0f, 90f - deg, 0f); // looking out to sea
+            go.AddComponent<HarbourSeal>();
+            built++;
+        }
+
+        // The ring a ward shows, around the ground nobody can build on.
+        static void NoBuildRing()
+        {
+            GameObject ward = PrefabManager.Instance.GetPrefab("guard_stone");
+            CircleProjector source = ward != null ? ward.GetComponentInChildren<CircleProjector>(true) : null;
+            if (source == null) return;
+            GameObject ring = Object.Instantiate(source.gameObject, root.transform, false);
+            ring.name = "IoV_HarbourRing";
+            ring.SetActive(true);
+            ring.transform.localPosition = new Vector3(0f, PlateauHeight + 1f, 0f);
+            ring.transform.localRotation = Quaternion.identity;
+            CircleProjector projector = ring.GetComponent<CircleProjector>();
+            projector.m_nrOfSegments = Mathf.RoundToInt(projector.m_nrOfSegments * NoBuildRadius / Mathf.Max(1f, projector.m_radius));
+            projector.m_radius = NoBuildRadius;
         }
 
         // A static copy of a prop lying on top of another (an item on a table, say), off its centre by along.
@@ -276,7 +314,7 @@ namespace IslandsOfValheim
                 // The tall edge must point to the middle, i.e. away from s.
                 if (tall * xSign != -s) go.transform.localScale = new Vector3(-1f, 1f, 1f);
                 Vector2 at = H(s * 1f, lz);
-                Move(go, SolidBounds(go), new Vector3(at.x, bottom - 0.02f, at.y), false);
+                Move(go, SolidBounds(go), new Vector3(at.x, bottom - 0.12f, at.y), false); // down into the wall, no gap
             }
         }
 
@@ -341,6 +379,13 @@ namespace IslandsOfValheim
                 float top = Top(At("wood_pole2", new Vector3(a.x, PlateauHeight, a.y), Vector3.zero, false), PlateauHeight + 1.9f);
                 At("wood_pole2", new Vector3(b.x, PlateauHeight, b.y), Vector3.zero, false);
                 At("wood_beam", new Vector3(p.x, top - 0.25f, p.y), new Vector3(0f, face, 0f), false);
+                // Fish hung up to dry.
+                for (int f = -1; f <= 1; f++)
+                {
+                    GameObject fish = Copy(new[] { f == 0 ? "Fish2" : "Fish1", "Fish1" }, new Vector3(90f, face + f * 20f, 0f), 0f, true);
+                    Vector2 q = p + hs * (f * 0.6f);
+                    if (fish != null) fish.transform.localPosition = new Vector3(q.x, top - 0.75f, q.y);
+                }
             }
             Prop(new[] { "barrell_static", "barrell" }, c + hs * 2f + hf * 1.2f, 20f, 0.05f);
             Prop(new[] { "CargoCrate", "dvergrprops_crate" }, c + hs * 2.2f - hf * 0.6f, face, 0.05f);
@@ -520,5 +565,39 @@ namespace IslandsOfValheim
             sphere.radius = PeaceRadius;
             area.AddComponent<EffectArea>().m_type = EffectArea.Type.PlayerBase | EffectArea.Type.NoMonsters;
         }
+    }
+
+    // The trader's seal. Hover shows her name; using her pets her, with the hearts a petted lox gets.
+    class HarbourSeal : MonoBehaviour, Hoverable, Interactable
+    {
+        static EffectList hearts;
+        float pettedAt = -10f;
+
+        public string GetHoverText()
+        {
+            return Localization.instance.Localize("$iov_seal_name\n[<color=yellow><b>$KEY_Use</b></color>] $hud_pet");
+        }
+
+        public string GetHoverName() { return Localization.instance.Localize("$iov_seal_name"); }
+
+        public float GetHoverOffset() { return 0f; }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            if (hold || Time.time - pettedAt < 1f) return false;
+            pettedAt = Time.time;
+            if (hearts == null && ZNetScene.instance != null)
+            {
+                GameObject lox = ZNetScene.instance.GetPrefab("Lox");
+                Tameable tame = lox != null ? lox.GetComponent<Tameable>() : null;
+                if (tame != null) hearts = tame.m_petEffect;
+            }
+            if (hearts != null) hearts.Create(transform.position + Vector3.up * 0.5f, transform.rotation, null, 1f, -1, new ZDOID());
+            Player player = user as Player;
+            if (player != null) player.Message(MessageHud.MessageType.Center, "$iov_seal_pet", 0, null, false);
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
     }
 }

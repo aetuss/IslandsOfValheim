@@ -113,7 +113,7 @@ namespace IslandsOfValheim
             trader.m_hideDialogDelay = 5f;
             trader.m_randomTalkInterval = 40f;
             trader.m_dialogHeight = 2.3f;
-            trader.m_randomTalk = Lines("talk", 6);
+            trader.m_randomTalk = Lines("talk", 7);
             trader.m_randomGreets = Lines("greet", 3);
             trader.m_randomGoodbye = Lines("bye", 3);
             trader.m_randomStartTrade = Lines("trade", 3);
