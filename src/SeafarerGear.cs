@@ -42,19 +42,19 @@ namespace IslandsOfValheim
             Recolor.Shift seaGreen = Recolor.ToHue(0.47f, 0.5f, 0.75f);
             Recolor.Shift darkGreen = Recolor.ToHue(0.5f, 0.45f, 0.6f);
 
-            SE_Stats hat = Effect("IoV_SE_CaptainHat", "iov_se_hat");
+            SE_Stats hat = Effect("IoV_SE_CaptainHat", "iov_se_hat", true);
             if (hat != null) { hat.m_skillLevel = Skills.SkillType.Fishing; hat.m_skillLevelModifier = 10f; }
-            SE_Stats vest = Effect("IoV_SE_SeafarerVest", "iov_se_vest");
+            SE_Stats vest = Effect("IoV_SE_SeafarerVest", "iov_se_vest", true);
             if (vest != null) vest.m_swimStaminaUseModifier = -0.25f;
-            SE_Stats trousers = Effect("IoV_SE_DeckhandTrousers", "iov_se_trousers"); // Wet wears off faster: see WeatherPatch
-            SE_Stats cape = Effect("IoV_SE_SeafarerCape", "iov_se_cape");          // no Cold: see WeatherPatch
+            SE_Stats trousers = Effect("IoV_SE_DeckhandTrousers", "iov_se_trousers", true); // Wet wears off faster: see WeatherPatch
+            SE_Stats cape = Effect("IoV_SE_SeafarerCape", "iov_se_cape", true);          // no Cold: see WeatherPatch
             SE_Stats set = Effect("IoV_SE_ChildOfTheSea", "iov_se_set");           // never Wet: see WeatherPatch
             if (set != null) set.m_swimSpeedModifier = 0.25f;
 
             Armor(Hat, new[] { "HelmetHat4", "HelmetHat10", "HelmetLeather" }, "iov_hat", 6f, 1f, hat, navy);
             Armor(Vest, new[] { "ArmorLeatherChest" }, "iov_vest", 10f, 5f, vest, navy);
             Armor(Trousers, new[] { "ArmorLeatherLegs" }, "iov_trousers", 10f, 5f, trousers, darkGreen);
-            Armor(Cape, new[] { "CapeLinen", "CapeDeerHide" }, "iov_cape", 1f, 1f, cape, seaGreen);
+            Armor(Cape, new[] { "CapeDeerHide", "CapeLinen" }, "iov_cape", 1f, 1f, cape, seaGreen);
             foreach (GameObject piece in Items)
             {
                 ItemDrop.ItemData.SharedData shared = piece.GetComponent<ItemDrop>().m_itemData.m_shared;
@@ -87,10 +87,16 @@ namespace IslandsOfValheim
 
         static SE_Stats Effect(string name, string token)
         {
+            return Effect(name, token, false);
+        }
+
+        static SE_Stats Effect(string name, string token, bool hidden)
+        {
             SE_Stats effect = ScriptableObject.CreateInstance<SE_Stats>();
             effect.name = name;
             effect.m_name = "$" + token;
             effect.m_tooltip = "$" + token + "_tooltip";
+            effect.m_hidden = hidden; // a piece's own effect is listed on the item, not at the top of the screen
             ItemManager.Instance.AddStatusEffect(new CustomStatusEffect(effect, false));
             return effect;
         }
@@ -166,6 +172,7 @@ namespace IslandsOfValheim
             if (item == null) return null;
             item.ItemDrop.m_itemData.m_shared.m_maxStackSize = stack;
             item.ItemDrop.m_itemData.m_shared.m_weight = weight;
+            item.ItemDrop.m_itemData.m_shared.m_attackForce = 0f; // vanilla bait carries a knockback value the tooltip would show
             return item;
         }
 

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Text;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -7,10 +5,12 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // The sea trader's harbour: a peaceful islet with a jetty and a moored karve, a camp on the plateau (a copy
-    // of Haldor's own camp, or Hildir's, the way the game builds it; a camp of our own if neither is there),
-    // a toppled statue of his people on the ridge and a beacon that always burns. No guards, no chest, and
-    // creatures keep away from it.
+    // The sea trader's harbour: the last working harbour of the seafaring people whose ruins are on the other
+    // islets. On the stone foundation of their old harbour hall he has put up a plank shelter; in front of
+    // it are his counter, a campfire with benches and a fisher's corner, and down at the shore an old hull
+    // he's mending. A sound jetty with a moored karve, a statue of one of their captains on its plinth, and
+    // on the ridge one of their beacon towers, whole, its fire never out. No guards, no chest, and creatures
+    // keep away from it.
     //
     // Like Haldor, it uses vanilla's unique locations: the game picks several possible spots in the Swamp
     // and Plains waters, and the first one somebody comes near is built; the others vanish. Once it's
@@ -19,13 +19,9 @@ namespace IslandsOfValheim
     {
         internal const string HarbourName = "IoV_SeaHarbour";
         const float PeaceRadius = 40f;
-        static readonly string[] Camps = { "Vendor_BlackForest", "Hildir_camp" };
-        // What isn't copied from a vendor's camp: the vendor himself, creatures, terrain changes, the raven.
-        static readonly HashSet<string> NotCopied = new HashSet<string>
-        {
-            "Trader", "Character", "Humanoid", "MonsterAI", "AnimalAI", "CreatureSpawner", "SpawnArea", "SpawnSystem",
-            "TerrainModifier", "TerrainOp", "Raven", "Location", "LocationProxy", "MusicLocation", "Tameable",
-        };
+
+        // The harbour's frame: centre, towards the jetty (forward), and across (side).
+        static Vector2 hc, hf, hs;
 
         internal static void RegisterHarbour(int count)
         {
@@ -33,9 +29,9 @@ namespace IslandsOfValheim
             locationName = HarbourName;
             SetVariant(0);
             seed = 911f;
-            // Bigger than an ordinary islet, so a whole camp fits on the plateau.
-            plateauRadius = 12.5f;
-            shoreRadius = 25f;
+            // A little bigger than an ordinary islet, so the harbour has room on the plateau.
+            plateauRadius = 11f;
+            shoreRadius = 23f;
             maxRadius = shoreRadius + 26f;
             root = ZoneManager.Instance.CreateLocationContainer(locationName);
             parent = root.transform;
@@ -58,7 +54,7 @@ namespace IslandsOfValheim
             config.SnapToWater = true;
             config.RandomRotation = true;
             config.ClearArea = false;
-            config.ExteriorRadius = 36f;
+            config.ExteriorRadius = 34f;
             config.MinAltitude = -1000f;
             config.MaxAltitude = -6f;
             config.MinTerrainDelta = 0f;
@@ -90,109 +86,186 @@ namespace IslandsOfValheim
             }
         }
 
+        // A point in the harbour's frame: lx across, lz towards the jetty.
+        static Vector2 H(float lx, float lz) { return hc + hs * lx + hf * lz; }
+
         static void PlaceHarbour(float j)
         {
-            float face = 90f - j; // turned towards the jetty
-            HarbourJetty(j);
-            if (!VendorCamp(face)) OwnCamp(j, face);
+            hf = Polar(j, 1f);
+            hs = new Vector2(-hf.y, hf.x);
+            hc = Polar(j + 180f, 2.5f); // the shelter stands back from the plateau's middle
+            float face = 90f - j;       // a piece's +z towards the jetty
 
-            // Up on the ridge: what's left of a statue of his people, and the beacon that always burns.
-            Vector2 statue = Polar(cliffDeg, PlateauAt(cliffDeg) + 3f);
-            PropAtMost(new[] { "StatueThor_broken_bottom", "StatueFreya_broken_left", "StatueEvil" }, statue, 90f - cliffDeg + 180f, 0.15f, 2.6f);
-            Lying(new[] { "StatueThor_broken_top", "StatueFreya_broken_right" }, Polar(cliffDeg + 14f, PlateauAt(cliffDeg) + 2.2f), cliffDeg * 2f, 2.4f);
-            GameObject beacon = LitProp(new[] { "bonfire", "fire_pit" }, Polar(cliffDeg - 26f, PlateauAt(cliffDeg - 26f) + 3.2f), 0f, 0.1f);
-            if (beacon != null) Glow(beacon.transform, 2.5f);
+            HarbourJetty(j);
+            Shelter(face);
+
+            // The trader at his counter in front of the shelter, looking down to the jetty.
+            Vector2 trader = H(0.6f, 3.4f);
+            PlaceNetworked(SeaTrader.PrefabName, new Vector3(trader.x, Height(trader.x, trader.y), trader.y), face);
+            Prop(new[] { "piece_table", "piece_table_oak" }, H(-1.2f, 3.6f), face + 90f, 0.05f);
+            Prop(new[] { "barrell_static", "barrell" }, H(-2.6f, 3.3f), 30f, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(2.4f, 3.8f), face + 10f, 0.05f);
+            string[] lantern = { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" };
+            Prop(lantern, H(-2.6f, 2.4f), 0f, 0.05f);
+            Prop(lantern, H(2.7f, 2.4f), 0f, 0.05f);
+
+            // A campfire with two benches on one side, the fisher's corner on the other.
+            Vector2 fire = H(-5.6f, 4.6f);
+            LitProp(new[] { "fire_pit", "fire_pit_haldor" }, fire, 0f, 0.05f);
+            Bench(fire, H(-7.4f, 4.4f));
+            Bench(fire, H(-5.4f, 6.5f));
+            FishersCorner(H(5.6f, 4.2f));
+
+            // Down by the shore, beside the jetty: an old hull he's mending.
+            float wreck = j + 38f;
+            Vector2 hull = Polar(wreck, ShoreAt(wreck) - 3.5f);
+            OnGround(new[] { "shipwreck_karve_bottomboards" }, hull, wreck + 100f, 0f, 0.15f);
+            Prop(new[] { "wood_stack" }, Polar(wreck - 9f, ShoreAt(wreck - 9f) - 5f), wreck, 0.05f);
+
+            CaptainStatue(Polar(cliffDeg + 30f, PlateauAt(cliffDeg + 30f) - 1.5f), 90f - (cliffDeg + 30f) + 180f);
+            BeaconTower(cliffDeg - 20f);
+
+            // Old stones of the harbour hall that didn't make it into the shelter.
+            At("stone_wall_2x1_ruin", Ground3(H(-4.2f, -2.6f), -0.1f), new Vector3(0f, face + 8f, 0f), false);
+            At("stone_wall_1x1_ruin", Ground3(H(4.4f, -2.2f), -0.1f), new Vector3(0f, face - 12f, 0f), false);
+            At("stone_wall_1x1", Ground3(H(5.8f, -0.4f), -0.15f), new Vector3(12f, face + 40f, 80f), false);
 
             for (int i = 0; i < 2; i++)
                 PlaceNetworked(new[] { IsletPrefabs.GullSpawner }, Polar(cliffDeg + 90f + i * 150f, 3.5f), 0f, 0.3f);
             Optional(0.8f, () => OnGround(tier.Bushes, Polar(cliffDeg + 100f, PlateauAt(cliffDeg + 100f) + 1.5f), 120f, 0f, 0.15f, false));
             Optional(0.8f, () => OnGround(tier.Bushes, Polar(cliffDeg + 135f, PlateauAt(cliffDeg + 135f) + 1f), 300f, 0f, 0.15f, false));
+            Optional(0.8f, () => OnGround(tier.Trees, Polar(cliffDeg - 55f, PlateauAt(cliffDeg - 55f) + 1f), 45f, 0f, 0.05f, false));
             Peace();
         }
 
-        // The camp of a vanilla vendor, copied part by part onto the plateau (turned so the vendor's spot
-        // faces the jetty), with the sea trader where the vendor stands. Parts that are networked stay
-        // networked, like in the vendor's own location: his fire burns, his chairs and crates are real.
-        static bool VendorCamp(float face)
+        static Vector3 Ground3(Vector2 at, float lift)
         {
-            foreach (string name in Camps)
-            {
-                ZoneSystem.ZoneLocation location = ZoneManager.Instance.GetZoneLocation(name);
-                if (location == null || !location.m_prefab.IsValid) continue;
-                location.m_prefab.Load();
-                GameObject camp = location.m_prefab.Asset;
-                if (camp == null) continue;
-                Plugin.Debug("Harbour camp from " + name + ":\n" + DescribeCamp(camp.transform));
+            return new Vector3(at.x, Height(at.x, at.y) + lift, at.y);
+        }
 
-                Vector3 spot = Vector3.zero;
-                float yaw = 0f;
-                foreach (Trader vendor in camp.GetComponentsInChildren<Trader>(true))
+        // A lean-to on the old stone floor: plank wall at the back, plank walls at the back of the sides, posts at
+        // the front and a sloping roof from the back wall down to the posts. The pieces stand on the ground
+        // through the floor (a piece needs the ground for support), so they're a metre taller than they look.
+        static void Shelter(float face)
+        {
+            for (int ix = -1; ix <= 1; ix += 2)
+                for (int iz = -1; iz <= 1; iz += 2)
                 {
-                    spot = camp.transform.InverseTransformPoint(vendor.transform.position);
-                    yaw = (Quaternion.Inverse(camp.transform.rotation) * vendor.transform.rotation).eulerAngles.y;
-                    break;
+                    Vector2 p = H(ix, iz);
+                    At("stone_floor_2x2", new Vector3(p.x, FloorTop, p.y), new Vector3(0f, face, 0f), true);
                 }
-                Quaternion turn = Quaternion.Euler(0f, face - yaw, 0f);
-                float reach = plateauRadius - 1f;
-                int copied = 0;
-                foreach (Transform child in camp.transform)
-                {
-                    if (!Copied(child)) continue;
-                    Vector3 p = turn * child.localPosition;
-                    if (new Vector2(p.x, p.z).magnitude > reach) continue;
-                    GameObject copy = Object.Instantiate(child.gameObject, parent, false);
-                    copy.name = child.name; // networked parts are spawned by this name
-                    copy.transform.localRotation = turn * child.localRotation;
-                    copy.transform.localScale = child.localScale;
-                    copy.transform.localPosition = new Vector3(p.x, p.y + Height(p.x, p.z), p.z);
-                    copied++;
-                    built++;
-                }
-                if (copied == 0) continue;
-                Vector3 at = turn * spot;
-                if (new Vector2(at.x, at.z).magnitude > reach) at = Vector3.zero;
-                PlaceNetworked(SeaTrader.PrefabName, new Vector3(at.x, Height(at.x, at.z), at.z), face);
-                Plugin.Log.LogInfo("Sea trader's camp copied from " + name + " (" + copied + " parts)");
-                return true;
-            }
-            return false;
-        }
-
-        static bool Copied(Transform part)
-        {
-            if (part.name.StartsWith("Music")) return false;
-            foreach (Component c in part.GetComponentsInChildren<Component>(true))
-                if (c != null && NotCopied.Contains(c.GetType().Name)) return false;
-            return true;
-        }
-
-        static string DescribeCamp(Transform camp)
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (Transform child in camp)
+            float b = FloorTop - 0.05f;
+            float backTop = b + 4f;
+            for (int ix = -1; ix <= 1; ix += 2)
             {
-                sb.Append("  ").Append(child.name).Append(" at ").Append(child.localPosition.ToString("F1")).Append(Copied(child) ? "" : " (left out)").Append(':');
-                foreach (Component c in child.GetComponents<Component>())
-                    if (c != null && !(c is Transform)) sb.Append(' ').Append(c.GetType().Name);
-                sb.Append('\n');
+                Vector2 p = H(ix, -2f);
+                float top = Top(At("woodwall", new Vector3(p.x, b, p.y), new Vector3(0f, face, 0f), false), b + 2f);
+                top = Top(At("woodwall", new Vector3(p.x, top, p.y), new Vector3(0f, face, 0f), false), top + 2f);
+                backTop = Top(At("wood_wall_half", new Vector3(p.x, top, p.y), new Vector3(0f, face, 0f), false), top + 1f);
             }
-            return sb.ToString();
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector2 back = H(2f * side, -1f);
+                float top = Top(At("woodwall", new Vector3(back.x, b, back.y), new Vector3(0f, face + 90f, 0f), false), b + 2f);
+                At("wood_wall_half", new Vector3(back.x, top, back.y), new Vector3(0f, face + 90f, 0f), false);
+            }
+            float frontTop = b + 3f;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector2 p = H(2f * side, 1.9f);
+                float top = Top(At("wood_pole2", new Vector3(p.x, b, p.y), Vector3.zero, false), b + 2f);
+                frontTop = Top(At("wood_pole", new Vector3(p.x, top, p.y), Vector3.zero, false), top + 1f);
+            }
+            // The roof rises one metre over each two: the front row rests on the posts, the back row on the wall.
+            float yaw = RoofYaw("wood_roof", face);
+            float rise = Mathf.Max(0.5f, (backTop - frontTop) * 0.5f);
+            for (int ix = -1; ix <= 1; ix += 2)
+            {
+                Vector2 front = H(ix, 1f), back = H(ix, -1f);
+                At("wood_roof", new Vector3(front.x, frontTop - 0.1f, front.y), new Vector3(0f, yaw, 0f), false);
+                At("wood_roof", new Vector3(back.x, frontTop + rise - 0.1f, back.y), new Vector3(0f, yaw, 0f), false);
+            }
+            // Inside: his things.
+            Prop(new[] { "rug_seal", "rug_deer" }, H(0f, -0.3f), face, 0f);
+            Prop(new[] { "barrell_static", "barrell" }, H(-1.4f, -1.4f), 10f, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, H(1.3f, -1.3f), face, 0.05f);
+            Prop(new[] { "piece_bench01", "piece_logbench01" }, H(1.4f, 0.2f), face - 90f, 0.05f);
         }
 
-        // If no vendor camp can be copied: a tent with lanterns, a campfire and a fisher's corner.
-        static void OwnCamp(float j, float face)
+        // Which way to turn a roof piece so that it slopes down towards the front. The tilt of its collider
+        // tells which side is low; a piece without a tilted collider is taken to rise towards its +z.
+        static float RoofYaw(string name, float face)
         {
-            float plateau = PlateauAt(j);
-            Vector2 trader = Polar(j, plateau - 1.5f);
-            PlaceNetworked(SeaTrader.PrefabName, new Vector3(trader.x, Height(trader.x, trader.y), trader.y), face);
-            PropAtMost(new[] { "TraderTent", "hildir_tent" }, Polar(j + 180f, 1f), face, 0.05f, 5.5f);
-            string[] lantern = { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" };
-            Prop(lantern, Polar(j - 25f, plateau - 1f), 0f, 0.05f);
-            Prop(lantern, Polar(j + 25f, plateau - 1f), 0f, 0.05f);
-            LitProp(new[] { "fire_pit_haldor", "fire_pit" }, Polar(j - 55f, 4.5f), 0f, 0.05f);
-            Prop(new[] { "piece_logbench01" }, Polar(j - 78f, 5.6f), 90f - (j - 78f) + 90f, 0.05f);
-            FishersCorner(j + 62f, plateau - 3f);
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            Vector3 low = new Vector3(0f, 0f, -1f);
+            if (prefab != null)
+                foreach (Collider collider in prefab.GetComponentsInChildren<Collider>(true))
+                {
+                    if (collider.isTrigger) continue;
+                    Vector3 up = prefab.transform.InverseTransformDirection(collider.transform.up);
+                    if (new Vector2(up.x, up.z).magnitude > 0.1f) { low = new Vector3(up.x, 0f, up.z).normalized; break; }
+                }
+            // Turning by yaw takes the piece's low side (at angle a from +z) to face + a.
+            float a = Mathf.Atan2(low.x, low.z) * Mathf.Rad2Deg;
+            Plugin.Debug("Roof " + name + " slopes down towards " + low.ToString("F2"));
+            return face - a;
         }
+
+        static void Bench(Vector2 fire, Vector2 at)
+        {
+            Vector2 to = fire - at;
+            float yaw = Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg; // its seat facing the fire
+            Prop(new[] { "piece_logbench01", "piece_bench01" }, at, yaw, 0.05f);
+        }
+
+        // Drying racks with a barrel and crates beside them.
+        static void FishersCorner(Vector2 c)
+        {
+            float face = Mathf.Atan2(hf.x, hf.y) * Mathf.Rad2Deg;
+            for (int i = 0; i < 2; i++)
+            {
+                Vector2 p = c + hf * (i * 1.6f - 0.8f);
+                Vector2 a = p - hs * 1f, b = p + hs * 1f;
+                float top = Top(At("wood_pole2", new Vector3(a.x, PlateauHeight, a.y), Vector3.zero, false), PlateauHeight + 1.9f);
+                At("wood_pole2", new Vector3(b.x, PlateauHeight, b.y), Vector3.zero, false);
+                At("wood_beam", new Vector3(p.x, top - 0.25f, p.y), new Vector3(0f, face, 0f), false);
+            }
+            Prop(new[] { "barrell_static", "barrell" }, c + hs * 2f + hf * 1.2f, 20f, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, c + hs * 2.2f - hf * 0.6f, face, 0.05f);
+            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, c - hs * 2f, face + 25f, 0.05f);
+        }
+
+        // One of their captains, what's left of him, on a stone plinth; the rest of him lies beside it.
+        static void CaptainStatue(Vector2 at, float yaw)
+        {
+            float g = GroundMin(at.x, at.y, 1.2f);
+            GameObject plinth = At("stone_floor_2x2", new Vector3(at.x, g + 0.35f, at.y), new Vector3(0f, yaw, 0f), true);
+            float top = plinth != null ? SolidBounds(plinth).max.y : g + 0.35f;
+            GameObject statue = Copy(new[] { "StatueThor_broken_bottom", "StatueFreya_broken_left", "StatueEvil" }, new Vector3(0f, yaw, 0f), 0f, true);
+            if (statue != null)
+            {
+                Bounds b = LocalBounds(statue);
+                float extent = Mathf.Max(b.size.x, b.size.z);
+                if (extent > 1.8f) { statue.transform.localScale = Vector3.one * (1.8f / extent); b = LocalBounds(statue); }
+                Move(statue, b, new Vector3(at.x, top - 0.02f, at.y), false);
+            }
+            Vector2 side = Polar(90f - yaw, 1f);
+            Lying(new[] { "StatueThor_broken_top", "StatueFreya_broken_right" }, at + new Vector2(side.y, -side.x) * 2.3f, yaw + 70f, 1.8f);
+        }
+
+        // A beacon tower like the ruined ones on the islets, but whole, its fire never out.
+        static void BeaconTower(float deg)
+        {
+            Vector2 at = Polar(deg, PlateauAt(deg) + 2.5f);
+            Vector3 turn = new Vector3(0f, 90f - deg, 0f);
+            float g = GroundMin(at.x, at.y, 1f) - 0.3f;
+            float top = Top(At("stone_floor_2x2", new Vector3(at.x, g, at.y), turn, false), g + 1f);
+            top = Top(At("stone_pillar", new Vector3(at.x, top, at.y), turn, false), top + 2f);
+            top = Top(At("stone_pillar", new Vector3(at.x, top, at.y), turn, false), top + 2f);
+            GameObject brazier = LitAt(new[] { "piece_brazierfloor01", "bonfire" }, new Vector3(at.x, top, at.y), 0f);
+            if (brazier != null) Glow(brazier.transform, 1.2f);
+        }
+
         // A sound jetty, five planks long, with the karve moored along it.
         static void HarbourJetty(float deg)
         {
@@ -246,27 +319,27 @@ namespace IslandsOfValheim
             Move(go, b, new Vector3(at.x, -1.4f, at.y), false);
         }
 
-        // Drying racks, barrels and crates.
-        static void FishersCorner(float deg, float r)
+        // A fire prop that always burns, on the ground: its flames switched on for good before its scripts go.
+        static GameObject LitProp(string[] candidates, Vector2 at, float rotY, float sink)
         {
-            Vector2 c = Polar(deg, r);
-            Vector2 u = Polar(deg, 1f), side = new Vector2(-u.y, u.x);
-            for (int i = 0; i < 2; i++)
-            {
-                Vector2 p = c + side * (i * 1.6f - 0.8f);
-                Vector2 a = p - u * 1f, b = p + u * 1f;
-                float top = Top(At("wood_pole2", new Vector3(a.x, PlateauHeight, a.y), Vector3.zero, false), PlateauHeight + 1.9f);
-                At("wood_pole2", new Vector3(b.x, PlateauHeight, b.y), Vector3.zero, false);
-                At("wood_beam", new Vector3(p.x, top - 0.25f, p.y), new Vector3(0f, 90f - deg + 90f, 0f), false);
-            }
-            Prop(new[] { "barrell_static", "barrell" }, c + side * 2.4f + u * 0.4f, 20f, 0.05f);
-            Prop(new[] { "barrell_static", "barrell" }, c + side * 2.6f - u * 0.6f, 80f, 0.05f);
-            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, c - side * 2.4f, 90f - deg, 0.05f);
-            Prop(new[] { "CargoCrate", "dvergrprops_crate" }, c - side * 2.5f + u * 1.2f, 30f - deg, 0.05f);
+            GameObject go = Lit(candidates, rotY);
+            if (go == null) return null;
+            Bounds b = LocalBounds(go);
+            float y = GroundMin(at.x, at.y, 0.4f * Mathf.Max(b.size.x, b.size.z)) - sink * b.size.y;
+            Move(go, b, new Vector3(at.x, y, at.y), false);
+            return go;
         }
 
-        // A fire prop that always burns: its flames switched on for good before its scripts go.
-        static GameObject LitProp(string[] candidates, Vector2 at, float rotY, float sink)
+        // The same, with its bottom at pos (on top of something).
+        static GameObject LitAt(string[] candidates, Vector3 pos, float rotY)
+        {
+            GameObject go = Lit(candidates, rotY);
+            if (go == null) return null;
+            Move(go, LocalBounds(go), pos, false);
+            return go;
+        }
+
+        static GameObject Lit(string[] candidates, float rotY)
         {
             GameObject prefab = Find(candidates);
             if (prefab == null) return null;
@@ -279,9 +352,6 @@ namespace IslandsOfValheim
                     if (flames != null) flames.SetActive(true);
             Strip(go);
             built++;
-            Bounds b = LocalBounds(go);
-            float y = GroundMin(at.x, at.y, 0.4f * Mathf.Max(b.size.x, b.size.z)) - sink * b.size.y;
-            Move(go, b, new Vector3(at.x, y, at.y), false);
             return go;
         }
 
@@ -297,7 +367,7 @@ namespace IslandsOfValheim
             light.color = new Color(1f, 0.65f, 0.35f);
         }
 
-        // A broken piece lying on its side.
+        // A broken piece lying on its side, resting on the ground rather than sunk into it.
         static void Lying(string[] candidates, Vector2 at, float rotY, float maxSize)
         {
             GameObject go = Copy(candidates, new Vector3(0f, rotY, 88f), 0f, true);
@@ -305,7 +375,7 @@ namespace IslandsOfValheim
             Bounds b = LocalBounds(go);
             float extent = Mathf.Max(b.size.x, b.size.z);
             if (extent > maxSize) { go.transform.localScale = Vector3.one * (maxSize / extent); b = LocalBounds(go); }
-            float y = GroundMin(at.x, at.y, 0.4f * Mathf.Max(b.size.x, b.size.z)) - 0.2f * b.size.y;
+            float y = GroundMin(at.x, at.y, 0.25f * Mathf.Max(b.size.x, b.size.z)) - 0.05f * b.size.y;
             Move(go, b, new Vector3(at.x, y, at.y), false);
         }
 
