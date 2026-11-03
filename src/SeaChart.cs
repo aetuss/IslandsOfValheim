@@ -46,30 +46,6 @@ namespace IslandsOfValheim
             Prefab = item.ItemPrefab;
         }
 
-        internal static void AddTranslations()
-        {
-            CustomLocalization localization = LocalizationManager.Instance.GetLocalization();
-            string english = "English", turkish = "Turkish"; // Jötunn takes the language by reference
-            localization.AddTranslation(ref english, new Dictionary<string, string>
-            {
-                { "iov_seachart", "Sea vegvisir shard" },
-                { "iov_seachart_desc", "A shard of an old vegvisir, worn smooth by the sea. Use it to mark an islet nobody has visited yet on your map." },
-                { "iov_pin_islet", "Islet" },
-                { "iov_seachart_found", "The shard points across the sea: an islet is marked on your map." },
-                { "iov_seachart_none", "The shard stays silent: there is no unvisited islet left." },
-            });
-            localization.AddTranslation(ref turkish, new Dictionary<string, string>
-            {
-                { "iov_seachart", "Deniz vegvisiri parçası" },
-                { "iov_seachart_desc", "Denizin aşındırdığı eski bir vegvisir parçası. Kullandığında henüz kimsenin gitmediği bir adacığı haritanda işaretler." },
-                { "iov_pin_islet", "Adacık" },
-                { "iov_seachart_found", "Parça denizin ötesini gösteriyor: haritanda bir adacık işaretlendi." },
-                { "iov_seachart_none", "Parça sessiz: gidilmemiş adacık kalmadı." },
-            });
-            IsletBeacons.AddTranslations(localization);
-            IsletFishing.AddTranslations(localization);
-        }
-
         internal static long ServerPeer()
         {
             return (long)serverPeerId.Invoke(ZRoutedRpc.instance, null);

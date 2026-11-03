@@ -88,7 +88,7 @@ namespace IslandsOfValheim
                 break;
             }
             if (Random.value < ShardChance) Give(fisher, SeaChart.PrefabName, 1, parts);
-            return "$iov_pouch_caught " + string.Join(", ", parts.ToArray());
+            return Texts.Get("iov_pouch_caught", string.Join(", ", parts.ToArray()));
         }
 
         static void Give(Humanoid fisher, string item, int amount, List<string> parts)
@@ -103,7 +103,7 @@ namespace IslandsOfValheim
                 GameObject dropped = Object.Instantiate(prefab, fisher.transform.position + Vector3.up, Quaternion.identity);
                 dropped.GetComponent<ItemDrop>().SetStack(amount);
             }
-            parts.Add(amount + " " + drop.m_itemData.m_shared.m_name);
+            parts.Add(Texts.Amount(amount, drop.m_itemData.m_shared.m_name));
         }
 
         // Landing a fish from an islet's ground: sometimes it's a pouch instead (the fish goes back).
@@ -125,18 +125,6 @@ namespace IslandsOfValheim
             }
         }
 
-        internal static void AddTranslations(CustomLocalization localization)
-        {
-            string english = "English", turkish = "Turkish";
-            localization.AddTranslation(ref english, new Dictionary<string, string>
-            {
-                { "iov_pouch_caught", "Your hook brought up a sodden pouch:" },
-            });
-            localization.AddTranslation(ref turkish, new Dictionary<string, string>
-            {
-                { "iov_pouch_caught", "Oltana suya batmış bir kese takıldı:" },
-            });
-        }
     }
 
     // Runs one islet's fishing ground.

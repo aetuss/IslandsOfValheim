@@ -485,7 +485,12 @@ namespace IslandsOfValheim
         // Like Prop, but shrunk to at most maxSize metres across if the vanilla prop is bigger.
         static void PropAtMost(string name, Vector2 at, float rotY, float sink, float maxSize)
         {
-            GameObject go = Copy(new[] { name }, new Vector3(0f, rotY, 0f), 0f, true);
+            PropAtMost(new[] { name }, at, rotY, sink, maxSize);
+        }
+
+        static void PropAtMost(string[] candidates, Vector2 at, float rotY, float sink, float maxSize)
+        {
+            GameObject go = Copy(candidates, new Vector3(0f, rotY, 0f), 0f, true);
             if (go == null) return;
             Bounds b = LocalBounds(go);
             float extent = Mathf.Max(b.size.x, b.size.z);

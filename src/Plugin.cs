@@ -13,9 +13,10 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.4.0";
+        public const string Version = "1.5.0";
 
         internal static ConfigEntry<string> GroundStyle;
+        internal static ConfigEntry<int> SeaTraderIslets;
         internal static ConfigEntry<bool> DebugLog;
 
         internal const string GroundTerrain = "Terrain";
@@ -33,10 +34,12 @@ namespace IslandsOfValheim
             GroundStyle = Config.Bind("1 - World generation", "GroundStyle", GroundTerrain,
                 new ConfigDescription("How the islet ground looks: Terrain (like the game's own land: grass, sand, cliff rock) or Rock (bare stone). Needs a restart.",
                     new AcceptableValueList<string>(GroundTerrain, GroundRock)));
+            SeaTraderIslets = Config.Bind("1 - World generation", "SeaTraderIslets", 6,
+                new ConfigDescription("How many possible spots the game picks for the sea trader's harbour islet, in the Swamp and Plains waters. Like Haldor, only the first one somebody comes near is built; the others vanish. 0: no sea trader. Only used when locations are generated (new world or genloc).",
+                    new AcceptableValueRange<int>(0, 30)));
             DebugLog = Config.Bind("2 - Debug", "DebugLog", false,
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
-            SeaChart.AddTranslations();
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
@@ -48,6 +51,8 @@ namespace IslandsOfValheim
         {
             PrefabManager.OnVanillaPrefabsAvailable -= OnVanillaPrefabs;
             SeaChart.Register(); // before the chests, whose loot includes it
+            SeafarerGear.Register();
+            SeaTrader.Register(); // after the goods he sells
             IsletPrefabs.Register();
             IsletBeacons.Register();
             IsletFishing.Register();
@@ -58,6 +63,7 @@ namespace IslandsOfValheim
             ZoneManager.OnVanillaLocationsAvailable -= OnVanillaLocations;
             foreach (IsletTier tier in IsletTier.All)
                 for (int variant = 0; variant < IsletBuilder.Variants; variant++) IsletBuilder.Register(tier, variant);
+            if (SeaTraderIslets.Value > 0) IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
         }
 
         internal static void Debug(string message)

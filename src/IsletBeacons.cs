@@ -135,17 +135,19 @@ namespace IslandsOfValheim
             return null;
         }
 
-        // "10 $item_wood, 5 $item_resin or ..." (the hud translates the tokens).
+        // "10 Wood, 5 Resin", or two such lists joined by the "either" pattern, translated.
         internal static string CostText(IsletTier tier)
         {
             List<string> options = new List<string>();
             foreach (Cost[] option in tier.BeaconFuel)
             {
                 List<string> parts = new List<string>();
-                foreach (Cost cost in option) parts.Add(cost.Amount + " " + ItemName(cost.Item));
+                foreach (Cost cost in option) parts.Add(Texts.Amount(cost.Amount, ItemName(cost.Item)));
                 options.Add(string.Join(", ", parts.ToArray()));
             }
-            return string.Join(" $iov_beacon_or ", options.ToArray());
+            string text = options.Count > 0 ? options[0] : "";
+            for (int i = 1; i < options.Count; i++) text = Texts.Get("iov_beacon_or", text, options[i]);
+            return text;
         }
 
         // ---- the wave ----
@@ -274,7 +276,7 @@ namespace IslandsOfValheim
                 added++;
             }
             explore.Invoke(Minimap.instance, new object[] { beacon, FogRadius });
-            if (added > 0) Plugin.Instance.StartCoroutine(Say("$iov_beacon_reward " + added, flaredAt + MessageTime - Time.time));
+            if (added > 0) Plugin.Instance.StartCoroutine(Say(Texts.Get("iov_beacon_reward", added.ToString()), flaredAt + MessageTime - Time.time));
             Plugin.Debug("Beacon at " + beacon.ToString("F0") + ": " + count + " islets around it, " + added + " new pins");
         }
 
@@ -297,31 +299,6 @@ namespace IslandsOfValheim
             if (player == null) yield break;
             player.Message(MessageHud.MessageType.Center, message, 0, null, false);
             player.Message(MessageHud.MessageType.TopLeft, message, 0, null, false);
-        }
-
-        internal static void AddTranslations(CustomLocalization localization)
-        {
-            string english = "English", turkish = "Turkish";
-            localization.AddTranslation(ref english, new Dictionary<string, string>
-            {
-                { "iov_beacon", "Old beacon" },
-                { "iov_beacon_light", "Light it" },
-                { "iov_beacon_or", "or" },
-                { "iov_beacon_lit", "It burns. Its light shows the islets around it." },
-                { "iov_beacon_need", "To light the beacon you need:" },
-                { "iov_beacon_flare", "The beacon flares up... and something out there saw it." },
-                { "iov_beacon_reward", "The beacon's light shows the islets nearby. Marked on your map:" },
-            });
-            localization.AddTranslation(ref turkish, new Dictionary<string, string>
-            {
-                { "iov_beacon", "Eski işaret kulesi" },
-                { "iov_beacon_light", "Yak" },
-                { "iov_beacon_or", "ya da" },
-                { "iov_beacon_lit", "Yanıyor. Işığı çevresindeki adacıkları gösteriyor." },
-                { "iov_beacon_need", "İşaret ateşini yakmak için gerekenler:" },
-                { "iov_beacon_flare", "İşaret ateşi parladı... ama dışarıda bir şeyler de gördü." },
-                { "iov_beacon_reward", "İşaret ateşinin ışığı yakındaki adacıkları gösteriyor. Haritanda işaretlenen:" },
-            });
         }
 
         [HarmonyPatch(typeof(Game), "Start")]
@@ -393,8 +370,9 @@ namespace IslandsOfValheim
             Cost[] option = IsletBeacons.Affordable(tier, player.GetInventory());
             if (option == null)
             {
-                player.Message(MessageHud.MessageType.Center, "$iov_beacon_need " + IsletBeacons.CostText(tier), 0, null, false);
-                player.Message(MessageHud.MessageType.TopLeft, "$iov_beacon_need " + IsletBeacons.CostText(tier), 0, null, false);
+                string need = Texts.Get("iov_beacon_need", IsletBeacons.CostText(tier));
+                player.Message(MessageHud.MessageType.Center, need, 0, null, false);
+                player.Message(MessageHud.MessageType.TopLeft, need, 0, null, false);
                 return true;
             }
             foreach (Cost cost in option) player.GetInventory().RemoveItem(IsletBeacons.ItemName(cost.Item), cost.Amount, -1, true);
@@ -418,11 +396,12 @@ namespace IslandsOfValheim
         public string GetHoverText()
         {
             if (tier == null) return "";
+            // Name, then one line each, the way vanilla hover texts are put together.
             if (Lit) return Localization.instance.Localize("$iov_beacon\n$iov_beacon_lit");
-            return Localization.instance.Localize("$iov_beacon\n[<color=yellow><b>$KEY_Use</b></color>] $iov_beacon_light\n" + IsletBeacons.CostText(tier));
+            return Localization.instance.Localize("$iov_beacon\n[<color=yellow><b>$KEY_Use</b></color>] $iov_beacon_light\n") + IsletBeacons.CostText(tier);
         }
 
-        public string GetHoverName() { return Localization.instance.Localize("$iov_beacon"); }
+        public string GetHoverName() { return Texts.Get("iov_beacon"); }
 
         public float GetHoverOffset() { return 0f; }
     }

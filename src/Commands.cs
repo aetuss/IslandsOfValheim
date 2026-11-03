@@ -44,15 +44,28 @@ namespace IslandsOfValheim
                             p.x.ToString("0", CultureInfo.InvariantCulture) + ", " + p.z.ToString("0", CultureInfo.InvariantCulture) + ")" +
                             (islets[i].m_placed ? ", generated" : ""));
                     }
+                    List<ZoneSystem.LocationInstance> harbours = Harbours();
+                    if (harbours.Count > 0)
+                    {
+                        ZoneSystem.LocationInstance harbour = harbours[0];
+                        foreach (ZoneSystem.LocationInstance instance in harbours) if (instance.m_placed) harbour = instance;
+                        args.Context.AddString("Sea trader: " + (harbour.m_placed ? "his harbour is at (" + harbour.m_position.x.ToString("0", CultureInfo.InvariantCulture) + ", " +
+                            harbour.m_position.z.ToString("0", CultureInfo.InvariantCulture) + ")" : harbours.Count + " possible harbours, nobody has found one yet"));
+                    }
                     args.Context.AddString("Teleport to the closest new one: iov_goto [tier] (needs devcommands)");
                 });
 
             new Terminal.ConsoleCommand("iov_goto",
-                "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: " + TierNames(", ") + ")",
+                "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: " + TierNames(", ") + "), or to the sea trader's harbour (trader)",
                 args =>
                 {
                     if (!OnServer(args.Context) || Player.m_localPlayer == null) return;
                     IsletTier wanted = null;
+                    if (args.Length > 1 && string.Equals(args[1], "trader", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        GotoHarbour(args.Context);
+                        return;
+                    }
                     if (args.Length > 1)
                     {
                         foreach (IsletTier tier in IsletTier.All)
@@ -84,8 +97,36 @@ namespace IslandsOfValheim
                 {
                     List<string> names = new List<string>();
                     foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
+                    names.Add("trader");
                     return names;
                 });
+        }
+
+        // The sea trader's harbour: the one that was generated, or else the closest of the candidates (going
+        // there generates it, and the others vanish).
+        static void GotoHarbour(Terminal context)
+        {
+            List<ZoneSystem.LocationInstance> harbours = Harbours();
+            if (harbours.Count == 0)
+            {
+                context.AddString("This world has no sea trader harbour (a new world, or genloc, places one; SeaTraderIslets 0 turns it off).");
+                return;
+            }
+            Vector3 from = Player.m_localPlayer.transform.position;
+            harbours.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
+            ZoneSystem.LocationInstance best = harbours[0];
+            foreach (ZoneSystem.LocationInstance instance in harbours) if (instance.m_placed) best = instance;
+            Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.PlateauHeight + 3f, best.m_position.z);
+            Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
+            context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to the sea trader's harbour.");
+        }
+
+        internal static List<ZoneSystem.LocationInstance> Harbours()
+        {
+            List<ZoneSystem.LocationInstance> result = new List<ZoneSystem.LocationInstance>();
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
+                if (instance.m_location != null && instance.m_location.m_prefabName == IsletBuilder.HarbourName) result.Add(instance);
+            return result;
         }
 
         static bool OnServer(Terminal context)
