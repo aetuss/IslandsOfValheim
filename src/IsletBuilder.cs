@@ -78,6 +78,7 @@ namespace IslandsOfValheim
             if (tier.DvergrOutpost) PlaceDvergrWard();
             if (tier.Raiders != null) PlaceRaiders();
             PlaceHints();
+            PlaceBeaconTower();
             // Jetty and wreck: one of two spots on the shore, or none.
             OneOf(new[] { 0.35f, 0.35f, 0.3f }, () => PlaceDock(cliffDeg + 229f), () => PlaceDock(cliffDeg + 140f), () => { });
             OneOf(new[] { 0.35f, 0.3f, 0.35f }, () => PlaceWreck(cliffDeg + 194f), () => PlaceWreck(cliffDeg + 60f), () => { });

@@ -14,7 +14,7 @@ namespace IslandsOfValheim
     {
         internal const string PrefabName = "IoV_SeaChart";
         const string Token = "$iov_seachart";
-        const string PinName = "$iov_pin_islet";
+        internal const string PinName = "$iov_pin_islet";
         const string RequestRpc = "IoV_SeaChartRequest";
         const string AnswerRpc = "IoV_SeaChartAnswer";
         const int Candidates = 8;      // the server sends a few, the client skips islets it already has a pin for
@@ -66,6 +66,18 @@ namespace IslandsOfValheim
                 { "iov_seachart_found", "Parça denizin ötesini gösteriyor: haritanda bir adacık işaretlendi." },
                 { "iov_seachart_none", "Parça sessiz: gidilmemiş adacık kalmadı." },
             });
+            IsletBeacons.AddTranslations(localization);
+        }
+
+        internal static long ServerPeer()
+        {
+            return (long)serverPeerId.Invoke(ZRoutedRpc.instance, null);
+        }
+
+        // Whether the map already has a pin at this islet (from a shard, a beacon or the player).
+        internal static bool HasPin(Vector3 islet)
+        {
+            return closestPin.Invoke(Minimap.instance, new object[] { islet, PinnedRadius, false }) != null;
         }
 
         internal static void RegisterRpcs()
@@ -86,8 +98,7 @@ namespace IslandsOfValheim
             waitingSince = Time.time;
             ZPackage request = new ZPackage();
             request.Write(Player.m_localPlayer.transform.position);
-            long server = (long)serverPeerId.Invoke(ZRoutedRpc.instance, null);
-            ZRoutedRpc.instance.InvokeRoutedRPC(server, RequestRpc, request);
+            ZRoutedRpc.instance.InvokeRoutedRPC(ServerPeer(), RequestRpc, request);
         }
 
         // Server: the closest islets nobody has been to yet, of the tier of these waters or a tougher one
@@ -139,7 +150,7 @@ namespace IslandsOfValheim
             for (int i = 0; i < count; i++)
             {
                 Vector3 islet = answer.ReadVector3();
-                if (closestPin.Invoke(Minimap.instance, new object[] { islet, PinnedRadius, false }) != null) continue;
+                if (HasPin(islet)) continue;
                 ItemDrop.ItemData shard = player.GetInventory().GetItem(Token, -1, false);
                 if (shard == null) return;
                 player.GetInventory().RemoveOneItem(shard);
