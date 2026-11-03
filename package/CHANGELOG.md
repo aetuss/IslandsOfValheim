@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0
+
+- Old beacons: about one islet in three has a broken beacon tower with a cold brazier on top. Pay its fuel (wood and resin in the Meadows, up to molten cores in the Ashlands) and it burns for good, for everyone. Its light marks the islets within about 700 m on the map and clears the fog around it; anyone who comes to a lit beacon later gets the same.
+- Lighting a beacon draws one small wave of the islet's creatures, from the sea or the sky (on dvergr outposts, Seekers, and the dvergr fight with you). It happens only once per beacon.
+- Beacons only appear on islets nobody had visited before the update (all of them in a new world).
+
 ## 1.2.0
 
 - Dvergr outposts: a new kind of islet in the Mistlands ring (about one in four there), where dvergr live in a camp or a dig site. They're neutral like their camps on land; breaking their things, taking their stein, lantern or black core, or opening their chest turns them hostile. Richer loot: black cores, dvergr extractors, lanterns. Sometimes Seekers are attacking them as you arrive.

@@ -10,6 +10,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Guards** that show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet. Sometimes it holds a **sea vegvisir shard**: use it (right-click in your inventory) and it marks the closest islet nobody has visited yet on your map, one of the kind of the waters you're in or a tougher one, so one islet leads you to the next. If none is left, the shard isn't used up.
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
+- **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
 
 The further from the world centre, the tougher the islet:
 
@@ -28,6 +29,22 @@ Each kind has its own ground, painted like its biome, its own plants and its own
 About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**: a second, richer chest tucked between rocks on the slope (it isn't buried, look around). Some have a runestone.
 
 The islands are built from the game's own rocks and building pieces, so they look like they belong. Like vanilla ruins, their walls can be broken for stone and wood.
+
+## Old beacons
+
+About one islet in three has a broken beacon tower up by the cliff, with a cold brazier on top. Use the brazier and pay its fuel (shown when you look at it) to light it:
+
+| Islet | Fuel | Who saw the light |
+|---|---|---|
+| Meadows | 10 wood and 5 resin | Necks climb out of the sea |
+| Swamp | a surtling core and 5 coal | Draugr climb out of the sea |
+| Plains | 2 surtling cores and 10 coal | Deathsquitos fly in, Fulings come ashore |
+| Mistlands | a black core, or 3 surtling cores | Ticks drop in, Seekers come ashore |
+| Dvergr outpost | a dvergr lantern, or 2 black cores | Seekers come ashore, and the dvergr fight them with you |
+| Ashlands | a molten core, or 5 surtling cores | Voltures fly in, Charred come ashore |
+| Deep North | 10 frostwood and 2 surtling cores | Ulvs and a Cultist come ashore |
+
+Once lit, a beacon burns for good, for everyone. Its light marks every islet within about 700 m on your map (the game's map can't show the islets themselves, only open sea) and clears the fog around it. Anyone who comes to a lit beacon later gets the same. The small wave of creatures comes only once per beacon. A sea vegvisir shard points to one islet further away; a beacon shows the ones around it.
 
 ## Dvergr outposts
 
