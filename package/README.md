@@ -53,6 +53,8 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 
 ## Multiplayer
 
+**Note:** Multiplayer and dedicated servers haven't been tested yet. It's built to work there, but if something seems off, please report it on GitHub Issues.
+
 Install it on the server and on every player's game: the islands are part of the world, and everyone needs the mod to see them. Jötunn checks that everyone has the same version.
 
 ## Feedback and bug reports

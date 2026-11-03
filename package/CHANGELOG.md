@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- README: notes that multiplayer and dedicated servers haven't been tested yet. No code changes.
+
 ## 1.1.0
 
 - Sea vegvisir shards: island chests sometimes have one. Use it (right-click) and it marks the closest islet nobody has visited yet on your map, one of these waters' kind or a tougher one. Works in multiplayer.
