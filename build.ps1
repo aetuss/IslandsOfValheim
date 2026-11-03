@@ -63,7 +63,7 @@ $refs = @(
     "$Managed\UnityEngine.dll", "$Managed\UnityEngine.CoreModule.dll", "$Managed\assembly_valheim.dll", "$Managed\assembly_utils.dll",
     "$BepInExCore\BepInEx.dll", "$BepInExCore\0Harmony.dll", $Jotunn,
     "$Managed\UnityEngine.PhysicsModule.dll", "$Managed\UnityEngine.ParticleSystemModule.dll", "$Managed\SoftReferenceableAssets.dll",
-    "$Managed\assembly_guiutils.dll", "$Managed\UnityEngine.UI.dll", "$Managed\UnityEngine.AnimationModule.dll"
+    "$Managed\assembly_guiutils.dll", "$Managed\UnityEngine.UI.dll", "$Managed\UnityEngine.AnimationModule.dll", "$Managed\UnityEngine.AudioModule.dll"
 ) | ForEach-Object { "/r:$_" }
 
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /nostdlib /noconfig /target:library /optimize+ `

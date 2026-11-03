@@ -19,7 +19,6 @@ namespace IslandsOfValheim
 
         internal static GameObject Prefab;
         internal static string Body = "";
-        internal static readonly List<string> Outfit = new List<string>(); // armour the body wore, put on it again
 
         // Bought, with the global key that unlocks them (vanilla's boss keys, like Haldor's goods).
         static readonly object[] Goods =
@@ -51,7 +50,6 @@ namespace IslandsOfValheim
                 GameObject source = PrefabManager.Instance.GetPrefab(body);
                 if (source == null || source.GetComponentInChildren<Renderer>(true) == null) continue;
                 Plugin.Debug("Sea trader body " + body + ":\n" + Describe(source.transform, 0));
-                RememberOutfit(source);
                 GameObject go = PrefabManager.Instance.CreateClonedPrefab(PrefabName, source);
                 StripToBody(go);
                 if (body == "Haldor") Haldorless(go);
@@ -60,37 +58,15 @@ namespace IslandsOfValheim
                 Prefab = go;
                 Body = body;
                 Plugin.Log.LogInfo("Sea trader made from " + body + " (" + go.GetComponentsInChildren<Renderer>(true).Length + " renderers, animator "
-                    + (go.GetComponentInChildren<Animator>(true) != null) + ", worn items " + Outfit.Count + ")");
+                    + (go.GetComponentInChildren<Animator>(true) != null) + ")");
                 return;
             }
             Plugin.Log.LogWarning("No body found for the sea trader; harbour islets will have none.");
         }
 
-        // The armour a creature body is given by its scripts, which the copy loses.
-        static void RememberOutfit(GameObject source)
-        {
-            Outfit.Clear();
-            Humanoid humanoid = source.GetComponent<Humanoid>();
-            if (humanoid == null) return;
-            List<GameObject> items = new List<GameObject>();
-            if (humanoid.m_defaultItems != null) items.AddRange(humanoid.m_defaultItems);
-            if (humanoid.m_randomArmor != null && humanoid.m_randomArmor.Length > 0) items.Add(humanoid.m_randomArmor[0]);
-            if (humanoid.m_randomSets != null && humanoid.m_randomSets.Length > 0 && humanoid.m_randomSets[0].m_items != null)
-                items.AddRange(humanoid.m_randomSets[0].m_items);
-            foreach (GameObject item in items)
-            {
-                ItemDrop drop = item != null ? item.GetComponent<ItemDrop>() : null;
-                if (drop == null) continue;
-                ItemDrop.ItemData.ItemType type = drop.m_itemData.m_shared.m_itemType;
-                if (type == ItemDrop.ItemData.ItemType.Helmet || type == ItemDrop.ItemData.ItemType.Chest || type == ItemDrop.ItemData.ItemType.Legs
-                    || type == ItemDrop.ItemData.ItemType.Shoulder || type == ItemDrop.ItemData.ItemType.Utility)
-                    Outfit.Add(item.name);
-            }
-        }
-
         // Everything that makes it a creature goes: it doesn't move, fight, drop loot or talk about how it died.
-        // Its looks stay: meshes, animator (left standing in its idle), lights, particles, and the equipment
-        // visuals with the networking they need.
+        // Its looks stay: meshes, animator (left standing in its idle), lights, particles. A shadow's body is a
+        // see-through ghost, so it isn't dressed in armour.
         static void StripToBody(GameObject go)
         {
             for (int pass = 0; pass < 5; pass++)
@@ -308,28 +284,6 @@ namespace IslandsOfValheim
             trader = GetComponent<Trader>();
             nextTalk = Time.time + Random.Range(20f, 40f);
             InvokeRepeating("Tick", Random.Range(0f, 0.5f), 0.5f);
-        }
-
-        // On the owner (whoever loaded him first), put back the armour the body came with.
-        void Start()
-        {
-            ZNetView nview = GetComponent<ZNetView>();
-            VisEquipment visuals = GetComponent<VisEquipment>();
-            if (nview == null || !nview.IsValid() || !nview.IsOwner() || visuals == null) return;
-            foreach (string name in SeaTrader.Outfit)
-            {
-                GameObject prefab = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(name) : null;
-                ItemDrop drop = prefab != null ? prefab.GetComponent<ItemDrop>() : null;
-                if (drop == null) continue;
-                int hash = name.GetStableHashCode();
-                switch (drop.m_itemData.m_shared.m_itemType)
-                {
-                    case ItemDrop.ItemData.ItemType.Helmet: visuals.SetHelmetItem(hash); break;
-                    case ItemDrop.ItemData.ItemType.Chest: visuals.SetChestItem(hash); break;
-                    case ItemDrop.ItemData.ItemType.Legs: visuals.SetLegItem(hash); break;
-                    case ItemDrop.ItemData.ItemType.Shoulder: visuals.SetShoulderItem(hash, 0, 1); break;
-                }
-            }
         }
 
         void Tick()

@@ -3,6 +3,8 @@ using System.IO;
 using System.Text;
 using BepInEx;
 using HarmonyLib;
+using Jotunn.Entities;
+using Jotunn.Managers;
 
 namespace IslandsOfValheim
 {
@@ -17,6 +19,27 @@ namespace IslandsOfValheim
         internal static string OverrideFolder
         {
             get { return Path.Combine(Path.Combine(Paths.ConfigPath, Plugin.ModName), "Translations"); }
+        }
+
+        // The mod's own files, next to its dll. Loaded here rather than left to Jötunn's automatic loading,
+        // which only runs once something has started Jötunn's translations.
+        internal static void LoadOwn()
+        {
+            string folder = Path.Combine(Path.GetDirectoryName(Plugin.Instance.Info.Location), "Translations");
+            CustomLocalization localization = LocalizationManager.Instance.GetLocalization();
+            if (!Directory.Exists(folder))
+            {
+                Plugin.Log.LogWarning("The Translations folder is missing next to the mod; its texts will show as keys.");
+                return;
+            }
+            int files = 0;
+            foreach (string language in Directory.GetDirectories(folder))
+                foreach (string file in Directory.GetFiles(language, "*.json"))
+                {
+                    localization.AddJsonFile(Path.GetFileName(language), File.ReadAllText(file, Encoding.UTF8));
+                    files++;
+                }
+            Plugin.Debug("Loaded " + files + " translation files");
         }
 
         // The translated text of one of this mod's keys, with {0}, {1}... replaced by args (each translated too,

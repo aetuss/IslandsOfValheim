@@ -40,6 +40,7 @@ namespace IslandsOfValheim
             DebugLog = Config.Bind("2 - Debug", "DebugLog", false,
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
+            Texts.LoadOwn();
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
