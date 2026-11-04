@@ -116,7 +116,9 @@ namespace IslandsOfValheim
                 ZNetView nview = fish != null ? fish.GetComponent<ZNetView>() : null;
                 if (fisher == null || nview == null || !nview.IsValid()) return true;
                 int ground = nview.GetZDO().GetInt(GroundKey, 0);
-                if (ground <= 0 || ground > IsletTier.All.Count || Random.value >= PouchChance) return true;
+                if (ground <= 0 || ground > IsletTier.All.Count) return true;
+                Story.FromFish(fish, fisher); // around Sigrún's islet, one fish has more in it
+                if (Random.value >= PouchChance) return true;
                 __result = GivePouch(IsletTier.All[ground - 1], fisher);
                 nview.ClaimOwnership();
                 ZNetScene.instance.Destroy(fish.gameObject);

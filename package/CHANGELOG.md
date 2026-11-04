@@ -5,9 +5,12 @@
 - Sævar's tale begins: the story of the Brim Folk, his people, told a step at a time. Talk to him and he gives you a torn map; use it and it marks roughly where it leads. The tale belongs to the world: whoever takes a step, everyone hears the rest.
 - First step: the old Brim harbour in the Meadows waters, its beacon cold for a lifetime. Light it, go back to Sævar, and he tells you who they were (a page in your compendium).
 - Second step: Ketill's islet in the Swamp waters, where his crew turned on each other. Their dead are still there, and so is Ketill, an Elite Draugr with a fragment about his neck. Stones tell who raised them for whom. Bring the fragment to Sævar for the next page.
+- Third step: Sigrún's islet in the Plains waters. She threw her fragment into the sea, and a fish swallowed it: fish around her islet until it turns up. Fulings camp there now.
+- Fourth step: Ormr's islet in the Mistlands waters. He wrote his last days on three stones, and locked a fragment in his chest, with a Seeker Soldier by it.
+- Fifth step: a dvergr outpost that keeps a fragment Ormr lost. Taking it turns them against you.
 - While you carry a fragment the sea turns against you: a storm over you wherever you go, and serpents that come looking. A Storm Glass calms it for a while. A fragment can't go through a portal.
-- New goods as the tale goes on: Brim Oil (lights any old beacon) and the Storm Glass.
-- `iov_goto story1` and `iov_goto story2` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
+- New goods as the tale goes on: Brim Oil (lights any old beacon), the Storm Glass, the Gull Feather (a tailwind while you sail), the Brim Harpoon and the Serpent Charm.
+- `iov_goto story1` to `iov_goto story5` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
 
 ## 1.5.2
 

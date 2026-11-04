@@ -36,6 +36,9 @@ namespace IslandsOfValheim
             SeafarerGear.RansBlessing, 2, 200, "defeated_goblinking",
             Story.BrimOil, 1, 60, Story.FirstTold,       // the tale's own goods, as it goes on
             Story.StormGlass, 1, 120, Story.KetillDone,
+            Story.GullFeather, 3, 100, Story.SigrunDone,
+            Story.Harpoon, 1, 600, Story.OrmrDone,
+            Story.SerpentCharm, 2, 150, Story.DvergrDone,
         };
 
         static List<string> Lines(string prefix, int count)

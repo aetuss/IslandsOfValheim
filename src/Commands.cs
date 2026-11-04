@@ -104,8 +104,7 @@ namespace IslandsOfValheim
                     List<string> names = new List<string>();
                     foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
                     names.Add("trader");
-                    names.Add("story1");
-                    names.Add("story2");
+                    for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     return names;
                 });
         }
@@ -114,8 +113,8 @@ namespace IslandsOfValheim
         // there generates it, and the others vanish).
         static string StoryLocation(string arg)
         {
-            if (string.Equals(arg, "story1", System.StringComparison.OrdinalIgnoreCase)) return Story.OldHarbour;
-            if (string.Equals(arg, "story2", System.StringComparison.OrdinalIgnoreCase)) return Story.KetillIslet;
+            for (int i = 1; i <= Story.Islets.Length; i++)
+                if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
             return null;
         }
 
