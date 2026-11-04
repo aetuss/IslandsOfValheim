@@ -75,7 +75,7 @@ namespace IslandsOfValheim
             top = Top(At(tier.BeaconPillar, new Vector3(at.x, top, at.y), turn, false), top + 2f);
             At(IsletBeacons.PrefabName(tier), new Vector3(at.x, top, at.y), turn, false);
             float stone = cliffDeg - 52f;
-            PlaceNetworked(new[] { "IoV_StoryStone_Harbour" }, Polar(stone, PlateauAt(stone) + 1.2f), 90f - stone + 180f, 0f);
+            PlaceNetworked(new[] { "IoV_StoryStone_Harbour" }, Polar(stone, PlateauAt(stone) + 1.2f), 90f - stone, 0f); // its face towards the plateau
             PlaceDock(cliffDeg + 229f);
             PlaceWreck(cliffDeg + 194f);
             PlaceHints();
@@ -106,7 +106,7 @@ namespace IslandsOfValheim
             for (int i = 0; i < 3; i++)
             {
                 float deg = cliffDeg - 40f + i * 40f;
-                PlaceNetworked(new[] { "IoV_StoryStone_Ketill" + (i + 1) }, Polar(deg, PlateauAt(deg) - 0.8f), 90f - deg + 180f, 0f);
+                PlaceNetworked(new[] { "IoV_StoryStone_Ketill" + (i + 1) }, Polar(deg, PlateauAt(deg) - 0.8f), 90f - deg, 0f); // faces towards the camp
             }
             CourtyardGuardsAndChest(floor, new Vector3(-0.6f, floor, 3.4f), 180f);
             PlaceNetworked(Story.KetillSpawner, new Vector3(0f, floor + 0.2f, -1.6f), 0f);

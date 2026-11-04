@@ -378,8 +378,10 @@ namespace IslandsOfValheim
     class RestlessSea : MonoBehaviour
     {
         const float SerpentEvery = 120f, SerpentChance = 0.5f, SerpentDistance = 45f;
+        const float WeatherChange = 25f; // seconds the storm takes to build up or clear
         bool active;
         float nextSerpent;
+        float savedTransition = -1f, restoreAt = -1f;
 
         void Start()
         {
@@ -388,12 +390,17 @@ namespace IslandsOfValheim
 
         void Tick()
         {
+            if (restoreAt > 0f && Time.time > restoreAt && EnvMan.instance != null)
+            {
+                EnvMan.instance.m_transitionDuration = savedTransition;
+                restoreAt = -1f;
+            }
             Player player = Player.m_localPlayer;
             bool carrying = player != null && !player.IsDead() && Story.CarriesPiece(player) && !Story.Calmed(player);
             if (carrying != active)
             {
                 active = carrying;
-                if (EnvMan.instance != null) EnvMan.instance.SetForceEnvironment(active ? "ThunderStorm" : "");
+                ChangeWeather(active ? "ThunderStorm" : "");
                 if (player != null) player.Message(MessageHud.MessageType.Center, active ? "$iov_sea_restless" : "$iov_sea_calm", 0, null, false);
                 nextSerpent = Time.time + SerpentEvery * 0.5f;
                 Plugin.Debug("Restless sea " + (active ? "on" : "off"));
@@ -401,6 +408,18 @@ namespace IslandsOfValheim
             if (!active || Time.time < nextSerpent) return;
             nextSerpent = Time.time + SerpentEvery;
             if (Random.value < SerpentChance) SendSerpent(player);
+        }
+
+        // The game blends one weather into the next over its transition time, a few seconds: stretched for
+        // this change, so the storm gathers and clears slowly, then set back.
+        void ChangeWeather(string environment)
+        {
+            EnvMan env = EnvMan.instance;
+            if (env == null) return;
+            if (restoreAt < 0f) savedTransition = env.m_transitionDuration;
+            env.m_transitionDuration = Mathf.Max(savedTransition, WeatherChange);
+            env.SetForceEnvironment(environment);
+            restoreAt = Time.time + WeatherChange + 2f;
         }
 
         static void SendSerpent(Player player)

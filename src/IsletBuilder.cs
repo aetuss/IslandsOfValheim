@@ -397,7 +397,15 @@ namespace IslandsOfValheim
             go.name = prefab.name;
             go.transform.localRotation = Quaternion.Euler(euler);
             go.transform.localPosition = Vector3.zero;
-            if (strip) Strip(go);
+            if (strip)
+            {
+                // An item as decoration: without the shine the game puts on things to pick up, so it doesn't look like loot.
+                bool item = go.GetComponent<ItemDrop>() != null;
+                Strip(go);
+                if (item)
+                    foreach (ParticleSystem shine in go.GetComponentsInChildren<ParticleSystem>(true))
+                        if (shine.gameObject != go) shine.gameObject.SetActive(false);
+            }
 
             if (size > 0f)
             {
