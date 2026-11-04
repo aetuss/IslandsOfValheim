@@ -402,8 +402,13 @@ namespace IslandsOfValheim
 
         internal static bool InOldHarbour(Vector3 point)
         {
-            Location location = Location.GetLocation(point, false);
-            return location != null && Utils.GetPrefabName(location.gameObject) == OldHarbour;
+            return InLocation(point, OldHarbour);
+        }
+
+        static bool InLocation(Vector3 point, string location)
+        {
+            Location here = Location.GetLocation(point, false);
+            return here != null && Utils.GetPrefabName(here.gameObject) == location;
         }
 
         internal static void HarbourBeaconLit(Vector3 beacon)
@@ -417,8 +422,8 @@ namespace IslandsOfValheim
 
         // ---- Sigrún's fish ----
 
-        const float FishChance = 0.3f; // for each fish caught around her islet,
-        const int FishAtMost = 4;      // and at the latest with this one
+        const float FishChance = 0.35f; // for each fish caught around her islet,
+        const int FishAtMost = 3;       // and at the latest with this one
         static int fishCaught;
 
         // A fish from the ground around Sigrún's islet: one of them swallowed her fragment long ago. Called
@@ -426,9 +431,17 @@ namespace IslandsOfValheim
         internal static void FromFish(Fish fish, Humanoid fisher)
         {
             Player player = fisher as Player;
-            if (player == null || player != Player.m_localPlayer || Key(SigrunDone) || Has(player, Piece2)) return;
-            if (!SigrunWatersMarker.Near(fish.transform.position)) return;
+            if (player == null || player != Player.m_localPlayer) return;
+            bool there = SigrunWatersMarker.Near(fish.transform.position) || InLocation(player.transform.position, SigrunIslet) ||
+                InLocation(fish.transform.position, SigrunIslet);
+            if (!there) return;
+            if (Key(SigrunDone) || Has(player, Piece2))
+            {
+                Plugin.Debug("Story: a fish from Sigrún's waters, but her fragment " + (Key(SigrunDone) ? "is already with Sævar" : "is already in your bag"));
+                return;
+            }
             fishCaught++;
+            Plugin.Debug("Story: fish " + fishCaught + " from Sigrún's waters");
             if (fishCaught < FishAtMost && Random.value >= FishChance) return;
             fishCaught = 0;
             string name = Hand(player, Piece2);

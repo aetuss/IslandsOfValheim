@@ -117,6 +117,7 @@ namespace IslandsOfValheim
                 if (fisher == null || nview == null || !nview.IsValid()) return true;
                 int ground = nview.GetZDO().GetInt(GroundKey, 0);
                 if (ground <= 0 || ground > IsletTier.All.Count) return true;
+                Plugin.Debug("Fishing: landed " + fish.name + " from a " + IsletTier.All[ground - 1].Name + " ground");
                 Story.FromFish(fish, fisher); // around Sigrún's islet, one fish has more in it
                 if (Random.value >= PouchChance) return true;
                 __result = GivePouch(IsletTier.All[ground - 1], fisher);

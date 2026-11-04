@@ -272,7 +272,7 @@ namespace IslandsOfValheim
                     float distance = Vector3.Distance(ff.transform.position, __instance.transform.position);
                     if (distance < best) { best = distance; __result = ff; }
                 }
-                if (__result != null) Plugin.Debug("Lure: " + __instance.name + " comes for it from " + best.ToString("0") + " m");
+                if (__result != null && best > 8f) Plugin.Debug("Lure: " + __instance.name + " comes for it from " + best.ToString("0") + " m");
             }
         }
 
