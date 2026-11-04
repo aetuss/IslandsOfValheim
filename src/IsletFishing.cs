@@ -106,9 +106,27 @@ namespace IslandsOfValheim
             parts.Add(Texts.Amount(amount, drop.m_itemData.m_shared.m_name));
         }
 
-        // A ground's fish going into a bag, however it got there (the game has the player pick up a fish
-        // that was reeled in; testing showed FishingFloat.Catch isn't the way it goes). Around Sigrún's
-        // islet one of them has her fragment in it; and now and then it's a sodden pouch instead of a fish.
+        // A fish is taken either by reeling it all the way in (FishingFloat.Catch, which picks it up and
+        // returns the "caught" message) or by walking up to it and picking it up (Fish.Interact). Both go
+        // through Fish.Pickup. While Catch runs, a pouch's message replaces Catch's own.
+        static bool inCatch;
+        static string pouchText;
+
+        [HarmonyPatch(typeof(FishingFloat), "Catch")]
+        static class CatchPatch
+        {
+            static void Prefix() { inCatch = true; pouchText = null; }
+
+            static void Postfix(ref string __result)
+            {
+                inCatch = false;
+                if (pouchText != null) __result = pouchText;
+                pouchText = null;
+            }
+        }
+
+        // A ground's fish going into a bag. Around Sigrún's islet one of them has her fragment in it; and
+        // now and then it's a sodden pouch instead of a fish.
         [HarmonyPatch(typeof(Fish), "Pickup")]
         static class PickupPatch
         {
@@ -122,7 +140,8 @@ namespace IslandsOfValheim
                 Story.FromFish(__instance, character);
                 if (Random.value >= PouchChance) return true;
                 string text = GivePouch(IsletTier.All[ground - 1], character);
-                character.Message(MessageHud.MessageType.Center, text, 0, null, false);
+                if (inCatch) pouchText = text;
+                else character.Message(MessageHud.MessageType.Center, text, 0, null, false);
                 nview.ClaimOwnership();
                 ZNetScene.instance.Destroy(__instance.gameObject);
                 Plugin.Debug("Fishing: a pouch instead of a fish (" + text + ")");
