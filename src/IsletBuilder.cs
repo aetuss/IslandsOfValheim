@@ -407,8 +407,15 @@ namespace IslandsOfValheim
                 {
                     if (!item && !quietProps) continue;
                     Plugin.Debug("  " + go.name + ": particles " + shine.name + " turned off");
-                    if (shine.gameObject != go) shine.gameObject.SetActive(false);
-                    else shine.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    if (shine.gameObject != go) { shine.gameObject.SetActive(false); continue; }
+                    // On the item itself (a weapon's glint): it would start again when the islet is built, so it
+                    // goes quiet for good, emitting nothing and drawing nothing.
+                    ParticleSystem.MainModule main = shine.main;
+                    main.playOnAwake = false;
+                    ParticleSystem.EmissionModule emission = shine.emission;
+                    emission.enabled = false;
+                    ParticleSystemRenderer drawn = shine.GetComponent<ParticleSystemRenderer>();
+                    if (drawn != null) drawn.enabled = false;
                 }
             }
 
