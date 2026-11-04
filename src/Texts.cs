@@ -21,27 +21,37 @@ namespace IslandsOfValheim
             get { return Path.Combine(Path.Combine(Paths.ConfigPath, Plugin.ModName), "Translations"); }
         }
 
-        // The mod's own files, next to its dll. Loaded here rather than left to Jötunn's automatic loading,
+        const string Embedded = "IoV.Translations."; // + <Language>.json, built into the dll by build.ps1
+
+        // The mod's own texts. They're built into the dll, so they're there however the mod was installed (a
+        // mod manager or a manual copy may not keep the Translations folder); the files in that folder next
+        // to the dll, if it's there, come on top. Loaded here rather than left to Jötunn's automatic loading,
         // which only runs once something has started Jötunn's translations.
         internal static void LoadOwn()
         {
-            string folder = Path.Combine(Path.GetDirectoryName(Plugin.Instance.Info.Location), "Translations");
             CustomLocalization localization = LocalizationManager.Instance.GetLocalization();
-            if (!Directory.Exists(folder))
+            System.Reflection.Assembly assembly = typeof(Texts).Assembly;
+            int built = 0, files = 0;
+            foreach (string resource in assembly.GetManifestResourceNames())
             {
-                Plugin.Log.LogWarning("The Translations folder is missing next to the mod; its texts will show as keys.");
-                return;
+                if (!resource.StartsWith(Embedded) || !resource.EndsWith(".json")) continue;
+                string language = resource.Substring(Embedded.Length, resource.Length - Embedded.Length - ".json".Length);
+                using (Stream stream = assembly.GetManifestResourceStream(resource))
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                    localization.AddJsonFile(language, reader.ReadToEnd());
+                built++;
             }
-            int files = 0;
-            foreach (string language in Directory.GetDirectories(folder))
-                foreach (string file in Directory.GetFiles(language, "*.json"))
-                {
-                    localization.AddJsonFile(Path.GetFileName(language), File.ReadAllText(file, Encoding.UTF8));
-                    files++;
-                }
-            Plugin.Debug("Loaded " + files + " translation files");
+            string folder = Path.Combine(Path.GetDirectoryName(Plugin.Instance.Info.Location), "Translations");
+            if (Directory.Exists(folder))
+                foreach (string language in Directory.GetDirectories(folder))
+                    foreach (string file in Directory.GetFiles(language, "*.json"))
+                    {
+                        localization.AddJsonFile(Path.GetFileName(language), File.ReadAllText(file, Encoding.UTF8));
+                        files++;
+                    }
+            if (built == 0 && files == 0) Plugin.Log.LogWarning("No translations found; the mod's texts will show as keys.");
+            Plugin.Debug("Loaded " + built + " built-in and " + files + " translation files");
         }
-
         // The translated text of one of this mod's keys, with {0}, {1}... replaced by args (each translated too,
         // so an arg can be a $token such as an item name).
         internal static string Get(string key, params string[] args)

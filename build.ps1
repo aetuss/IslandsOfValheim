@@ -66,8 +66,11 @@ $refs = @(
     "$Managed\assembly_guiutils.dll", "$Managed\UnityEngine.UI.dll", "$Managed\UnityEngine.AnimationModule.dll", "$Managed\UnityEngine.AudioModule.dll"
 ) | ForEach-Object { "/r:$_" }
 
+# The translations go into the dll too (Texts.LoadOwn), so the texts are there however the mod is installed.
+$resources = Get-ChildItem $langRoot -Directory | ForEach-Object { "/resource:" + (Join-Path $_.FullName "IslandsOfValheim.json") + ",IoV.Translations." + $_.Name + ".json" }
+
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /nostdlib /noconfig /target:library /optimize+ `
-    /codepage:65001 $refs /out:"$tmp\IslandsOfValheim.dll" "$tmp\*.cs"
+    /codepage:65001 $refs $resources /out:"$tmp\IslandsOfValheim.dll" "$tmp\*.cs"
 if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
 $out = Join-Path $root "bin"
