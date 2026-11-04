@@ -52,6 +52,7 @@ namespace IslandsOfValheim
             if (built == 0 && files == 0) Plugin.Log.LogWarning("No translations found; the mod's texts will show as keys.");
             Plugin.Debug("Loaded " + built + " built-in and " + files + " translation files");
         }
+
         // The translated text of one of this mod's keys, with {0}, {1}... replaced by args (each translated too,
         // so an arg can be a $token such as an item name).
         internal static string Get(string key, params string[] args)

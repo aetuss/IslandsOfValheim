@@ -8,7 +8,11 @@
 - While you carry a fragment the sea turns against you: a storm over you wherever you go, and serpents that come looking. A Storm Glass calms it for a while. A fragment can't go through a portal.
 - New goods as the tale goes on: Brim Oil (lights any old beacon) and the Storm Glass.
 - `iov_goto story1` and `iov_goto story2` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
-- Fixed: when a mod manager installed the mod without its Translations folder, every text showed as its key (like [iov_trader_name]). The English and Turkish texts are now built into the mod itself; the folder still wins if it's there.
+
+## 1.5.2
+
+- The English and Turkish texts are built into the mod itself, so they show however the mod was installed. If a mod manager installed it without its Translations folder (or flattened it), every text showed as its key, like [iov_trader_name]. The folder's files still win if they're there, and so do your own in BepInEx/config.
+
 ## 1.5.1
 
 - README: says that the mod was made with AI (Claude by Anthropic), as Thunderstore asks. The DLL carries the same note in its metadata. No gameplay changes.
