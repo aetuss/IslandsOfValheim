@@ -245,7 +245,7 @@ namespace IslandsOfValheim
     // out, with a warm light at its foot. Local to this client, made in code (no vanilla effect does this).
     class LightBeam : MonoBehaviour
     {
-        const float Height = 80f, Width = 1.6f, FadeIn = 1.5f, FadeOut = 2.5f;
+        const float Height = 80f, Width = 1.6f, FadeIn = 4f, FadeOut = 4f;
         float born, life;
         Material material;
         Light glow;
@@ -327,16 +327,15 @@ namespace IslandsOfValheim
             InvokeRepeating("Tick", Random.Range(0f, 0.5f), 0.5f);
         }
 
-        // The tale is told: he goes once his last line has been on screen a while.
-        internal void LeaveSoon()
+        // The tale is told before your eyes: Story.Ending decides when he goes.
+        internal void Hold()
         {
-            leaveAt = Time.time + 7f;
-            LightBeam.Over(transform.position, 9f);
+            leaveAt = float.MaxValue;
         }
 
         // Gone: his body (meshes, lights) fades from the world in Odin's smoke, if it happens before your
         // eyes, and his chest is there instead.
-        void Leave(bool seen)
+        internal void Leave(bool seen)
         {
             gone = true;
             Transform chest = transform.Find(SeaTrader.ChestChild);
@@ -358,7 +357,7 @@ namespace IslandsOfValheim
         {
             Player player = Player.m_localPlayer;
             if (!gone && Story.Key(Story.FinalDone) && Time.time >= leaveAt)
-                Leave(leaveAt > 0f); // only the one who brought the last fragment sees him go
+                Leave(false); // already gone when you come (the one who brought the last fragment sees it: Story.Ending)
             if (gone || trader == null || player == null) return;
             float distance = Vector3.Distance(player.transform.position, transform.position);
             if (!greeted && distance < trader.m_greetRange)

@@ -60,7 +60,7 @@ namespace IslandsOfValheim
                 args =>
                 {
                     if (Player.m_localPlayer == null) return;
-                    LightBeam.Over(Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 5f, 9f);
+                    LightBeam.Over(Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 5f, 15f);
                 }, true);
 
             new Terminal.ConsoleCommand("iov_goto",

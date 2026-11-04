@@ -511,15 +511,16 @@ namespace IslandsOfValheim
                     player.GetInventory().RemoveOneItem(piece);
                     npc.Say("$" + step.Lines + "done");
                     Set(step.Done);
-                    Tell(player, "$" + step.Lore, "$" + step.Lore + "_text");
                     if (step.Last)
                     {
-                        // The light comes for him, as it once came for her; what it leaves of the fragments
-                        // is the player's. He goes once his last words are said (SeaTraderNpc).
-                        Give(player, BrimHeart);
-                        npc.LeaveSoon();
+                        // The light comes for him, as it once came for her, after his last words; the page
+                        // and what the light leaves of the fragments come once he's gone.
+                        player.AddKnownText("$" + step.Lore, "$" + step.Lore + "_text");
+                        npc.Hold();
+                        Plugin.Instance.StartCoroutine(Ending(player, npc, "$" + step.Lore));
                         Plugin.Debug("Story: the tale is told");
                     }
+                    else Tell(player, "$" + step.Lore, "$" + step.Lore + "_text");
                     return true;
                 }
                 if (!Has(player, step.Map))
@@ -531,6 +532,20 @@ namespace IslandsOfValheim
                 return false; // one step at a time
             }
             return false;
+        }
+
+        // The end, in its own time: his last words, then the light comes down slowly, he goes in it, and
+        // the page and the trinket follow. Runs on the plugin, so it finishes even if the harbour unloads.
+        static System.Collections.IEnumerator Ending(Player player, SeaTraderNpc npc, string lore)
+        {
+            yield return new WaitForSeconds(3f);
+            if (npc != null) LightBeam.Over(npc.transform.position, 15f);
+            yield return new WaitForSeconds(9f);
+            if (npc != null) npc.Leave(true);
+            yield return new WaitForSeconds(3f);
+            if (player == null) yield break;
+            Give(player, BrimHeart);
+            if (TextViewer.instance != null) TextViewer.instance.ShowText(TextViewer.Style.Rune, lore, lore + "_text", true);
         }
 
         // What he says as the store opens, while a step is waiting; his last words for now once all are done.
@@ -798,6 +813,17 @@ namespace IslandsOfValheim
                 if (attacker != null && attacker.m_name == "$enemy_serpent") hit.ApplyModifier(0.5f);
             }
         }
+
+        // The keepers' blows don't throw the player off their small islet into the sea (Hafdís's spin).
+        [HarmonyPatch(typeof(Character), "RPC_Damage")]
+        static class KeeperPushPatch
+        {
+            static void Prefix(Character __instance, HitData hit)
+            {
+                if (hit == null || __instance != Player.m_localPlayer || KeeperOf(hit.GetAttacker()) == null) return;
+                hit.m_pushForce *= 0.25f;
+            }
+        }
     }
 
     // The hidden islet's keepers, one after the other: Grímr, Ormr, Hafdís. The client that owns the marker
@@ -832,8 +858,8 @@ namespace IslandsOfValheim
             Story.Keeper keeper = Story.NextKeeper();
             Character standing = keeper != null ? Find(keeper) : null;
             bool near = Player.IsPlayerInRange(transform.position, Near);
-            if (keeper != null && standing == null && nview.IsOwner() && near && playerWasNear && Time.time - lastFall > After)
-                Spawn(keeper);
+            if (keeper != null && standing == null && !coming && nview.IsOwner() && near && playerWasNear && Time.time - lastFall > After)
+                StartCoroutine(Come(keeper));
             playerWasNear = near;
             Speak(keeper, standing);
             if (keeper != null && standing != null && keeper.Prefab == Story.Hafdis) Awaken(keeper, standing);
@@ -861,19 +887,50 @@ namespace IslandsOfValheim
             return null;
         }
 
-        void Spawn(Story.Keeper keeper)
+        bool coming;
+
+        // A keeper doesn't just appear: a mist gathers at the back of the hall first, and it steps out of
+        // it (Hafdís comes down from the sky into it).
+        System.Collections.IEnumerator Come(Story.Keeper keeper)
         {
+            coming = true;
             GameObject prefab = ZNetScene.instance.GetPrefab(keeper.Prefab);
-            if (prefab == null) return;
-            // At the back of the hall, facing whoever came.
             Vector3 at = transform.position + transform.rotation * new Vector3(0f, 0.5f, 1.5f);
+            Effect("vfx_prespawn", at);
+            Effect("fx_frostcloud", at);
+            yield return new WaitForSeconds(2.5f);
+            coming = false;
+            if (prefab == null || !nview.IsValid()) yield break;
             Player closest = Player.GetClosestPlayer(at, Near * 2f);
             Vector3 to = closest != null ? closest.transform.position - at : -transform.forward;
             to.y = 0f;
-            GameObject go = Instantiate(prefab, at, to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : transform.rotation);
+            Vector3 from = keeper.Prefab == Story.Hafdis ? at + Vector3.up * 14f : at;
+            GameObject go = Instantiate(prefab, from, to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : transform.rotation);
             Character c = go.GetComponent<Character>();
             if (c != null) c.SetLevel(keeper.Level);
+            Effect("vfx_spawn_large", at);
             Plugin.Debug("Hidden islet: " + keeper.Prefab + " comes");
+        }
+
+        static void Effect(string name, Vector3 at)
+        {
+            GameObject fx = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
+            if (fx != null) Instantiate(fx, at, Quaternion.identity);
+        }
+
+        // While a keeper speaks and hasn't turned on anyone yet, it looks at you (on the client that runs
+        // its AI; it turns for everyone).
+        void LateUpdate()
+        {
+            Player player = Player.m_localPlayer;
+            if (current == null || player == null || current.IsDead()) return;
+            BaseAI ai = current.GetBaseAI();
+            ZNetView view = current.GetComponent<ZNetView>();
+            if (ai == null || view == null || !view.IsValid() || !view.IsOwner() || ai.IsAlerted()) return;
+            Vector3 to = player.transform.position - current.transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude < 0.01f || to.sqrMagnitude > 30f * 30f) return;
+            ai.LookTowards(to.normalized);
         }
 
         void Speak(Story.Keeper keeper, Character standing)
