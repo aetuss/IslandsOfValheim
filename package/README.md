@@ -101,6 +101,8 @@ Sævar has a story to tell, about the Brim Folk, his people, and what the sea ga
 
 The tale has seven steps, each further out to sea than the last: the old Brim harbour in the Meadows waters, Ketill's islet in the Swamp waters, Sigrún's islet in the Plains waters, Ormr's islet in the Mistlands waters, a dvergr outpost that keeps something it shouldn't, a shore in the Ashlands waters where it all began, and at last a hidden islet in the Deep North waters, where three keepers stand between you and the last fragment. Some fragments are guarded, some are hidden, one has to be fished out of the sea, and one belongs to the dvergr, who won't like you taking it. Bring Sævar the last one and the tale ends, with a trinket for you to keep. His goods stay on sale after that.
 
+The tale's foes and the trader's goods use the game's own models, reworked with new names, stats, colours and fights. No new models are added.
+
 While you carry a fragment of what the Brim Folk found, the sea turns against you: a storm over you wherever you go, and serpents that come looking. Fragments can't go through portals. Each fragment you bring Sævar adds to his goods:
 
 | After | Goods |

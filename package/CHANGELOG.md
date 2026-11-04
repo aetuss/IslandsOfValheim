@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+
+- The README now says that the tale's foes and the trader's goods use the game's own models, reworked. No changes in the game.
+
 ## 1.6.0
 
 - Sævar's tale begins: the story of the Brim Folk, his people, told a step at a time. Talk to him and he gives you a torn map; use it and it marks roughly where it leads. The tale belongs to the world: whoever takes a step, everyone hears the rest.
