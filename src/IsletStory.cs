@@ -92,6 +92,7 @@ namespace IslandsOfValheim
         {
             BeginStory(Story.KetillIslet, IsletTier.All[1], 0, 600f);
             float floor = PlateauHeight;
+            quietProps = true; // a dead camp: no glints or embers on its things
             Prop(new[] { "fire_pit" }, new Vector2(0.5f, -0.8f), 0f, 0.05f);
             Prop(new[] { "barrell_static", "barrell" }, new Vector2(-2.8f, 1.6f), 70f, 0.05f);
             Prop(new[] { "CargoCrate", "dvergrprops_crate" }, new Vector2(2.6f, 2.4f), 25f, 0.05f);
@@ -102,6 +103,7 @@ namespace IslandsOfValheim
             Lying(new[] { "SwordBronze", "SwordIron" }, new Vector2(-0.9f, -2.2f), 30f, 1.4f);
             Lying(new[] { "AxeBronze", "AxeIron" }, new Vector2(1.6f, -1.2f), 140f, 1.2f);
             Lying(new[] { "SpearBronze", "SpearFlint" }, new Vector2(-2.4f, 0.4f), 80f, 2f);
+            quietProps = false;
             // The stones they raised for each other, in a row towards the cliff.
             for (int i = 0; i < 3; i++)
             {

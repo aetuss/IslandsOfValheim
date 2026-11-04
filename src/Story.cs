@@ -375,13 +375,20 @@ namespace IslandsOfValheim
     // While the local player carries a fragment (and hasn't calmed the water with a storm glass): a storm
     // over them wherever they go, and now and then a serpent at sea. Each client does this for its own
     // player; the serpents are ordinary networked creatures.
+    //
+    // The game blends light and fog from one weather to the next, but rain starts and stops at once, so the
+    // storm comes in steps (light rain, rain, thunderstorm) and leaves the same way.
     class RestlessSea : MonoBehaviour
     {
         const float SerpentEvery = 120f, SerpentChance = 0.5f, SerpentDistance = 45f;
-        const float WeatherChange = 25f; // seconds the storm takes to build up or clear
+        const float StepSeconds = 20f;  // between one step of the weather and the next
+        const float Blend = 12f;        // how long each step takes to blend in
+        static readonly string[] Steps = { "", "LightRain", "Rain", "ThunderStorm" };
+
         bool active;
-        float nextSerpent;
-        float savedTransition = -1f, restoreAt = -1f;
+        int level, wanted;
+        float nextStep, nextSerpent;
+        float savedTransition = -1f;
 
         void Start()
         {
@@ -390,38 +397,51 @@ namespace IslandsOfValheim
 
         void Tick()
         {
-            if (restoreAt > 0f && Time.time > restoreAt && EnvMan.instance != null)
-            {
-                EnvMan.instance.m_transitionDuration = savedTransition;
-                restoreAt = -1f;
-            }
             Player player = Player.m_localPlayer;
             bool carrying = player != null && !player.IsDead() && Story.CarriesPiece(player) && !Story.Calmed(player);
             if (carrying != active)
             {
                 active = carrying;
-                ChangeWeather(active ? "ThunderStorm" : "");
+                wanted = active ? Steps.Length - 1 : 0;
+                nextStep = 0f;
                 if (player != null) player.Message(MessageHud.MessageType.Center, active ? "$iov_sea_restless" : "$iov_sea_calm", 0, null, false);
                 nextSerpent = Time.time + SerpentEvery * 0.5f;
                 Plugin.Debug("Restless sea " + (active ? "on" : "off"));
+            }
+            if (level != wanted && Time.time >= nextStep)
+            {
+                level += wanted > level ? 1 : -1;
+                while (level > 0 && level < Steps.Length - 1 && !Exists(Steps[level])) level += wanted > level ? 1 : -1;
+                Weather(level == 0 ? "" : Steps[level]);
+                nextStep = Time.time + StepSeconds;
+            }
+            else if (level == wanted && savedTransition >= 0f && Time.time >= nextStep && EnvMan.instance != null)
+            {
+                EnvMan.instance.m_transitionDuration = savedTransition; // back to the game's own once the change is done
+                savedTransition = -1f;
             }
             if (!active || Time.time < nextSerpent) return;
             nextSerpent = Time.time + SerpentEvery;
             if (Random.value < SerpentChance) SendSerpent(player);
         }
 
-        // The game blends one weather into the next over its transition time, a few seconds: stretched for
-        // this change, so the storm gathers and clears slowly, then set back.
-        void ChangeWeather(string environment)
+        static bool Exists(string environment)
+        {
+            if (EnvMan.instance == null) return false;
+            foreach (EnvSetup env in EnvMan.instance.m_environments)
+                if (env != null && env.m_name == environment) return true;
+            return false;
+        }
+
+        void Weather(string environment)
         {
             EnvMan env = EnvMan.instance;
             if (env == null) return;
-            if (restoreAt < 0f) savedTransition = env.m_transitionDuration;
-            env.m_transitionDuration = Mathf.Max(savedTransition, WeatherChange);
+            if (savedTransition < 0f) savedTransition = env.m_transitionDuration;
+            env.m_transitionDuration = Mathf.Max(savedTransition, Blend);
             env.SetForceEnvironment(environment);
-            restoreAt = Time.time + WeatherChange + 2f;
+            Plugin.Debug("Restless sea weather: " + (environment == "" ? "the world's own" : environment));
         }
-
         static void SendSerpent(Player player)
         {
             if (ZoneSystem.instance == null || ZNetScene.instance == null || WorldGenerator.instance == null) return;

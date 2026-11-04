@@ -60,6 +60,7 @@ namespace IslandsOfValheim
         static GameObject root;
         static Transform parent; // where new parts go: the location, or an optional group in it
         static int built;
+        static bool quietProps; // decoration that should lie still: its particle effects off too (see KetillsIslet)
         static int missing;
 
         internal static void Register(IsletTier islet, int variant)
@@ -402,9 +403,13 @@ namespace IslandsOfValheim
                 // An item as decoration: without the shine the game puts on things to pick up, so it doesn't look like loot.
                 bool item = go.GetComponent<ItemDrop>() != null;
                 Strip(go);
-                if (item)
-                    foreach (ParticleSystem shine in go.GetComponentsInChildren<ParticleSystem>(true))
-                        if (shine.gameObject != go) shine.gameObject.SetActive(false);
+                foreach (ParticleSystem shine in go.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    if (!item && !quietProps) continue;
+                    Plugin.Debug("  " + go.name + ": particles " + shine.name + " turned off");
+                    if (shine.gameObject != go) shine.gameObject.SetActive(false);
+                    else shine.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
             }
 
             if (size > 0f)
