@@ -143,6 +143,7 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 
 - `iov_info`: how many islets of each kind this world has and how far the closest ones are (host or single player).
 - `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour, `iov_goto story1` to `iov_goto story7` to the islets of his tale.
+- `iov_light` (needs `devcommands`): shows the light from the end of Sævar's tale in front of you, without spoiling the tale.
 
 ## Translations
 

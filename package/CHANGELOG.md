@@ -14,7 +14,7 @@
 - New goods as the tale goes on: Brim Oil (lights any old beacon), the Storm Glass, the Gull Feather (a tailwind while you sail), the Brim Harpoon, the Serpent Charm and the Ash-sea Tar (the burning sea doesn't harm your ship).
 - The Ancient Lure now draws an islet's fish from about 35 m away. Before, they only came for it from a few metres, and with a ground's few fish spread all around the islet, they hardly ever bit.
 - The sodden pouch on the islet fishing grounds can really turn up now. It was only checked when a fish was reeled all the way in, not when you walked up to a hooked fish and picked it up, which is how most fish are taken.
-- `iov_goto story1` to `iov_goto story7` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
+- `iov_goto story1` to `iov_goto story7` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet. `iov_light` shows the light from the tale's end.
 
 ## 1.5.2
 
