@@ -17,6 +17,11 @@ namespace IslandsOfValheim
     //      it comes up with a fish caught around her islet.
     //   4. Ormr's islet (Mistlands waters): his diary on stones, the third fragment locked in his chest.
     //   5. A dvergr outpost (Mistlands waters): they keep the fourth fragment, and taking it angers them.
+    //   6. Hafdís's shore (Ashlands waters): where the sea's guardian was once a sailor. The fifth fragment
+    //      lies in the ashes; taking it wakes her crew.
+    //   7. The hidden islet (Deep North waters): Grímr, then Ormr, then Hafdís herself, who offers you her
+    //      place before she fights. Her fragment, the last, brought to Sævar: the light takes him, and
+    //      leaves the pieces as one small trinket. His chest stays and keeps trading.
     // Each fragment brought to Sævar: a page of the tale and new goods; then the map for the next step.
     // While anyone carries a fragment the sea turns against them: storms, and serpents that come looking.
     static class Story
@@ -26,22 +31,35 @@ namespace IslandsOfValheim
         internal const string SigrunIslet = "IoV_Story_Sigrun";
         internal const string OrmrIslet = "IoV_Story_Ormr";
         internal const string DvergrHold = "IoV_Story_Dvergr";
-        internal static readonly string[] Islets = { OldHarbour, KetillIslet, SigrunIslet, OrmrIslet, DvergrHold }; // iov_goto story1..5
+        internal const string AshIslet = "IoV_Story_Ashes";
+        internal const string HiddenIslet = "IoV_Story_Hidden";
+        internal static readonly string[] Islets = { OldHarbour, KetillIslet, SigrunIslet, OrmrIslet, DvergrHold, AshIslet, HiddenIslet }; // iov_goto story1..7
 
         internal const string Map1 = "IoV_StoryMap1";
         internal const string Map2 = "IoV_StoryMap2";
         internal const string Map3 = "IoV_StoryMap3";
         internal const string Map4 = "IoV_StoryMap4";
         internal const string Map5 = "IoV_StoryMap5";
+        internal const string Map6 = "IoV_StoryMap6";
+        internal const string Map7 = "IoV_StoryMap7";
         internal const string Piece1 = "IoV_BrimPiece1";
         internal const string Piece2 = "IoV_BrimPiece2";
         internal const string Piece3 = "IoV_BrimPiece3";
         internal const string Piece4 = "IoV_BrimPiece4";
+        internal const string Piece5 = "IoV_BrimPiece5";
+        internal const string Piece6 = "IoV_BrimPiece6";
+        internal const string BrimHeart = "IoV_BrimHeart";        // the reward: what the light leaves of them
+        internal const string AshPiece = "IoV_Story_AshPiece";    // the fifth fragment in the ashes, to pick up
+        internal const string Grimr = "IoV_Grimr";
+        internal const string OrmrBoss = "IoV_Ormr";
+        internal const string Hafdis = "IoV_Hafdis";
+        internal const string FinalStand = "IoV_Story_FinalStand"; // runs the three fights on the hidden islet
         internal const string BrimOil = "IoV_BrimOil";
         internal const string StormGlass = "IoV_StormGlass";
         internal const string GullFeather = "IoV_GullFeather";
         internal const string Harpoon = "IoV_BrimHarpoon";
         internal const string SerpentCharm = "IoV_SerpentCharm";
+        internal const string AshTar = "IoV_AshTar";
         internal const string Ketill = "IoV_Ketill";
         internal const string KetillSpawner = "IoV_Spawner_IoV_Ketill";
         internal const string OrmrChest = "IoV_Story_OrmrChest";
@@ -56,6 +74,11 @@ namespace IslandsOfValheim
         internal const string SigrunDone = "iovstory_sigrun_done";
         internal const string OrmrDone = "iovstory_ormr_done";
         internal const string DvergrDone = "iovstory_dvergr_done";
+        internal const string AshesDone = "iovstory_ashes_done";
+        internal const string GrimrDown = "iovstory_grimr_down";
+        internal const string OrmrDown = "iovstory_ormr_down";
+        internal const string HafdisDown = "iovstory_hafdis_down";
+        internal const string FinalDone = "iovstory_final_done"; // Sævar is gone; his chest trades
 
         const string RequestRpc = "IoV_StoryMapRequest";
         const string AnswerRpc = "IoV_StoryMapAnswer";
@@ -65,6 +88,7 @@ namespace IslandsOfValheim
         class Step
         {
             internal string Done, Piece, Map, Lines, Lore;
+            internal bool Last; // bringing this one ends the tale
         }
 
         static readonly Step[] Steps =
@@ -73,6 +97,8 @@ namespace IslandsOfValheim
             new Step { Done = SigrunDone, Piece = Piece2, Map = Map3, Lines = "iov_story_q3_", Lore = "iov_lore_sigrun" },
             new Step { Done = OrmrDone, Piece = Piece3, Map = Map4, Lines = "iov_story_q4_", Lore = "iov_lore_ormr" },
             new Step { Done = DvergrDone, Piece = Piece4, Map = Map5, Lines = "iov_story_q5_", Lore = "iov_lore_dvergr" },
+            new Step { Done = AshesDone, Piece = Piece5, Map = Map6, Lines = "iov_story_q6_", Lore = "iov_lore_hafdis" },
+            new Step { Done = FinalDone, Piece = Piece6, Map = Map7, Lines = "iov_story_q7_", Lore = "iov_lore_light", Last = true },
         };
 
         // Each map: its item, the location it leads to, the pin it leaves and its item's text.
@@ -83,6 +109,8 @@ namespace IslandsOfValheim
             new[] { Map3, SigrunIslet, "$iov_storypin3", "iov_storymap3" },
             new[] { Map4, OrmrIslet, "$iov_storypin4", "iov_storymap4" },
             new[] { Map5, DvergrHold, "$iov_storypin5", "iov_storymap5" },
+            new[] { Map6, AshIslet, "$iov_storypin6", "iov_storymap6" },
+            new[] { Map7, HiddenIslet, "$iov_storypin7", "iov_storymap7" },
         };
 
         // Lore stones on the story islets: prefab, label, text.
@@ -98,9 +126,40 @@ namespace IslandsOfValheim
             new[] { "IoV_StoryStone_Ormr1", "RuneStone_Mistlands", "iov_stone_ormr1" },
             new[] { "IoV_StoryStone_Ormr2", "RuneStone_Mistlands", "iov_stone_ormr2" },
             new[] { "IoV_StoryStone_Ormr3", "RuneStone_Mistlands", "iov_stone_ormr3" },
+            new[] { "IoV_StoryStone_Hafdis1", "RuneStone_Ashlands", "iov_stone_hafdis1" },
+            new[] { "IoV_StoryStone_Hafdis2", "RuneStone_Ashlands", "iov_stone_hafdis2" },
+            new[] { "IoV_StoryStone_Hafdis3", "RuneStone_Ashlands", "iov_stone_hafdis3" },
+            new[] { "IoV_StoryStone_Hidden", "RuneStone_DeepNorth", "iov_stone_hidden" },
         };
 
-        static int calmEffect, wardEffect;
+        // The three on the hidden islet, in the order they come: prefab, vanilla body, name, level, base
+        // health (the level multiplies it), the key their fall sets, and their lines (+ spawn, death).
+        internal class Keeper
+        {
+            internal string Prefab, Body, Name, Down, Lines;
+            internal int Level;
+            internal float Health;
+        }
+
+        internal static readonly Keeper[] Keepers =
+        {
+            new Keeper { Prefab = Grimr, Body = "JotunWarrior", Name = "$iov_grimr", Level = 2, Health = 1500f, Down = GrimrDown, Lines = "iov_grimr_" },
+            new Keeper { Prefab = OrmrBoss, Body = "Fenring_Cultist", Name = "$iov_ormr", Level = 3, Health = 1200f, Down = OrmrDown, Lines = "iov_ormr_" },
+            new Keeper { Prefab = Hafdis, Body = "FallenValkyrie", Name = "$iov_hafdis", Level = 2, Health = 2500f, Down = HafdisDown, Lines = "iov_hafdis_" },
+        };
+
+        static int calmEffect, wardEffect, heartEffect, tarEffect;
+
+        // The ash-sea tar: no burning-sea damage to the ship the local player is aboard while it lasts.
+        [HarmonyPatch(typeof(Ship), "TakeAshlandsDamage")]
+        static class AshTarPatch
+        {
+            static bool Prefix(Ship __instance)
+            {
+                Player player = Player.m_localPlayer;
+                return player == null || tarEffect == 0 || Ship.GetLocalShip() != __instance || !player.GetSEMan().HaveStatusEffect(tarEffect);
+            }
+        }
 
         internal static void Register()
         {
@@ -114,6 +173,8 @@ namespace IslandsOfValheim
             Fragment(Piece2, "iov_piece2", Recolor.ToHue(0.12f, 0.3f, 1.4f));   // salt-white
             Fragment(Piece3, "iov_piece3", Recolor.ToHue(0.75f, 0.35f, 0.55f)); // gone dark
             Fragment(Piece4, "iov_piece4", Recolor.ToHue(0.5f, 0.55f, 1.1f));   // the dvergr's blue runes
+            Fragment(Piece5, "iov_piece5", Recolor.ToHue(0.03f, 0.8f, 0.9f));   // ember-red
+            Fragment(Piece6, "iov_piece6", Recolor.ToHue(0.58f, 0.15f, 1.3f));  // cold, almost white
             CustomItem oil = SeafarerGear.Simple(BrimOil, new[] { "Honey" }, "iov_brimoil", 10, 0.5f, Recolor.ToHue(0.07f, 0.8f, 0.7f));
             if (oil != null)
             {
@@ -147,11 +208,34 @@ namespace IslandsOfValheim
             ward.m_ttl = 600f;
             Consumable(SerpentCharm, new[] { "SerpentScale" }, "iov_serpentcharm", 0.2f, Recolor.ToHue(0.45f, 0.5f, 0.9f), ward);
             wardEffect = ward.NameHash();
+            // What Hafdís's crew tarred their hulls with: the burning sea doesn't hurt the ship you're on.
+            SE_Stats tar = SeafarerGear.Effect("IoV_SE_AshTar", "iov_se_ashtar", false);
+            tar.m_ttl = 600f;
+            Consumable(AshTar, new[] { "Tar" }, "iov_ashtar", 1f, Recolor.ToHue(0.04f, 0.7f, 0.55f), tar);
+            tarEffect = tar.NameHash();
+
+            // The end of the tale: the fragments made one, clean. The sea knows whoever wears it.
+            SE_Stats heart = SeafarerGear.Effect("IoV_SE_BrimHeart", "iov_se_brimheart", false);
+            heart.m_swimSpeedModifier = 0.3f;
+            heart.m_swimStaminaUseModifier = -0.3f;
+            CustomItem trinket = SeafarerGear.Clone(BrimHeart, new[] { "TrinketChitinSwim", "TrinketSilverResist" }, "iov_brimheart", Recolor.ToHue(0.13f, 0.7f, 1.3f));
+            if (trinket != null)
+            {
+                ItemDrop.ItemData.SharedData shared = trinket.ItemDrop.m_itemData.m_shared;
+                shared.m_equipStatusEffect = heart;
+                shared.m_maxQuality = 1;
+                shared.m_teleportable = true;
+                heart.m_icon = trinket.ItemDrop.m_itemData.GetIcon();
+            }
+            heartEffect = heart.NameHash();
 
             RegisterKetill();
             RegisterOrmrChest();
             IsletPrefabs.AddSpawner("SeekerBrute", OrmrGuard, 2, 2, 0f, 0f, true, 30f);
-            RegisterRunePiece();
+            RegisterStoryPickable(RunePiece, Piece4, 40f, "Pickable_DvergrLantern");
+            RegisterStoryPickable(AshPiece, Piece5, 0f, "Pickable_DvergrLantern");
+            foreach (Keeper keeper in Keepers) RegisterKeeper(keeper);
+            RegisterMarker(FinalStand).AddComponent<FinalStand>();
             RegisterMarker(SigrunWaters).AddComponent<SigrunWatersMarker>();
             foreach (string[] stone in Stones) RegisterStone(stone[0], stone[1], stone[2]);
         }
@@ -230,14 +314,14 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
-        // The dvergr's fragment, lying where they keep it: picked up like their steins and lanterns, and
-        // like those, taking it angers them. It is the fragment item itself with its loose-item parts taken
-        // off, so it looks and glints the same; once taken it is gone for good.
-        static void RegisterRunePiece()
+        // A fragment lying where it was left, to pick up: the fragment item itself with its loose-item parts
+        // taken off, so it looks and glints the same; once taken it is gone for good. aggravate: like the
+        // dvergr's steins and lanterns, taking it angers those around (the dvergr's fragment).
+        static void RegisterStoryPickable(string name, string piece, float aggravate, string effectsFrom)
         {
-            GameObject item = PrefabManager.Instance.GetPrefab(Piece4);
+            GameObject item = PrefabManager.Instance.GetPrefab(piece);
             if (item == null) return;
-            GameObject go = PrefabManager.Instance.CreateClonedPrefab(RunePiece, Piece4);
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(name, piece);
             foreach (Floating floating in go.GetComponentsInChildren<Floating>(true)) Object.DestroyImmediate(floating);
             foreach (ItemDrop drop in go.GetComponentsInChildren<ItemDrop>(true)) Object.DestroyImmediate(drop);
             foreach (ZSyncTransform sync in go.GetComponentsInChildren<ZSyncTransform>(true)) Object.DestroyImmediate(sync);
@@ -249,11 +333,53 @@ namespace IslandsOfValheim
             pickable.m_amount = 1;
             pickable.m_dontScale = true;
             pickable.m_respawnTimeMinutes = 0f;
-            pickable.m_aggravateRange = 40f;
+            pickable.m_aggravateRange = aggravate;
             pickable.m_defaultEnabled = true;
-            GameObject lantern = PrefabManager.Instance.GetPrefab("Pickable_DvergrLantern");
-            Pickable vanilla = lantern != null ? lantern.GetComponent<Pickable>() : null;
+            GameObject source = PrefabManager.Instance.GetPrefab(effectsFrom);
+            Pickable vanilla = source != null ? source.GetComponent<Pickable>() : null;
             if (vanilla != null) pickable.m_pickEffector = vanilla.m_pickEffector;
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
+        }
+
+        // One of the three keepers: a vanilla creature with a name, a boss's bar, its own health and no
+        // spawner of its own (FinalStand brings them). Hafdís doesn't attack first: she is Dvergr-like,
+        // left in peace until someone strikes her; she has the last fragment.
+        static void RegisterKeeper(Keeper keeper)
+        {
+            if (PrefabManager.Instance.GetPrefab(keeper.Body) == null)
+            {
+                Plugin.Log.LogWarning(keeper.Body + " not found: " + keeper.Prefab + " is left out, and the hidden islet's fights skip it.");
+                return;
+            }
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(keeper.Prefab, keeper.Body);
+            Humanoid humanoid = go.GetComponent<Humanoid>();
+            Character body = go.GetComponent<Character>();
+            if (body == null) return;
+            body.m_name = keeper.Name;
+            body.m_boss = true;
+            body.m_bossEvent = "";
+            body.m_health = keeper.Health;
+            BaseAI ai = go.GetComponent<BaseAI>();
+            if (ai != null) { ai.m_spawnMessage = ""; ai.m_deathMessage = ""; }
+            if (keeper.Prefab == Hafdis)
+            {
+                body.m_faction = Character.Faction.Dverger; // only an enemy once aggravated
+                if (ai != null) ai.m_aggravatable = true;
+                MonsterAI monster = ai as MonsterAI;
+                if (monster != null) monster.m_enableHuntPlayer = false;
+                CharacterDrop drops = go.GetComponent<CharacterDrop>();
+                GameObject fragment = PrefabManager.Instance.GetPrefab(Piece6);
+                if (drops != null && fragment != null)
+                {
+                    CharacterDrop.Drop drop = new CharacterDrop.Drop();
+                    drop.m_prefab = fragment;
+                    drop.m_amountMin = drop.m_amountMax = 1;
+                    drop.m_chance = 1f;
+                    drop.m_levelMultiplier = false;
+                    drops.m_drops.Add(drop);
+                }
+            }
+            Plugin.Debug("Keeper " + keeper.Prefab + " made from " + keeper.Body + (humanoid != null ? " (humanoid)" : ""));
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
@@ -348,6 +474,7 @@ namespace IslandsOfValheim
         internal static bool Talk(Player player, SeaTraderNpc npc)
         {
             LearnPages(player);
+            if (Key(FinalDone)) return false; // only his chest is left
             if (!Key(FirstTold))
             {
                 if (Key(HarbourLit))
@@ -376,6 +503,14 @@ namespace IslandsOfValheim
                     npc.Say("$" + step.Lines + "done");
                     Set(step.Done);
                     Tell(player, "$" + step.Lore, "$" + step.Lore + "_text");
+                    if (step.Last)
+                    {
+                        // The light comes for him, as it once came for her; what it leaves of the fragments
+                        // is the player's. He goes once his last words are said (SeaTraderNpc).
+                        Give(player, BrimHeart);
+                        npc.LeaveSoon();
+                        Plugin.Debug("Story: the tale is told");
+                    }
                     return true;
                 }
                 if (!Has(player, step.Map))
@@ -568,7 +703,68 @@ namespace IslandsOfValheim
 
         internal static bool SerpentWarded(Player player)
         {
-            return wardEffect != 0 && player.GetSEMan().HaveStatusEffect(wardEffect);
+            SEMan effects = player.GetSEMan();
+            return (wardEffect != 0 && effects.HaveStatusEffect(wardEffect)) || (heartEffect != 0 && effects.HaveStatusEffect(heartEffect));
+        }
+
+        // ---- Hafdís's shore: taking the fragment from the ashes wakes her crew ----
+
+        static readonly string[] Crew = { "Charred_Melee", "Charred_Melee", "Charred_Archer", "Charred_Mage" };
+
+        [HarmonyPatch(typeof(Pickable), "Interact")]
+        static class AshPiecePatch
+        {
+            static void Postfix(Pickable __instance, Humanoid character, bool __result)
+            {
+                if (!__result || character != Player.m_localPlayer || Utils.GetPrefabName(__instance.gameObject) != AshPiece || ZNetScene.instance == null) return;
+                Vector3 at = __instance.transform.position;
+                for (int i = 0; i < Crew.Length; i++)
+                {
+                    GameObject prefab = ZNetScene.instance.GetPrefab(Crew[i]);
+                    if (prefab == null) continue;
+                    float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
+                    Vector3 p = at + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 5f + Vector3.up * 1.5f;
+                    GameObject go = Object.Instantiate(prefab, p, Quaternion.LookRotation(at - p));
+                    Character c = go.GetComponent<Character>();
+                    if (c != null) c.SetLevel(2);
+                }
+                character.Message(MessageHud.MessageType.Center, "$iov_story_ashes", 0, null, false);
+                Plugin.Debug("Story: Hafdís's crew wakes");
+            }
+        }
+
+        // ---- the hidden islet: a keeper falls ----
+
+        internal static Keeper KeeperOf(Character character)
+        {
+            if (character == null) return null;
+            string name = Utils.GetPrefabName(character.gameObject);
+            foreach (Keeper keeper in Keepers)
+                if (keeper.Prefab == name) return keeper;
+            return null;
+        }
+
+        // The next keeper still standing, or null when all three have fallen.
+        internal static Keeper NextKeeper()
+        {
+            foreach (Keeper keeper in Keepers)
+                if (!Key(keeper.Down) && PrefabManager.Instance.GetPrefab(keeper.Prefab) != null) return keeper;
+            return null;
+        }
+
+        [HarmonyPatch(typeof(Character), "OnDeath")]
+        static class KeeperDeathPatch
+        {
+            static void Prefix(Character __instance)
+            {
+                Keeper keeper = KeeperOf(__instance);
+                if (keeper == null) return;
+                Set(keeper.Down);
+                global::IslandsOfValheim.FinalStand.Fallen(); // the class, not the prefab name
+                Player player = Player.m_localPlayer;
+                if (player != null && Vector3.Distance(player.transform.position, __instance.transform.position) < 60f)
+                    player.Message(MessageHud.MessageType.Center, Texts.Get("iov_story_says", keeper.Name, "$" + keeper.Lines + "death"), 0, null, false);
+            }
         }
 
         // The serpent charm: serpents' bites on its wearer count half. On the player's own client, where the
@@ -583,6 +779,84 @@ namespace IslandsOfValheim
                 Character attacker = hit.GetAttacker();
                 if (attacker != null && attacker.m_name == "$enemy_serpent") hit.ApplyModifier(0.5f);
             }
+        }
+    }
+
+    // The hidden islet's keepers, one after the other: Grímr, Ormr, Hafdís. The client that owns the marker
+    // brings the next one while a player is near and none is standing (each fall is a world key, so it
+    // carries on where it left off). Every client shows their words over them: a line as each comes, and
+    // Hafdís's offer while she hasn't been struck.
+    class FinalStand : MonoBehaviour
+    {
+        const float Near = 35f;    // a player this close wakes the next keeper
+        const float Search = 300f; // a keeper this far off still counts as standing (Hafdís flies)
+        const float After = 8f;    // seconds between one falling and the next coming
+        static float lastFall = -100f;
+
+        ZNetView nview;
+        bool playerWasNear;
+        Character current;
+        int spoken;
+        float nextLine;
+
+        void Awake()
+        {
+            nview = GetComponent<ZNetView>();
+            if (nview == null || nview.GetZDO() == null) return;
+            InvokeRepeating("Tick", 10f, 2f); // gives a standing keeper time to load with the zone
+        }
+
+        internal static void Fallen() { lastFall = Time.time; }
+
+        void Tick()
+        {
+            if (ZNetScene.instance == null || !nview.IsValid()) return;
+            Story.Keeper keeper = Story.NextKeeper();
+            Character standing = keeper != null ? Find(keeper) : null;
+            bool near = Player.IsPlayerInRange(transform.position, Near);
+            if (keeper != null && standing == null && nview.IsOwner() && near && playerWasNear && Time.time - lastFall > After)
+                Spawn(keeper);
+            playerWasNear = near;
+            Speak(keeper, standing);
+        }
+
+        Character Find(Story.Keeper keeper)
+        {
+            foreach (Character c in Character.GetAllCharacters())
+                if (c != null && !c.IsDead() && Utils.GetPrefabName(c.gameObject) == keeper.Prefab &&
+                    Vector3.Distance(c.transform.position, transform.position) < Search) return c;
+            return null;
+        }
+
+        void Spawn(Story.Keeper keeper)
+        {
+            GameObject prefab = ZNetScene.instance.GetPrefab(keeper.Prefab);
+            if (prefab == null) return;
+            GameObject go = Instantiate(prefab, transform.position + Vector3.up * 0.5f, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            Character c = go.GetComponent<Character>();
+            if (c != null) c.SetLevel(keeper.Level);
+            Plugin.Debug("Hidden islet: " + keeper.Prefab + " comes");
+        }
+
+        void Speak(Story.Keeper keeper, Character standing)
+        {
+            Player player = Player.m_localPlayer;
+            if (keeper == null || standing == null || player == null || Chat.instance == null) return;
+            if (standing != current) { current = standing; spoken = 0; nextLine = 0f; }
+            if (Time.time < nextLine || Vector3.Distance(player.transform.position, standing.transform.position) > 25f) return;
+            string line = null;
+            if (spoken == 0) line = "$" + keeper.Lines + "spawn";
+            else if (keeper.Prefab == Story.Hafdis && spoken < 3 && !Struck(standing)) line = "$" + keeper.Lines + "offer" + (spoken + 1);
+            if (line == null) return;
+            Chat.instance.SetNpcText(standing.gameObject, Vector3.up * (standing.GetHeight() + 0.6f), 40f, 7f, "", line, false);
+            spoken++;
+            nextLine = Time.time + 8f;
+        }
+
+        static bool Struck(Character c)
+        {
+            BaseAI ai = c.GetBaseAI();
+            return ai != null && ai.IsAggravated();
         }
     }
 

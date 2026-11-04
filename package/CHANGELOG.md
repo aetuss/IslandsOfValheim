@@ -8,11 +8,13 @@
 - Third step: Sigrún's islet in the Plains waters. She threw her fragment into the sea, and a fish swallowed it: fish around her islet until it turns up (by the third fish at the latest). Fulings camp there now.
 - Fourth step: Ormr's islet in the Mistlands waters. He wrote his last days on three stones, and locked a fragment in his chest, with a Seeker Soldier by it.
 - Fifth step: a dvergr outpost that keeps a fragment Ormr lost. Taking it turns them against you.
+- Sixth step: a shore in the Ashlands waters, where the sea's guardian was once a sailor. Her stones tell how; the fifth fragment lies in the ashes, and her crew wakes when you take it.
+- Last step: a hidden islet in the Deep North waters. Three keepers come one after the other, the last of them offering you her place first. Bring Sævar her fragment and the tale ends: you get the Heart of the Sea, a trinket, and his chest keeps trading where he stood.
 - While you carry a fragment the sea turns against you: a storm over you wherever you go, and serpents that come looking. A Storm Glass calms it for a while. A fragment can't go through a portal.
-- New goods as the tale goes on: Brim Oil (lights any old beacon), the Storm Glass, the Gull Feather (a tailwind while you sail), the Brim Harpoon and the Serpent Charm.
+- New goods as the tale goes on: Brim Oil (lights any old beacon), the Storm Glass, the Gull Feather (a tailwind while you sail), the Brim Harpoon, the Serpent Charm and the Ash-sea Tar (the burning sea doesn't harm your ship).
 - The Ancient Lure now draws an islet's fish from about 35 m away. Before, they only came for it from a few metres, and with a ground's few fish spread all around the islet, they hardly ever bit.
 - The sodden pouch on the islet fishing grounds can really turn up now. It was only checked when a fish was reeled all the way in, not when you walked up to a hooked fish and picked it up, which is how most fish are taken.
-- `iov_goto story1` to `iov_goto story5` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
+- `iov_goto story1` to `iov_goto story7` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
 
 ## 1.5.2
 

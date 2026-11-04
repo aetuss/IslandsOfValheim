@@ -39,6 +39,7 @@ namespace IslandsOfValheim
             Story.GullFeather, 3, 100, Story.SigrunDone,
             Story.Harpoon, 1, 600, Story.OrmrDone,
             Story.SerpentCharm, 2, 150, Story.DvergrDone,
+            Story.AshTar, 1, 200, Story.AshesDone,
         };
 
         static List<string> Lines(string prefix, int count)
@@ -105,8 +106,36 @@ namespace IslandsOfValheim
             }
         }
 
+        internal const string ChestChild = "IoV_SaevarChest";
+
+        // What stays when the tale is told and he's gone: a chest where he stood, still trading (hidden
+        // until then). A static copy of a vanilla chest: its looks and colliders, nothing that runs.
+        static void AddChest(GameObject go)
+        {
+            foreach (string baseName in new[] { "piece_chest_wood", "TreasureChest_meadows" })
+            {
+                if (PrefabManager.Instance.GetPrefab(baseName) == null) continue;
+                GameObject chest = PrefabManager.Instance.CreateClonedPrefab(ChestChild, baseName);
+                for (int pass = 0; pass < 5; pass++)
+                {
+                    MonoBehaviour[] scripts = chest.GetComponentsInChildren<MonoBehaviour>(true);
+                    if (scripts.Length == 0) break;
+                    for (int i = scripts.Length - 1; i >= 0; i--) Object.DestroyImmediate(scripts[i]);
+                }
+                foreach (Rigidbody body in chest.GetComponentsInChildren<Rigidbody>(true)) Object.DestroyImmediate(body);
+                chest.name = ChestChild;
+                chest.transform.SetParent(go.transform, false);
+                chest.transform.localPosition = Vector3.zero;
+                chest.transform.localRotation = Quaternion.identity;
+                chest.SetActive(false);
+                Plugin.Debug("Sævar's chest made from " + baseName);
+                return;
+            }
+        }
+
         static void Setup(GameObject go)
         {
+            AddChest(go);
             // His own component first: the hud and the interact key take the first one they find.
             go.AddComponent<SeaTraderNpc>();
             Trader trader = go.AddComponent<Trader>();
@@ -219,6 +248,8 @@ namespace IslandsOfValheim
         Trader trader;
         bool greeted;
         float nextTalk;
+        bool gone;
+        float leaveAt = -1f; // when his last words are said
 
         void Awake()
         {
@@ -227,10 +258,38 @@ namespace IslandsOfValheim
             InvokeRepeating("Tick", Random.Range(0f, 0.5f), 0.5f);
         }
 
+        // The tale is told: he goes once his last line has been on screen a while.
+        internal void LeaveSoon()
+        {
+            leaveAt = Time.time + 7f;
+        }
+
+        // Gone: his body (meshes, lights) fades from the world in Odin's smoke, if it happens before your
+        // eyes, and his chest is there instead.
+        void Leave(bool seen)
+        {
+            gone = true;
+            Transform chest = transform.Find(SeaTrader.ChestChild);
+            foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))
+                if (chest == null || !renderer.transform.IsChildOf(chest)) renderer.enabled = false;
+            foreach (Light light in GetComponentsInChildren<Light>(true))
+                if (chest == null || !light.transform.IsChildOf(chest)) light.enabled = false;
+            if (chest != null) chest.gameObject.SetActive(true);
+            if (Chat.instance != null) Chat.instance.ClearNpcText(gameObject);
+            if (seen && ZNetScene.instance != null)
+            {
+                GameObject smoke = ZNetScene.instance.GetPrefab("vfx_odin_despawn");
+                if (smoke != null) Instantiate(smoke, transform.position, transform.rotation);
+            }
+            Plugin.Debug("Sævar is gone; his chest stays" + (seen ? " (seen)" : ""));
+        }
+
         void Tick()
         {
             Player player = Player.m_localPlayer;
-            if (trader == null || player == null) return;
+            if (!gone && Story.Key(Story.FinalDone) && Time.time >= leaveAt)
+                Leave(leaveAt > 0f); // only the one who brought the last fragment sees him go
+            if (gone || trader == null || player == null) return;
             float distance = Vector3.Distance(player.transform.position, transform.position);
             if (!greeted && distance < trader.m_greetRange)
             {
@@ -254,7 +313,7 @@ namespace IslandsOfValheim
         void Update()
         {
             Player player = Player.m_localPlayer;
-            if (player == null || trader == null) return;
+            if (player == null || trader == null || gone) return;
             Vector3 to = player.transform.position - transform.position;
             to.y = 0f;
             if (to.sqrMagnitude > trader.m_standRange * trader.m_standRange || to.sqrMagnitude < 0.01f) return;
@@ -281,8 +340,9 @@ namespace IslandsOfValheim
         {
             if (hold || trader == null || StoreGui.instance == null) return false;
             Player player = user as Player;
-            if (player != null && player == Player.m_localPlayer && Story.Talk(player, this)) return true;
+            if (!gone && player != null && player == Player.m_localPlayer && Story.Talk(player, this)) return true;
             StoreGui.instance.Show(trader);
+            if (gone) return false; // a chest says nothing
             if (Random.value < 0.5f) Say(Story.Reminder());
             else Say(trader.m_randomStartTrade);
             return false;
@@ -292,15 +352,16 @@ namespace IslandsOfValheim
         public bool UseItem(Humanoid user, ItemDrop.ItemData item)
         {
             Player player = user as Player;
-            return player != null && player == Player.m_localPlayer && Story.Talk(player, this);
+            return !gone && player != null && player == Player.m_localPlayer && Story.Talk(player, this);
         }
 
         public string GetHoverText()
         {
+            if (gone) return Localization.instance.Localize("$iov_saevarchest\n[<color=yellow><b>$KEY_Use</b></color>] $piece_container_open");
             return Localization.instance.Localize(SeaTrader.NameToken + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
         }
 
-        public string GetHoverName() { return Localization.instance.Localize(SeaTrader.NameToken); }
+        public string GetHoverName() { return Localization.instance.Localize(gone ? "$iov_saevarchest" : SeaTrader.NameToken); }
 
         public float GetHoverOffset() { return 0f; }
     }

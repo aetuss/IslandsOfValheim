@@ -19,6 +19,8 @@ namespace IslandsOfValheim
             SigrunsIslet();
             OrmrsIslet();
             DvergrHold();
+            HafdisShore();
+            HiddenIslet();
         }
 
         static void BeginStory(string name, IsletTier kind, int variant, float seedShift)
@@ -219,6 +221,66 @@ namespace IslandsOfValheim
             PlacePickables();
             PlaceOutsideGuard();
             EndStory(IsletTier.All[4].MinDistance + 300f, IsletTier.All[4].MaxDistance, false);
+        }
+
+        // Hafdís's shore, in the Ashlands waters (the southern half, like every Ashlands islet): the grausten
+        // hall her stranded crew built, her three stones, and by the sea the chest the waves brought, where
+        // the fifth fragment still lies in the ashes. Her crew's charred dead guard the hall and wake when
+        // it's taken (Story.AshPiecePatch).
+        static void HafdisShore()
+        {
+            BeginStory(Story.AshIslet, IsletTier.All[5], 2, 1400f);
+            GraustenFort();
+            GraustenPillar();
+            RidgeGuard();
+            StoryStones("IoV_StoryStone_Hafdis", 3);
+            float deg = cliffDeg + 200f;
+            Vector2 at = Polar(deg, PlateauAt(deg) - 1.6f);
+            GameObject chest = OnGround(new[] { "TreasureChest_charredfortress", "TreasureChest_meadows" }, at, 270f - deg, 0f, 0.05f, true);
+            if (chest != null)
+            {
+                Bounds b = SolidBounds(chest);
+                PlaceNetworked(Story.AshPiece, new Vector3(b.center.x, b.max.y + 0.08f, b.center.z), 30f);
+            }
+            else PlaceNetworked(Story.AshPiece, new Vector3(at.x, Height(at.x, at.y) + 0.3f, at.y), 30f);
+            Prop(new[] { "grausten_pile" }, Polar(deg + 12f, PlateauAt(deg + 12f) - 1.2f), 40f, 0.2f);
+            PlaceWreck(cliffDeg + 194f);
+            PlaceDock(cliffDeg + 229f);
+            PlaceHints();
+            PlacePlants();
+            PlacePickables();
+            PlaceOutsideGuard();
+            EndStory(IsletTier.All[5].MinDistance + 300f, IsletTier.All[5].MaxDistance);
+        }
+
+        // The hidden islet, far out in the Deep North waters (the northern half): a frost-bound hall where
+        // Hafdís keeps the last fragment with Ormr and their son. No guards and no chest: the three keepers
+        // come one after the other (FinalStand), and a stone warns those who land.
+        static void HiddenIslet()
+        {
+            BeginStory(Story.HiddenIslet, IsletTier.All[6], 3, 1600f);
+            for (int ix = -2; ix <= 2; ix += 2)
+                for (int iz = -2; iz <= 2; iz += 2)
+                    At("MountainKit_int_floor_2x2", new Vector3(ix, FloorTop, iz), Vector3.zero, true);
+            float b = FloorTop - 0.05f;
+            At("MountainKit_int_wall_4x4", new Vector3(0f, b, 3.4f), Vector3.zero, false);
+            At("MountainKit_int_wall_4x2", new Vector3(-3.4f, b, 1f), new Vector3(0f, 90f, 0f), false);
+            At("MountainKit_int_wall_4x2", new Vector3(3.4f, b, 1f), new Vector3(0f, 90f, 0f), false);
+            Ice(new Vector2(4.6f, -1.8f), 20f, 2.8f);
+            Ice(new Vector2(-4.6f, -2.4f), 140f, 2.6f);
+            Ice(new Vector2(-4.2f, 4.2f), 250f, 2.2f);
+            Ice(new Vector2(4.4f, 4f), 310f, 2.4f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(-1.8f, -4f), 0f, 0.05f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(1.8f, -4f), 0f, 0.05f);
+            PlaceNetworked(Story.FinalStand, new Vector3(0f, FloorTop, 0.2f), 0f);
+            float stone = cliffDeg + 180f;
+            PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, Polar(stone, PlateauAt(stone) - 0.8f), 90f - stone, 0f);
+            FrozenGraves();
+            PlaceWreck(cliffDeg + 60f);
+            PlaceDock(cliffDeg + 140f);
+            PlacePlants();
+            PlacePickables();
+            EndStory(IsletTier.All[6].MinDistance + 600f, IsletTier.All[6].MaxDistance);
         }
     }
 }

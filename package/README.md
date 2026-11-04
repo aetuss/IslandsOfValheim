@@ -99,7 +99,7 @@ The trader only appears in a new world, or after `genloc` in ocean nobody has vi
 
 Sævar has a story to tell, about the Brim Folk, his people, and what the sea gave them. He tells it a step at a time. Talk to him and he gives you a torn map; use it (right-click) and it marks roughly where it leads. Go there, do what has to be done, and come back to him for the next page of the tale (in your compendium) and the next map. The tale belongs to the world, not to one player: whoever takes a step, everyone hears the rest.
 
-So far the tale has five steps, one further out to sea than the last: the old Brim harbour in the Meadows waters, Ketill's islet in the Swamp waters, Sigrún's islet in the Plains waters, Ormr's islet in the Mistlands waters and a dvergr outpost that keeps something it shouldn't. Some fragments are guarded, some are hidden, one has to be fished out of the sea, and one belongs to the dvergr, who won't like you taking it. More will follow in later versions.
+The tale has seven steps, each further out to sea than the last: the old Brim harbour in the Meadows waters, Ketill's islet in the Swamp waters, Sigrún's islet in the Plains waters, Ormr's islet in the Mistlands waters, a dvergr outpost that keeps something it shouldn't, a shore in the Ashlands waters where it all began, and at last a hidden islet in the Deep North waters, where three keepers stand between you and the last fragment. Some fragments are guarded, some are hidden, one has to be fished out of the sea, and one belongs to the dvergr, who won't like you taking it. Bring Sævar the last one and the tale ends, with a trinket for you to keep. His goods stay on sale after that.
 
 While you carry a fragment of what the Brim Folk found, the sea turns against you: a storm over you wherever you go, and serpents that come looking. Fragments can't go through portals. Each fragment you bring Sævar adds to his goods:
 
@@ -110,6 +110,8 @@ While you carry a fragment of what the Brim Folk found, the sea turns against yo
 | Sigrún | Gull Feather (5 minutes): the wind is always at your back while you sail |
 | Ormr | Brim Harpoon: an Abyssal Harpoon that hits 30% harder |
 | The dvergr | Serpent Charm (10 minutes): serpents deal half damage to you, and the restless sea sends none |
+| The Ashlands shore | Ash-sea Tar (10 minutes): the burning sea doesn't harm the ship you're on |
+| The end of the tale | (not sold) Heart of the Sea, a trinket: you swim 30% faster and use 30% less stamina swimming, serpents deal half damage to you and the restless sea sends none |
 
 ## Dvergr outposts
 
@@ -140,7 +142,7 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 ## Console commands
 
 - `iov_info`: how many islets of each kind this world has and how far the closest ones are (host or single player).
-- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour, `iov_goto story1` to `iov_goto story5` to the islets of his tale.
+- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour, `iov_goto story1` to `iov_goto story7` to the islets of his tale.
 
 ## Translations
 
