@@ -889,8 +889,7 @@ namespace IslandsOfValheim
 
         bool coming;
 
-        // A keeper doesn't just appear: a mist gathers at the back of the hall first, and it steps out of
-        // it (Hafdís comes down from the sky into it).
+        // A keeper doesn't just appear: a mist gathers at the back of the hall first, and it steps out of it.
         System.Collections.IEnumerator Come(Story.Keeper keeper)
         {
             coming = true;
@@ -904,10 +903,12 @@ namespace IslandsOfValheim
             Player closest = Player.GetClosestPlayer(at, Near * 2f);
             Vector3 to = closest != null ? closest.transform.position - at : -transform.forward;
             to.y = 0f;
-            Vector3 from = keeper.Prefab == Story.Hafdis ? at + Vector3.up * 14f : at;
-            GameObject go = Instantiate(prefab, from, to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : transform.rotation);
+            GameObject go = Instantiate(prefab, at, to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : transform.rotation);
             Character c = go.GetComponent<Character>();
             if (c != null) c.SetLevel(keeper.Level);
+            // Grímr and Ormr know why you came: they turn on you at once, rather than idling about first.
+            BaseAI ai = go.GetComponent<BaseAI>();
+            if (ai != null && keeper.Prefab != Story.Hafdis) ai.Alert();
             Effect("vfx_spawn_large", at);
             Plugin.Debug("Hidden islet: " + keeper.Prefab + " comes");
         }
@@ -918,19 +919,54 @@ namespace IslandsOfValheim
             if (fx != null) Instantiate(fx, at, Quaternion.identity);
         }
 
-        // While a keeper speaks and hasn't turned on anyone yet, it looks at you (on the client that runs
-        // its AI; it turns for everyone).
+        const float ReachHeight = 3f;  // Hafdís stays at most this far above her hall's floor,
+        const float ReachRadius = 9f;  // and this close to its middle: within a sword's reach, over the islet
+
+        // On the client that runs the keeper (what it does there, everyone sees): Hafdís is kept low over
+        // her hall, so she can be fought without wings; and while she speaks her offer, she looks at you.
+        // (Done after everything else each frame, so neither vanilla's flying nor other mods' AI tweaks,
+        // like hovering after an attack, carry her out of reach.)
         void LateUpdate()
         {
-            Player player = Player.m_localPlayer;
-            if (current == null || player == null || current.IsDead()) return;
-            BaseAI ai = current.GetBaseAI();
+            if (current == null || current.IsDead()) return;
             ZNetView view = current.GetComponent<ZNetView>();
-            if (ai == null || view == null || !view.IsValid() || !view.IsOwner() || ai.IsAlerted()) return;
+            if (view == null || !view.IsValid() || !view.IsOwner()) return;
+            Story.Keeper keeper = Story.KeeperOf(current);
+            if (keeper == null || keeper.Prefab != Story.Hafdis) return;
+            KeepInReach(current);
+            Player player = Player.m_localPlayer;
+            if (player == null || current.m_faction == keeper.Faction) return; // struck: she fights as she will
             Vector3 to = player.transform.position - current.transform.position;
             to.y = 0f;
             if (to.sqrMagnitude < 0.01f || to.sqrMagnitude > 30f * 30f) return;
-            ai.LookTowards(to.normalized);
+            Quaternion want = Quaternion.LookRotation(to.normalized);
+            current.transform.rotation = Quaternion.RotateTowards(current.transform.rotation, want, 240f * Time.deltaTime);
+            BaseAI ai = current.GetBaseAI();
+            if (ai != null) ai.LookTowards(to.normalized);
+        }
+
+        void KeepInReach(Character c)
+        {
+            Vector3 centre = transform.position;
+            Vector3 p = c.transform.position;
+            Vector3 want = p;
+            float top = centre.y + ReachHeight;
+            if (p.y > top) want.y = Mathf.MoveTowards(p.y, top, 10f * Time.deltaTime);
+            Vector3 flat = new Vector3(p.x - centre.x, 0f, p.z - centre.z);
+            if (flat.magnitude > ReachRadius)
+            {
+                Vector3 edge = centre + flat.normalized * ReachRadius;
+                want.x = Mathf.MoveTowards(p.x, edge.x, 10f * Time.deltaTime);
+                want.z = Mathf.MoveTowards(p.z, edge.z, 10f * Time.deltaTime);
+            }
+            if (want == p) return;
+            c.transform.position = want;
+            Rigidbody body = c.GetComponent<Rigidbody>();
+            if (body == null) return;
+            body.position = want;
+            Vector3 v = body.linearVelocity;
+            if (want.y < p.y && v.y > 0f) v.y = 0f;
+            body.linearVelocity = v;
         }
 
         void Speak(Story.Keeper keeper, Character standing)
