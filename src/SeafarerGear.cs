@@ -252,6 +252,29 @@ namespace IslandsOfValheim
         }
 
         const string LuredKey = "IoV_Lured";
+        const float LureRange = 35f; // how far an islet ground's fish come for the lure (vanilla's float range is a few metres)
+
+        // A ground's fish are spread all around its islet, a few at a time, so few would ever be near the
+        // float: the lure draws them from much further off. A fish that isn't already after a float looks
+        // for the closest lure in the water within LureRange.
+        [HarmonyPatch(typeof(Fish), "FindFloat")]
+        static class LureRangePatch
+        {
+            static void Postfix(Fish __instance, ref FishingFloat __result)
+            {
+                if (__result != null) return;
+                ZNetView nview = __instance.GetComponent<ZNetView>();
+                if (nview == null || !nview.IsValid() || nview.GetZDO().GetInt(IsletFishing.GroundKey, 0) <= 0) return;
+                float best = LureRange;
+                foreach (FishingFloat ff in FishingFloat.GetAllInstances())
+                {
+                    if (ff == null || !ff.IsInWater() || ff.GetCatch() != null || ff.GetBait() != Lure) continue;
+                    float distance = Vector3.Distance(ff.transform.position, __instance.transform.position);
+                    if (distance < best) { best = distance; __result = ff; }
+                }
+                if (__result != null) Plugin.Debug("Lure: " + __instance.name + " comes for it from " + best.ToString("0") + " m");
+            }
+        }
 
         // The game lists a knockback for anything used as ammo, bait included, even when it's 0.
         [HarmonyPatch(typeof(ItemDrop.ItemData), "GetTooltip", new[] { typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool) })]
