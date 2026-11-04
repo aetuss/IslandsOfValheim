@@ -55,6 +55,14 @@ namespace IslandsOfValheim
                     args.Context.AddString("Teleport to the closest new one: iov_goto [tier] (needs devcommands)");
                 });
 
+            new Terminal.ConsoleCommand("iov_light",
+                "- IslandsOfValheim: shows the light from the end of Sævar's tale a few metres in front of you (needs devcommands)",
+                args =>
+                {
+                    if (Player.m_localPlayer == null) return;
+                    LightBeam.Over(Player.m_localPlayer.transform.position + Player.m_localPlayer.transform.forward * 5f, 9f);
+                }, true);
+
             new Terminal.ConsoleCommand("iov_goto",
                 "[tier] - IslandsOfValheim: teleport to the closest islet that hasn't been generated yet (of that tier: " + TierNames(", ") + "), or to the sea trader's harbour (trader)",
                 args =>

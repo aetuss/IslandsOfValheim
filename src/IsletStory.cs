@@ -259,19 +259,30 @@ namespace IslandsOfValheim
         static void HiddenIslet()
         {
             BeginStory(Story.HiddenIslet, IsletTier.All[6], 3, 1600f);
-            for (int ix = -2; ix <= 2; ix += 2)
-                for (int iz = -2; iz <= 2; iz += 2)
+            // An 8x8 m floor, open to the front (-z), a tall wall behind where the keepers stand.
+            for (int ix = -3; ix <= 3; ix += 2)
+                for (int iz = -3; iz <= 3; iz += 2)
                     At("MountainKit_int_floor_2x2", new Vector3(ix, FloorTop, iz), Vector3.zero, true);
             float b = FloorTop - 0.05f;
-            At("MountainKit_int_wall_4x4", new Vector3(0f, b, 3.4f), Vector3.zero, false);
-            At("MountainKit_int_wall_4x2", new Vector3(-3.4f, b, 1f), new Vector3(0f, 90f, 0f), false);
-            At("MountainKit_int_wall_4x2", new Vector3(3.4f, b, 1f), new Vector3(0f, 90f, 0f), false);
-            Ice(new Vector2(4.6f, -1.8f), 20f, 2.8f);
-            Ice(new Vector2(-4.6f, -2.4f), 140f, 2.6f);
-            Ice(new Vector2(-4.2f, 4.2f), 250f, 2.2f);
-            Ice(new Vector2(4.4f, 4f), 310f, 2.4f);
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(-1.8f, -4f), 0f, 0.05f);
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(1.8f, -4f), 0f, 0.05f);
+            At("MountainKit_int_wall_4x4", new Vector3(-2f, b, 4.4f), Vector3.zero, false);
+            At("MountainKit_int_wall_4x4", new Vector3(2f, b, 4.4f), Vector3.zero, false);
+            // Two-storey pillars around it like a ring of standing stones, the front left open.
+            Vector2[] pillars = { new Vector2(-5.4f, -3.2f), new Vector2(5.4f, -3.2f), new Vector2(-5.8f, 0.8f), new Vector2(5.8f, 0.8f), new Vector2(-4.6f, 4.4f), new Vector2(4.6f, 4.4f) };
+            foreach (Vector2 p in pillars)
+            {
+                float g = PlateauHeight - 0.05f;
+                float top = Top(At("stone_pillar", new Vector3(p.x, g, p.y), Vector3.zero, false), g + 2f);
+                At("stone_pillar", new Vector3(p.x, top, p.y), Vector3.zero, false);
+            }
+            // Cold blue fire at the way in and lanterns at the back; ice grown up between the pillars.
+            Prop(new[] { "MountainKit_brazier_blue", "MountainKit_brazier" }, new Vector2(-4.6f, -5.2f), 0f, 0.05f);
+            Prop(new[] { "MountainKit_brazier_blue", "MountainKit_brazier" }, new Vector2(4.6f, -5.2f), 0f, 0.05f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(-3.2f, 3.4f), 0f, 0.05f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, new Vector2(3.2f, 3.4f), 0f, 0.05f);
+            Ice(new Vector2(-6.4f, -1.4f), 140f, 2f);
+            Ice(new Vector2(6.4f, -1.2f), 20f, 2.2f);
+            Ice(new Vector2(-6f, 3f), 250f, 1.8f);
+            Ice(new Vector2(6f, 3.2f), 310f, 1.8f);
             PlaceNetworked(Story.FinalStand, new Vector3(0f, FloorTop, 0.2f), 0f);
             float stone = cliffDeg + 180f;
             PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, Polar(stone, PlateauAt(stone) - 0.8f), 90f - stone, 0f);

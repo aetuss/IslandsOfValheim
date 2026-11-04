@@ -139,6 +139,7 @@ namespace IslandsOfValheim
             internal string Prefab, Body, Name, Down, Lines;
             internal int Level;
             internal float Health;
+            internal Character.Faction Faction; // its vanilla side, which Hafdís turns back to once struck
         }
 
         internal static readonly Keeper[] Keepers =
@@ -335,6 +336,7 @@ namespace IslandsOfValheim
             pickable.m_respawnTimeMinutes = 0f;
             pickable.m_aggravateRange = aggravate;
             pickable.m_defaultEnabled = true;
+            pickable.m_useInteractAnimation = true; // you reach down for it
             GameObject source = PrefabManager.Instance.GetPrefab(effectsFrom);
             Pickable vanilla = source != null ? source.GetComponent<Pickable>() : null;
             if (vanilla != null) pickable.m_pickEffector = vanilla.m_pickEffector;
@@ -359,14 +361,21 @@ namespace IslandsOfValheim
             body.m_boss = true;
             body.m_bossEvent = "";
             body.m_health = keeper.Health;
+            keeper.Faction = body.m_faction;
             BaseAI ai = go.GetComponent<BaseAI>();
             if (ai != null) { ai.m_spawnMessage = ""; ai.m_deathMessage = ""; }
             if (keeper.Prefab == Hafdis)
             {
-                body.m_faction = Character.Faction.Dverger; // only an enemy once aggravated
-                if (ai != null) ai.m_aggravatable = true;
-                MonsterAI monster = ai as MonsterAI;
-                if (monster != null) monster.m_enableHuntPlayer = false;
+                // Nobody's enemy until struck (FinalStand turns her back), and she keeps low over her hall,
+                // in reach, rather than circling high the way a Fallen Valkyrie does.
+                body.m_faction = Character.Faction.Dverger;
+                if (ai != null)
+                {
+                    ai.m_aggravatable = true;
+                    Plugin.Debug("Hafdís flies at " + ai.m_flyAltitudeMin + "-" + ai.m_flyAltitudeMax + " m in vanilla");
+                    ai.m_flyAltitudeMin = Mathf.Min(ai.m_flyAltitudeMin, 3f);
+                    ai.m_flyAltitudeMax = Mathf.Min(ai.m_flyAltitudeMax, 7f);
+                }
                 CharacterDrop drops = go.GetComponent<CharacterDrop>();
                 GameObject fragment = PrefabManager.Instance.GetPrefab(Piece6);
                 if (drops != null && fragment != null)
@@ -711,12 +720,21 @@ namespace IslandsOfValheim
 
         static readonly string[] Crew = { "Charred_Melee", "Charred_Melee", "Charred_Archer", "Charred_Mage" };
 
+        static readonly System.Reflection.FieldInfo pickedField = AccessTools.Field(typeof(Pickable), "m_picked");
+
+        // Interact's result doesn't say whether it was picked (it's whether to play the animation), so the
+        // prefix notes whether there was still something to take.
         [HarmonyPatch(typeof(Pickable), "Interact")]
         static class AshPiecePatch
         {
-            static void Postfix(Pickable __instance, Humanoid character, bool __result)
+            static void Prefix(Pickable __instance, bool repeat, out bool __state)
             {
-                if (!__result || character != Player.m_localPlayer || Utils.GetPrefabName(__instance.gameObject) != AshPiece || ZNetScene.instance == null) return;
+                __state = !repeat && Utils.GetPrefabName(__instance.gameObject) == AshPiece && pickedField != null && !(bool)pickedField.GetValue(__instance);
+            }
+
+            static void Postfix(Pickable __instance, Humanoid character, bool __state)
+            {
+                if (!__state || character != Player.m_localPlayer || ZNetScene.instance == null) return;
                 Vector3 at = __instance.transform.position;
                 for (int i = 0; i < Crew.Length; i++)
                 {
@@ -818,6 +836,21 @@ namespace IslandsOfValheim
                 Spawn(keeper);
             playerWasNear = near;
             Speak(keeper, standing);
+            if (keeper != null && standing != null && keeper.Prefab == Story.Hafdis) Awaken(keeper, standing);
+        }
+
+        // Hafdís struck: she's an enemy like any other from now on, and comes for whoever is near. Her side
+        // is a plain field, so every client turns it; the owner of her AI sets it hunting.
+        static void Awaken(Story.Keeper keeper, Character hafdis)
+        {
+            if (hafdis.m_faction == keeper.Faction) return;
+            BaseAI ai = hafdis.GetBaseAI();
+            bool struck = hafdis.GetHealth() < hafdis.GetMaxHealth() - 0.5f || (ai != null && ai.IsAggravated());
+            if (!struck) return;
+            hafdis.m_faction = keeper.Faction;
+            ZNetView view = hafdis.GetComponent<ZNetView>();
+            if (ai != null && view != null && view.IsValid() && view.IsOwner()) ai.SetHuntPlayer(true);
+            Plugin.Debug("Hidden islet: Hafdís fights");
         }
 
         Character Find(Story.Keeper keeper)
@@ -832,7 +865,12 @@ namespace IslandsOfValheim
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(keeper.Prefab);
             if (prefab == null) return;
-            GameObject go = Instantiate(prefab, transform.position + Vector3.up * 0.5f, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            // At the back of the hall, facing whoever came.
+            Vector3 at = transform.position + transform.rotation * new Vector3(0f, 0.5f, 1.5f);
+            Player closest = Player.GetClosestPlayer(at, Near * 2f);
+            Vector3 to = closest != null ? closest.transform.position - at : -transform.forward;
+            to.y = 0f;
+            GameObject go = Instantiate(prefab, at, to.sqrMagnitude > 0.01f ? Quaternion.LookRotation(to) : transform.rotation);
             Character c = go.GetComponent<Character>();
             if (c != null) c.SetLevel(keeper.Level);
             Plugin.Debug("Hidden islet: " + keeper.Prefab + " comes");

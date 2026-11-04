@@ -241,6 +241,75 @@ namespace IslandsOfValheim
         }
     }
 
+    // A shaft of light from the sky onto one spot: a tall soft-edged column that fades in, holds and fades
+    // out, with a warm light at its foot. Local to this client, made in code (no vanilla effect does this).
+    class LightBeam : MonoBehaviour
+    {
+        const float Height = 80f, Width = 1.6f, FadeIn = 1.5f, FadeOut = 2.5f;
+        float born, life;
+        Material material;
+        Light glow;
+        Color color = new Color(1f, 0.93f, 0.72f, 0.38f);
+
+        internal static void Over(Vector3 foot, float seconds)
+        {
+            Shader shader = null;
+            foreach (string name in new[] { "Sprites/Default", "Legacy Shaders/Particles/Additive", "Particles/Standard Unlit", "Unlit/Transparent" })
+                if ((shader = Shader.Find(name)) != null) break;
+            if (shader == null) { Plugin.Debug("Light beam: no see-through shader found"); return; }
+            GameObject root = new GameObject("IoV_LightBeam");
+            root.transform.position = foot;
+            LightBeam beam = root.AddComponent<LightBeam>();
+            beam.born = Time.time;
+            beam.life = seconds;
+            beam.material = new Material(shader);
+            // Two crossed tall quads look like a column from every side; two thinner ones inside, turned 45
+            // degrees, make it brighter in the middle.
+            for (int i = 0; i < 4; i++)
+            {
+                GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                Object.Destroy(quad.GetComponent<Collider>());
+                quad.transform.SetParent(root.transform, false);
+                bool core = i >= 2;
+                quad.transform.localPosition = new Vector3(0f, Height * 0.5f, 0f);
+                quad.transform.localRotation = Quaternion.Euler(0f, (i % 2) * 90f + (core ? 45f : 0f), 0f);
+                quad.transform.localScale = new Vector3(core ? Width * 0.45f : Width, Height, 1f);
+                Renderer renderer = quad.GetComponent<Renderer>();
+                renderer.sharedMaterial = beam.material;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+            }
+            GameObject lamp = new GameObject("IoV_LightBeamGlow");
+            lamp.transform.SetParent(root.transform, false);
+            lamp.transform.localPosition = Vector3.up * 2f;
+            beam.glow = lamp.AddComponent<Light>();
+            beam.glow.type = LightType.Point;
+            beam.glow.color = new Color(1f, 0.9f, 0.7f);
+            beam.glow.range = 14f;
+            beam.Apply(0f);
+            Object.Destroy(root, seconds + 0.5f);
+            Plugin.Debug("Light beam with " + shader.name);
+        }
+
+        void Update()
+        {
+            float t = Time.time - born;
+            float k = t < FadeIn ? t / FadeIn : t > life - FadeOut ? Mathf.Clamp01((life - t) / FadeOut) : 1f;
+            Apply(k);
+        }
+
+        void Apply(float k)
+        {
+            if (material != null) material.color = new Color(color.r, color.g, color.b, color.a * k);
+            if (glow != null) glow.intensity = 3f * k;
+        }
+
+        void OnDestroy()
+        {
+            if (material != null) Object.Destroy(material);
+        }
+    }
+
     // The trader's own behaviour: greets you, says goodbye, talks now and then, turns to face you, opens
     // the store. Each client runs it for itself; nothing here is shared over the network.
     class SeaTraderNpc : MonoBehaviour, Hoverable, Interactable
@@ -262,6 +331,7 @@ namespace IslandsOfValheim
         internal void LeaveSoon()
         {
             leaveAt = Time.time + 7f;
+            LightBeam.Over(transform.position, 9f);
         }
 
         // Gone: his body (meshes, lights) fades from the world in Odin's smoke, if it happens before your
