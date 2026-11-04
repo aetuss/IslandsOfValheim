@@ -116,15 +116,30 @@ namespace IslandsOfValheim
                 ZNetView nview = fish != null ? fish.GetComponent<ZNetView>() : null;
                 if (fisher == null || nview == null || !nview.IsValid()) return true;
                 int ground = nview.GetZDO().GetInt(GroundKey, 0);
+                Plugin.Debug("Fishing: reeled in " + fish.name + (ground > 0 ? " from an islet ground" : ""));
                 if (ground <= 0 || ground > IsletTier.All.Count) return true;
-                Plugin.Debug("Fishing: landed " + fish.name + " from a " + IsletTier.All[ground - 1].Name + " ground");
-                Story.FromFish(fish, fisher); // around Sigrún's islet, one fish has more in it
                 if (Random.value >= PouchChance) return true;
                 __result = GivePouch(IsletTier.All[ground - 1], fisher);
                 nview.ClaimOwnership();
                 ZNetScene.instance.Destroy(fish.gameObject);
                 Plugin.Debug("Fishing: a pouch instead of a fish (" + __result + ")");
                 return false;
+            }
+        }
+
+        // A ground's fish going into a bag, however it got there: reeled in, or picked up where it lay.
+        // Around Sigrún's islet one of them has more in it.
+        [HarmonyPatch(typeof(Fish), "Pickup")]
+        static class PickupPatch
+        {
+            static void Prefix(Fish __instance, Humanoid character)
+            {
+                ZNetView nview = __instance != null ? __instance.GetComponent<ZNetView>() : null;
+                if (character == null || nview == null || !nview.IsValid()) return;
+                int ground = nview.GetZDO().GetInt(GroundKey, 0);
+                if (ground <= 0 || ground > IsletTier.All.Count) return;
+                Plugin.Debug("Fishing: " + __instance.name + " from a " + IsletTier.All[ground - 1].Name + " ground picked up at " + __instance.transform.position.ToString("F0"));
+                Story.FromFish(__instance, character);
             }
         }
 
