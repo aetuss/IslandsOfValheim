@@ -11,6 +11,7 @@
 - While you carry a fragment the sea turns against you: a storm over you wherever you go, and serpents that come looking. A Storm Glass calms it for a while. A fragment can't go through a portal.
 - New goods as the tale goes on: Brim Oil (lights any old beacon), the Storm Glass, the Gull Feather (a tailwind while you sail), the Brim Harpoon and the Serpent Charm.
 - The Ancient Lure now draws an islet's fish from about 35 m away. Before, they only came for it from a few metres, and with a ground's few fish spread all around the islet, they hardly ever bit.
+- The sodden pouch on the islet fishing grounds can really turn up now. It was checked at a moment the game doesn't use, so it never came.
 - `iov_goto story1` to `iov_goto story5` (devcommands) take you to the tale's islets. They appear in a new world, or after `genloc` in ocean nobody has visited yet.
 
 ## 1.5.2
