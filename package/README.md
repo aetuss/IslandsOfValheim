@@ -161,6 +161,8 @@ Install it on the server and on every player's game: the islands are part of the
 
 Found a bug or have an idea? Open an issue on [GitHub](https://github.com/aetuss/IslandsOfValheim/issues). Turn on `DebugLog` and include the matching lines from `BepInEx/LogOutput.log`.
 
+Stuck in Sævar's tale, or did one of its steps not work the way it should? You can also reach me on Discord: **aethuswulf**.
+
 ## Made with AI
 
 aetuss decided what this mod does and how it should work, and tested it in game. The code, the icon, this description and the Turkish translation were written by Claude, an AI model by Anthropic (through Claude Code); aetuss checked the Turkish texts in game.
