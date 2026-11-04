@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.5.1";
+        public const string Version = "1.6.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -45,6 +45,7 @@ namespace IslandsOfValheim
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
             Texts.LoadOwn();
+            gameObject.AddComponent<RestlessSea>();
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
@@ -57,6 +58,7 @@ namespace IslandsOfValheim
             PrefabManager.OnVanillaPrefabsAvailable -= OnVanillaPrefabs;
             SeaChart.Register(); // before the chests, whose loot includes it
             SeafarerGear.Register();
+            Story.Register(); // before the trader, who sells some of its goods
             SeaTrader.Register(); // after the goods he sells
             IsletPrefabs.Register();
             IsletBeacons.Register();
@@ -68,7 +70,11 @@ namespace IslandsOfValheim
             ZoneManager.OnVanillaLocationsAvailable -= OnVanillaLocations;
             foreach (IsletTier tier in IsletTier.All)
                 for (int variant = 0; variant < IsletBuilder.Variants; variant++) IsletBuilder.Register(tier, variant);
-            if (SeaTraderIslets.Value > 0) IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
+            if (SeaTraderIslets.Value > 0)
+            {
+                IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
+                IsletBuilder.RegisterStoryIslets(); // the tale is his to tell
+            }
         }
 
         internal static void Debug(string message)

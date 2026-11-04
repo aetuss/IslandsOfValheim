@@ -34,6 +34,8 @@ namespace IslandsOfValheim
             SeafarerGear.StormMead, 3, 120, "defeated_dragon",
             SeafarerGear.Hardtack, 5, 70, "defeated_dragon",
             SeafarerGear.RansBlessing, 2, 200, "defeated_goblinking",
+            Story.BrimOil, 1, 60, Story.FirstTold,       // the tale's own goods, as it goes on
+            Story.StormGlass, 1, 120, Story.KetillDone,
         };
 
         static List<string> Lines(string prefix, int count)
@@ -263,15 +265,32 @@ namespace IslandsOfValheim
             Chat.instance.SetNpcText(gameObject, Vector3.up * trader.m_dialogHeight, 20f, trader.m_hideDialogDelay, "", lines[Random.Range(0, lines.Count)], false);
         }
 
+        // One line over his head.
+        internal void Say(string line)
+        {
+            if (Chat.instance == null || trader == null) return;
+            Chat.instance.SetNpcText(gameObject, Vector3.up * trader.m_dialogHeight, 20f, trader.m_hideDialogDelay + 3f, "", line, false);
+            nextTalk = Time.time + trader.m_randomTalkInterval;
+        }
+
+        // The next step of the tale first (a map to give, news to hear, a fragment to take), else the store.
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
             if (hold || trader == null || StoreGui.instance == null) return false;
+            Player player = user as Player;
+            if (player != null && player == Player.m_localPlayer && Story.Talk(player, this)) return true;
             StoreGui.instance.Show(trader);
-            Say(trader.m_randomStartTrade);
+            if (Random.value < 0.5f) Say(Story.Reminder());
+            else Say(trader.m_randomStartTrade);
             return false;
         }
 
-        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
+        // Handing him a fragment from the hotbar works too.
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item)
+        {
+            Player player = user as Player;
+            return player != null && player == Player.m_localPlayer && Story.Talk(player, this);
+        }
 
         public string GetHoverText()
         {

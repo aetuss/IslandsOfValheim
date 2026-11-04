@@ -90,7 +90,7 @@ namespace IslandsOfValheim
             return Effect(name, token, false);
         }
 
-        static SE_Stats Effect(string name, string token, bool hidden)
+        internal static SE_Stats Effect(string name, string token, bool hidden)
         {
             SE_Stats effect = ScriptableObject.CreateInstance<SE_Stats>();
             effect.name = name;
@@ -102,7 +102,7 @@ namespace IslandsOfValheim
         }
 
         // The first base item that exists, cloned under name with the token's name and description.
-        static CustomItem Clone(string name, string[] bases, string token, Recolor.Shift shift)
+        internal static CustomItem Clone(string name, string[] bases, string token, Recolor.Shift shift)
         {
             foreach (string baseName in bases)
             {
@@ -166,7 +166,7 @@ namespace IslandsOfValheim
             shared.m_maxStackSize = 20;
         }
 
-        static CustomItem Simple(string name, string[] bases, string token, int stack, float weight, Recolor.Shift shift)
+        internal static CustomItem Simple(string name, string[] bases, string token, int stack, float weight, Recolor.Shift shift)
         {
             CustomItem item = Clone(name, bases, token, shift);
             if (item == null) return null;

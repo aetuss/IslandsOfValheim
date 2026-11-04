@@ -66,6 +66,12 @@ namespace IslandsOfValheim
                         GotoHarbour(args.Context);
                         return;
                     }
+                    string story = args.Length > 1 ? StoryLocation(args[1]) : null;
+                    if (story != null)
+                    {
+                        GotoUnique(args.Context, story, "Sævar's tale");
+                        return;
+                    }
                     if (args.Length > 1)
                     {
                         foreach (IsletTier tier in IsletTier.All)
@@ -98,18 +104,33 @@ namespace IslandsOfValheim
                     List<string> names = new List<string>();
                     foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
                     names.Add("trader");
+                    names.Add("story1");
+                    names.Add("story2");
                     return names;
                 });
         }
 
         // The sea trader's harbour: the one that was generated, or else the closest of the candidates (going
         // there generates it, and the others vanish).
+        static string StoryLocation(string arg)
+        {
+            if (string.Equals(arg, "story1", System.StringComparison.OrdinalIgnoreCase)) return Story.OldHarbour;
+            if (string.Equals(arg, "story2", System.StringComparison.OrdinalIgnoreCase)) return Story.KetillIslet;
+            return null;
+        }
+
         static void GotoHarbour(Terminal context)
         {
-            List<ZoneSystem.LocationInstance> harbours = Harbours();
+            GotoUnique(context, IsletBuilder.HarbourName, "the sea trader's harbour");
+        }
+
+        // A unique location: the one that was generated, or else the closest of its candidates.
+        static void GotoUnique(Terminal context, string location, string what)
+        {
+            List<ZoneSystem.LocationInstance> harbours = Unique(location);
             if (harbours.Count == 0)
             {
-                context.AddString("This world has no sea trader harbour (a new world, or genloc, places one; SeaTraderIslets 0 turns it off).");
+                context.AddString("This world has no " + what + " location (a new world, or genloc, places one; SeaTraderIslets 0 turns it off).");
                 return;
             }
             Vector3 from = Player.m_localPlayer.transform.position;
@@ -118,14 +139,19 @@ namespace IslandsOfValheim
             foreach (ZoneSystem.LocationInstance instance in harbours) if (instance.m_placed) best = instance;
             Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.PlateauHeight + 3f, best.m_position.z);
             Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
-            context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to the sea trader's harbour.");
+            context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to " + what + " (" + location + ").");
         }
 
         internal static List<ZoneSystem.LocationInstance> Harbours()
         {
+            return Unique(IsletBuilder.HarbourName);
+        }
+
+        static List<ZoneSystem.LocationInstance> Unique(string location)
+        {
             List<ZoneSystem.LocationInstance> result = new List<ZoneSystem.LocationInstance>();
             foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
-                if (instance.m_location != null && instance.m_location.m_prefabName == IsletBuilder.HarbourName) result.Add(instance);
+                if (instance.m_location != null && instance.m_location.m_prefabName == location) result.Add(instance);
             return result;
         }
 

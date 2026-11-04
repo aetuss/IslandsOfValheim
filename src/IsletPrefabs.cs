@@ -39,7 +39,7 @@ namespace IslandsOfValheim
         internal const string GullSpawner = "IoV_Spawner_Gull";
 
         // respawnMinutes 0: spawn once, never again (the guards).
-        static void AddSpawner(string creature, string name, int minLevel, int maxLevel, float levelUpChance, float respawnMinutes, bool atNight, float triggerDistance)
+        internal static void AddSpawner(string creature, string name, int minLevel, int maxLevel, float levelUpChance, float respawnMinutes, bool atNight, float triggerDistance)
         {
             GameObject creaturePrefab = PrefabManager.Instance.GetPrefab(creature);
             if (creaturePrefab == null)

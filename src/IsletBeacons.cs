@@ -132,6 +132,8 @@ namespace IslandsOfValheim
                     if (inventory.CountItems(ItemName(cost.Item), -1, true) < cost.Amount) enough = false;
                 if (enough) return option;
             }
+            // Brim Oil lights any of them, once Sævar sells it.
+            if (inventory.CountItems(ItemName(Story.BrimOil), -1, true) > 0) return new[] { new Cost { Item = Story.BrimOil, Amount = 1 } };
             return null;
         }
 
@@ -147,6 +149,7 @@ namespace IslandsOfValheim
             }
             string text = options.Count > 0 ? options[0] : "";
             for (int i = 1; i < options.Count; i++) text = Texts.Get("iov_beacon_or", text, options[i]);
+            if (Story.Key(Story.FirstTold)) text = Texts.Get("iov_beacon_or", text, Texts.Amount(1, ItemName(Story.BrimOil)));
             return text;
         }
 
@@ -323,6 +326,7 @@ namespace IslandsOfValheim
         IsletTier tier;
         GameObject flames;
         float paidAt = -100f;
+        bool storyChecked;
 
         void Awake()
         {
@@ -357,6 +361,12 @@ namespace IslandsOfValheim
             if (nview == null || !nview.IsValid()) return;
             bool lit = Lit;
             if (flames != null && flames.activeSelf != lit) flames.SetActive(lit);
+            // The beacon of the old Brim harbour is the first step of Sævar's tale.
+            if (lit && !storyChecked)
+            {
+                storyChecked = true;
+                if (Story.InOldHarbour(transform.position)) Story.HarbourBeaconLit(transform.position);
+            }
             Player player = Player.m_localPlayer;
             if (!lit || player == null || Utils.DistanceXZ(player.transform.position, transform.position) > IsletBeacons.VisitRadius) return;
             if (Rewarded.Add(nview.GetZDO().m_uid)) IsletBeacons.RequestReward(transform.position);
