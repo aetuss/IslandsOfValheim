@@ -173,6 +173,34 @@ namespace IslandsOfValheim
                 Plugin.Debug("  " + tag + ": ground levelled to " + cut.Y.ToString("F1") + " within " + cut.Level.ToString("F1") + " m (blending out to " + cut.Smooth.ToString("F1") + ")" + (cut.Square ? ", square" : "") + " at (" + cut.X.ToString("F1") + ", " + cut.Z.ToString("F1") + ")");
             }
             cuts.Sort((a, b) => a.Order.CompareTo(b.Order));
+            // A deep square shaft (Mørkhalla's) is dug a little wider than the walls built down it; terrain
+            // closes round them, but the islet's ground would leave a gap all the way down. The shaft is cut
+            // to the walls instead.
+            foreach (TerrainCut cut in cuts)
+            {
+                if (!cut.Square || PlateauHeight - cut.Y < 3f) continue;
+                float a = -cut.Yaw * Mathf.Deg2Rad, c = Mathf.Cos(a), s = Mathf.Sin(a), reach = 0f;
+                foreach (MeshFilter filter in clone.Prefab.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    if (filter.sharedMesh == null) continue;
+                    Bounds mb = filter.sharedMesh.bounds;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                        Vector3 p = origin + turn * top.InverseTransformPoint(filter.transform.TransformPoint(corner));
+                        if (p.y > 500f || p.y > PlateauHeight + 1f || p.y < cut.Y - 1f) continue; // only what's down the shaft
+                        float dx = p.x - cut.X, dz = p.z - cut.Z;
+                        float d = Mathf.Max(Mathf.Abs(dx * c - dz * s), Mathf.Abs(dx * s + dz * c));
+                        if (d <= cut.Level + 1f) reach = Mathf.Max(reach, d);
+                    }
+                }
+                if (reach > 1f && reach < cut.Level)
+                {
+                    Plugin.Debug("  " + tag + ": shaft cut to its walls, " + reach.ToString("F1") + " m instead of " + cut.Level.ToString("F1"));
+                    cut.Level = reach;
+                    cut.Smooth = reach + 0.3f;
+                }
+            }
             // A broad, shallow levelling is the ground the location stands on (the mine's fort sits a metre
             // and a half below its origin): the dungeon is raised or lowered so that ground is the plateau,
             // and that levelling is no longer needed. Without it the plateau around would slope down under

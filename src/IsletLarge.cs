@@ -115,7 +115,7 @@ namespace IslandsOfValheim
                 buildingLarge = true;
                 try { LargeIsletOf(kind); }
                 catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
+                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; DropNorthVillage(); }
             }
         }
 
@@ -150,6 +150,12 @@ namespace IslandsOfValheim
                 // A ring of what the people left around it, clear of the dungeon's entrance, each facing the
                 // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
                 // a well or graves, their fire, and a watchtower to see the islet by.
+                if (tier.Style == RuinStyle.FrostKeep)
+                {
+                    CustomLocation north = ZoneManager.Instance.CreateClonedLocation(locationName + "_North", "NorthVillage");
+                    northVillage = north != null ? north.Prefab : null;
+                    if (northVillage != null) Plugin.Debug("North village:\n" + DescribeTree(northVillage.transform, 0, 2));
+                }
                 RingItem[] village = VillageOf(kind);
                 float biggest = 0f;
                 foreach (RingItem item in village) biggest = Mathf.Max(biggest, item.Size);
@@ -219,11 +225,27 @@ namespace IslandsOfValheim
                     return new[] { Item(DvergrRuin, 7f), Item(NestSite, 5.5f), Item(DvergrOutpost, 6f), Item(MarbleSpire, 2.6f) };
                 case RuinStyle.DvergrCamp: // the dvergr who live here, digging round the mine
                     return new[] { Item(DvergrCamp, 7f), Item(DvergrDigSite, 6f), Item(MarbleSpire, 2.6f) };
-                case RuinStyle.FrostKeep:
-                    return new[] { Item(FrostKeep, 6.5f), Item(FrozenCamp, 6f), Item(Graveyard, 3.6f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
+                case RuinStyle.FrostKeep: // the frost keep among the north village's own buildings, its tower last
+                {
+                    List<RingItem> north = new List<RingItem> { Item(FrostKeep, 6.5f) };
+                    foreach (string part in new[] { "northvillage_house1", "northvillage_granary", "northvillage_house2", "northvillage_woodpile", "northvillage_tower" })
+                    {
+                        RingItem item = NorthPart(part);
+                        if (item != null) north.Add(item);
+                    }
+                    if (north.Count == 1) return new[] { Item(FrostKeep, 6.5f), Item(FrozenCamp, 6f), Item(Graveyard, 3.6f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
+                    return north.ToArray();
+                }
                 default:
                     return new[] { Item(StoneHall, 7f), Item(() => RuinedHouse(false), 5.5f), Item(Well, 2.4f), Item(() => RuinedHouse(false), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
             }
+        }
+
+        static void DropNorthVillage()
+        {
+            if (northVillage == null) return;
+            ZoneManager.Instance.DestroyCustomLocation(locationName + "_North");
+            northVillage = null;
         }
 
         // One design for RingOf, with the radius it takes up.

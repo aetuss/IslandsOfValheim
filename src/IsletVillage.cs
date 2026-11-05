@@ -189,6 +189,62 @@ namespace IslandsOfValheim
             Prop(new[] { "ashland_pot3_red" }, new Vector2(7f, -6.2f), 60f, 0.02f);
         }
 
+        // ---- the Deep North: the game's own north village ----
+
+        // A copy of the vanilla north village (NorthVillage), kept while a Deep North large islet is built:
+        // its houses, granary, stable and tower are taken from it whole, so they look like the land's own.
+        static GameObject northVillage;
+
+        static Transform FindPart(Transform t, string name)
+        {
+            if (t.name.StartsWith(name, System.StringComparison.OrdinalIgnoreCase)) return t;
+            foreach (Transform child in t)
+            {
+                Transform found = FindPart(child, name);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        // One of the north village's buildings as a ring item, sized by how far it reaches from its middle;
+        // null if the village or the building isn't there.
+        static RingItem NorthPart(string name)
+        {
+            if (northVillage == null) return null;
+            Transform part = FindPart(northVillage.transform, name);
+            if (part == null || part == northVillage.transform)
+            {
+                Plugin.Debug("North village: no " + name);
+                return null;
+            }
+            float size = 0f;
+            foreach (MeshFilter filter in part.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                Bounds mb = filter.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = part.InverseTransformPoint(filter.transform.TransformPoint(corner));
+                    size = Mathf.Max(size, new Vector2(p.x, p.z).magnitude);
+                }
+            }
+            float height = northVillage.transform.InverseTransformPoint(part.position).y;
+            Plugin.Debug("North village: " + part.name + " reaches " + size.ToString("F1") + " m");
+            return Item(() => PlaceNorthPart(part, height), Mathf.Clamp(size, 2.5f, 9f));
+        }
+
+        static void PlaceNorthPart(Transform part, float height)
+        {
+            GameObject copy = Object.Instantiate(part.gameObject, parent, false);
+            copy.name = part.name;
+            copy.transform.localPosition = new Vector3(0f, PlateauHeight - 0.05f + height, 0f);
+            copy.transform.localRotation = Quaternion.identity; // the village ring turns it
+            foreach (TerrainModifier modifier in copy.GetComponentsInChildren<TerrainModifier>(true)) Object.DestroyImmediate(modifier);
+            foreach (TerrainOp op in copy.GetComponentsInChildren<TerrainOp>(true)) Object.DestroyImmediate(op);
+            built++;
+        }
+
         // A spire of black marble, the dvergr's own landmark: a base, two tall columns and the tip.
         static void MarbleSpire()
         {
