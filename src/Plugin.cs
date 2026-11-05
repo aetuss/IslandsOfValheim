@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.6.1";
+        public const string Version = "1.7.0";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -75,6 +75,7 @@ namespace IslandsOfValheim
                 IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
                 IsletBuilder.RegisterStoryIslets(); // the tale is his to tell
             }
+            IsletBuilder.RegisterDungeonTests(); // 1.7.0 in progress: can a vanilla dungeon sit on an islet?
         }
 
         internal static void Debug(string message)

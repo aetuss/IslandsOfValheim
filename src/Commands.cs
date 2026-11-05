@@ -123,6 +123,8 @@ namespace IslandsOfValheim
         {
             for (int i = 1; i <= Story.Islets.Length; i++)
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
+            for (int i = 1; i <= IsletBuilder.DungeonTests.Length; i++)
+                if (string.Equals(arg, "dungeon" + i, System.StringComparison.OrdinalIgnoreCase)) return IsletBuilder.DungeonTests[i - 1];
             return null;
         }
 
