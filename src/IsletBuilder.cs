@@ -155,6 +155,12 @@ namespace IslandsOfValheim
         // Height of the ground above sea level at a local position.
         internal static float Height(float x, float z)
         {
+            float h = NaturalHeight(x, z);
+            return cuts.Count > 0 ? ApplyCuts(x, z, h) : h;
+        }
+
+        static float NaturalHeight(float x, float z)
+        {
             float r = Mathf.Sqrt(x * x + z * z);
             float angle = Mathf.Atan2(z, x);
             float shore = Shore(angle);

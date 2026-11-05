@@ -33,6 +33,8 @@ namespace IslandsOfValheim
             internal float Height;          // the plateau above the sea
             internal string[] Dungeon;      // vanilla dungeon locations, the first that exists; null: none
             internal Layout Layout;
+            internal bool Shaped;           // the ground follows the dungeon's own levelling (a pit, a shaft)
+            internal float Scale = LargeScale; // times a normal islet
             internal string[] Guardian;     // the first that exists
             internal Life[] Life;
             internal string[] Extra;        // more vanilla things to place (a wild beehive...)
@@ -61,6 +63,16 @@ namespace IslandsOfValheim
             new LargeKind { Tier = IsletTier.All[5], Variant = 0, Height = 6f, Layout = Layout.CharredFortress,
                 Guardian = new[] { "Morgen_NonSleeping", "Morgen", "Charred_Melee_Dyrnwyn" },
                 Life = new[] { L("Asksvin", 3, Where.Plateau), L("Volture", 2, Where.Air) } },
+            // The dungeons dug into the ground stand on tall islets, so their pits stay above the sea.
+            new LargeKind { Tier = IsletTier.All[3], Variant = 0, Height = 16f, Scale = 3f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
+                Life = new[] { L("Hare", 3, Where.Plateau) } },
+            new LargeKind { Tier = IsletTier.All[4], Variant = 3, Height = 16f, Scale = 3f, Dungeon = new[] { "Mistlands_DvergrTownEntrance2", "Mistlands_DvergrTownEntrance1" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
+                Life = new[] { L("Hare", 3, Where.Plateau) } },
+            new LargeKind { Tier = IsletTier.All[6], Variant = 0, Height = 12f, Scale = 2.8f, Dungeon = new[] { "MorkBorg", "TheDarkestHole" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "JotunWarrior", "Fenring" },
+                Life = new[] { L("Moose", 2, Where.Slope), L("Seal", 3, Where.Shore), L("Bjorn", 1, Where.Slope) } },
         };
 
         // What stands in the middle of a large islet: a vanilla dungeon with the people's village around it,
@@ -103,7 +115,7 @@ namespace IslandsOfValheim
                 buildingLarge = true;
                 try { LargeIsletOf(kind); }
                 catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; }
+                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); }
             }
         }
 
@@ -112,8 +124,8 @@ namespace IslandsOfValheim
             tier = kind.Tier;
             locationName = kind.LocationName;
             SetVariant(kind.Variant);
-            plateauRadius *= LargeScale;
-            shoreRadius *= LargeScale;
+            plateauRadius *= kind.Scale;
+            shoreRadius *= kind.Scale;
             maxRadius = shoreRadius * Mathf.Max(stretchX, stretchZ) + 26f;
             seed += 3000f;
             PlateauHeight = kind.Height;
@@ -124,17 +136,14 @@ namespace IslandsOfValheim
             parent = root.transform;
             built = 0;
             missing = 0;
+            // The dungeon in the middle, where there is one; a dug-in one shapes the ground first.
+            string source = kind.Dungeon != null ? FindLocation(kind.Dungeon) : null;
+            if (kind.Dungeon != null && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
+            float dungeonTurn = cliffDeg + 180f;
+            if (source != null && kind.Shaped) ReadCuts(source, Vector2.zero, dungeonTurn, locationName);
             BuildGround();
             PlaceRocks();
-
-            // The dungeon in the middle, where there is one.
-            DungeonInterior interior = null;
-            if (kind.Dungeon != null)
-            {
-                string source = FindLocation(kind.Dungeon);
-                if (source != null) interior = AddDungeon(source, Vector2.zero, cliffDeg + 180f, locationName);
-                else Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
-            }
+            DungeonInterior interior = source != null ? AddDungeon(source, Vector2.zero, dungeonTurn, locationName, kind.Shaped) : null;
             Vector2 keeper;
             if (kind.Layout == Layout.Village)
             {
@@ -142,10 +151,8 @@ namespace IslandsOfValheim
                 // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
                 // a well or graves, their fire, and a watchtower to see the islet by.
                 float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 9f, kind.Plateau * 0.5f, kind.Plateau - 6f);
-                bool swamp = tier.Biome == Heightmap.Biome.Swamp;
-                float[] at = RingOf(ring, interior != null ? interior.DoorDeg : float.NaN,
-                    Item(MainDesign(), 7f), Item(() => RuinedHouse(swamp), 5.5f), Item(swamp ? (System.Action)Graveyard : Well, swamp ? 3.6f : 2.4f),
-                    Item(() => RuinedHouse(swamp), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f));
+                float[] at = RingOf(ring, interior != null ? interior.DoorDeg : float.NaN, VillageOf(kind));
+                if (tier.DvergrOutpost) PlaceDvergrWard(); // the islet is theirs
                 keeper = Polar(at[at.Length - 1], ring - 4.5f); // by the watchtower, on the inner side
             }
             else
@@ -194,6 +201,24 @@ namespace IslandsOfValheim
             config.MinDistanceFromSimilar = 900f;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ", " + built + " parts, " + missing + " prefabs not found)");
+        }
+
+        // What stands round a large islet's dungeon, by its kind; the landmark (a tower or a spire) last.
+        static RingItem[] VillageOf(LargeKind kind)
+        {
+            switch (tier.Style)
+            {
+                case RuinStyle.StiltHut:
+                    return new[] { Item(StiltHut, 6f), Item(() => RuinedHouse(true), 5.5f), Item(Graveyard, 3.6f), Item(() => RuinedHouse(true), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
+                case RuinStyle.DvergrRuin: // the Seekers' Mistlands: old dvergr ruins, a nest, a spire of black marble
+                    return new[] { Item(DvergrRuin, 7f), Item(NestSite, 5.5f), Item(DvergrOutpost, 6f), Item(MarbleSpire, 2.6f) };
+                case RuinStyle.DvergrCamp: // the dvergr who live here, digging round the mine
+                    return new[] { Item(DvergrCamp, 7f), Item(DvergrDigSite, 6f), Item(MarbleSpire, 2.6f) };
+                case RuinStyle.FrostKeep:
+                    return new[] { Item(FrostKeep, 6.5f), Item(FrozenCamp, 6f), Item(Graveyard, 3.6f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
+                default:
+                    return new[] { Item(StoneHall, 7f), Item(() => RuinedHouse(false), 5.5f), Item(Well, 2.4f), Item(() => RuinedHouse(false), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
+            }
         }
 
         // One design for RingOf, with the radius it takes up.

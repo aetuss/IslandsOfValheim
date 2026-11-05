@@ -122,11 +122,85 @@ namespace IslandsOfValheim
             }
         }
 
+        // ---- the ground a dungeon's entrance needs ----
+
+        // A vanilla location levels the terrain around its parts (an infested mine's way in is at the bottom
+        // of a dug pit, Mørkhalla's gate down a shaft). The islet's ground can't be dug once it's built, so
+        // for those the levelling is read first and the ground is shaped the same way (Height).
+        class TerrainCut
+        {
+            internal float X, Z, Y, Level, Smooth, Yaw;
+            internal bool Square;
+            internal int Order;
+        }
+
+        static readonly List<TerrainCut> cuts = new List<TerrainCut>();
+
+        // The levelling of a vanilla location as it will stand at (at.x, at.y) on the plateau, turned rotY.
+        static void ReadCuts(string source, Vector2 at, float rotY, string tag)
+        {
+            cuts.Clear();
+            CustomLocation clone = ZoneManager.Instance.CreateClonedLocation(tag + "_Terrain", source);
+            if (clone == null || clone.Prefab == null) return;
+            Transform top = clone.Prefab.transform;
+            Quaternion turn = Quaternion.Euler(0f, rotY, 0f);
+            Vector3 origin = new Vector3(at.x, PlateauHeight - 0.05f, at.y);
+            float lowest = float.MaxValue;
+            foreach (TerrainModifier modifier in clone.Prefab.GetComponentsInChildren<TerrainModifier>(true))
+            {
+                if (!modifier.m_level) continue;
+                Vector3 p = origin + turn * top.InverseTransformPoint(modifier.transform.position);
+                TerrainCut cut = new TerrainCut();
+                cut.X = p.x;
+                cut.Z = p.z;
+                cut.Y = p.y + modifier.m_levelOffset;
+                cut.Level = modifier.m_levelRadius;
+                cut.Smooth = modifier.m_smooth ? Mathf.Max(modifier.m_smoothRadius, modifier.m_levelRadius + 0.5f) : modifier.m_levelRadius + 0.5f;
+                cut.Square = modifier.m_square;
+                cut.Yaw = (Quaternion.Inverse(top.rotation) * modifier.transform.rotation).eulerAngles.y + rotY;
+                cut.Order = modifier.m_sortOrder;
+                cuts.Add(cut);
+                lowest = Mathf.Min(lowest, cut.Y);
+                Plugin.Debug("  " + tag + ": ground levelled to " + cut.Y.ToString("F1") + " within " + cut.Level.ToString("F1") + " m (blending out to " + cut.Smooth.ToString("F1") + ")" + (cut.Square ? ", square" : "") + " at (" + cut.X.ToString("F1") + ", " + cut.Z.ToString("F1") + ")");
+            }
+            cuts.Sort((a, b) => a.Order.CompareTo(b.Order));
+            if (cuts.Count > 0 && lowest < 0.5f) Plugin.Log.LogWarning(tag + ": its ground goes down to " + lowest.ToString("F1") + " m, under the sea; the plateau should be higher.");
+            ZoneManager.Instance.DestroyCustomLocation(clone.Name);
+        }
+
+        // The ground with every cut applied in turn: levelled to its height inside its radius, blending back
+        // to the ground as it was out to its smoothing radius.
+        static float ApplyCuts(float x, float z, float h)
+        {
+            foreach (TerrainCut cut in cuts)
+            {
+                float dx = x - cut.X, dz = z - cut.Z, d;
+                if (cut.Square)
+                {
+                    float a = -cut.Yaw * Mathf.Deg2Rad, c = Mathf.Cos(a), s = Mathf.Sin(a);
+                    d = Mathf.Max(Mathf.Abs(dx * c - dz * s), Mathf.Abs(dx * s + dz * c));
+                }
+                else d = Mathf.Sqrt(dx * dx + dz * dz);
+                if (d <= cut.Level) h = cut.Y;
+                else if (d < cut.Smooth)
+                {
+                    float t = (d - cut.Level) / (cut.Smooth - cut.Level);
+                    h = Mathf.Lerp(cut.Y, h, t * t * (3f - 2f * t));
+                }
+            }
+            return h;
+        }
+
         // A vanilla dungeon location's parts (entrance, interior with its generator, the teleports between
         // them) moved onto the islet being built, its middle at (at.x, at.y) on the plateau, turned rotY.
         // Its terrain changes are left out (here they'd dig into or raise the sea floor). Null if the vanilla
-        // location can't be had.
+        // location can't be had. shaped: the ground was shaped for it (ReadCuts), so its parts stay as they are.
         static DungeonInterior AddDungeon(string source, Vector2 at, float rotY, string tag)
+        {
+            return AddDungeon(source, at, rotY, tag, false);
+        }
+
+        static DungeonInterior AddDungeon(string source, Vector2 at, float rotY, string tag, bool shaped)
         {
             CustomLocation clone = ZoneManager.Instance.CreateClonedLocation(tag + "_Source", source);
             if (clone == null || clone.Prefab == null) { Plugin.Log.LogWarning(tag + ": couldn't clone the vanilla location " + source); return null; }
@@ -147,7 +221,7 @@ namespace IslandsOfValheim
             // An infested mine's way in is at the bottom of a pit the terrain is dug out for; the islet can't
             // be dug, and the pit would reach below the sea. Its steps and shaft go, and the gateway comes up
             // to the fort's floor.
-            if (source.StartsWith("Mistlands_DvergrTown"))
+            if (source.StartsWith("Mistlands_DvergrTown") && !shaped)
             {
                 foreach (Transform t in group.GetComponentsInChildren<Transform>(true))
                     if (t.parent != null && t.parent.name == "fort" && (t.name.StartsWith("stair") || t.name == "mine"))
@@ -171,12 +245,14 @@ namespace IslandsOfValheim
                     At("blackmarble_arch", new Vector3(door.x, Mathf.Min(l, r), door.z), turn, true);
                 }
             }
-            // Spawners meant for terrain at the location's own height would sit inside the islet's ground.
+            // Spawners meant for terrain the islet's ground doesn't follow would sit inside it.
             foreach (CreatureSpawner spawner in group.GetComponentsInChildren<CreatureSpawner>(true))
             {
                 Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
-                if (p.y > 1000f || p.y >= PlateauHeight + 0.2f) continue; // the interior's are far up
-                spawner.transform.position = root.transform.TransformPoint(new Vector3(p.x, PlateauHeight + 0.3f, p.z));
+                if (p.y > 1000f) continue; // the interior's are far up
+                float ground = Height(p.x, p.z);
+                if (p.y >= ground + 0.2f) continue;
+                spawner.transform.position = root.transform.TransformPoint(new Vector3(p.x, ground + 0.3f, p.z));
                 Plugin.Debug("  " + tag + ": spawner " + spawner.name + " raised to the ground");
             }
             DungeonGenerator generator = group.GetComponentInChildren<DungeonGenerator>(true);

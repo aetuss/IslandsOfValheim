@@ -192,6 +192,18 @@ namespace IslandsOfValheim
             Prop(new[] { "ashland_pot3_red" }, new Vector2(7f, -6.2f), 60f, 0.02f);
         }
 
+        // A spire of black marble, the dvergr's own landmark: a base, two tall columns and the tip.
+        static void MarbleSpire()
+        {
+            float g = PlateauHeight - 0.05f;
+            float top = Top(At("blackmarble_base_1", new Vector3(0f, g, 0f), Vector3.zero, false), g + 1f);
+            top = Top(At("blackmarble_column_3", new Vector3(0f, top, 0f), Vector3.zero, false), top + 3f);
+            top = Top(At("blackmarble_column_3", new Vector3(0f, top, 0f), Vector3.zero, false), top + 3f);
+            At("blackmarble_tip", new Vector3(0f, top, 0f), Vector3.zero, false);
+            Prop(new[] { "blackmarble_pile" }, new Vector2(1.6f, -1.2f), 30f, 0.2f);
+            Prop(new[] { "blackmarble_head01", "blackmarble_pile" }, new Vector2(-1.8f, 1f), 140f, 0.2f);
+        }
+
         // A stone watchtower four storeys high, broken down to one corner at the top, rubble at its foot.
         static void WatchTower()
         {
