@@ -115,7 +115,7 @@ namespace IslandsOfValheim
                 buildingLarge = true;
                 try { LargeIsletOf(kind); }
                 catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; DropNorthVillage(); }
+                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
             }
         }
 
@@ -150,12 +150,6 @@ namespace IslandsOfValheim
                 // A ring of what the people left around it, clear of the dungeon's entrance, each facing the
                 // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
                 // a well or graves, their fire, and a watchtower to see the islet by.
-                if (tier.Style == RuinStyle.FrostKeep)
-                {
-                    CustomLocation north = ZoneManager.Instance.CreateClonedLocation(locationName + "_North", "NorthVillage");
-                    northVillage = north != null ? north.Prefab : null;
-                    if (northVillage != null) Plugin.Debug("North village:\n" + DescribeTree(northVillage.transform, 0, 2));
-                }
                 RingItem[] village = VillageOf(kind);
                 float biggest = 0f;
                 foreach (RingItem item in village) biggest = Mathf.Max(biggest, item.Size);
@@ -241,13 +235,6 @@ namespace IslandsOfValheim
             }
         }
 
-        static void DropNorthVillage()
-        {
-            if (northVillage == null) return;
-            ZoneManager.Instance.DestroyCustomLocation(locationName + "_North");
-            northVillage = null;
-        }
-
         // One design for RingOf, with the radius it takes up.
         class RingItem
         {
@@ -302,8 +289,10 @@ namespace IslandsOfValheim
             group.transform.SetParent(parent, false);
             Transform outer = parent;
             parent = group.transform;
-            design();
-            parent = outer;
+            bool cutBefore = ignoreCuts;
+            ignoreCuts = true; // it's laid out at the middle, where a dungeon may have dug the ground: it stands on the plateau
+            try { design(); }
+            finally { ignoreCuts = cutBefore; parent = outer; }
             group.transform.localPosition = new Vector3(at.x, 0f, at.y);
             group.transform.localRotation = Quaternion.Euler(0f, 90f - deg, 0f);
         }

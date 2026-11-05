@@ -156,8 +156,10 @@ namespace IslandsOfValheim
         internal static float Height(float x, float z)
         {
             float h = NaturalHeight(x, z);
-            return cuts.Count > 0 ? ApplyCuts(x, z, h) : h;
+            return cuts.Count > 0 && !ignoreCuts ? ApplyCuts(x, z, h) : h;
         }
+
+        static bool ignoreCuts; // while a design is laid out at the middle before being moved (Village)
 
         static float NaturalHeight(float x, float z)
         {
