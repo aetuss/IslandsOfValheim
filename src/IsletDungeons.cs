@@ -102,6 +102,7 @@ namespace IslandsOfValheim
         {
             internal bool HasInterior, UseCustomTransform, NoBuild;
             internal float Radius, ExteriorRadius;
+            internal float Footprint; // how far its entrance's parts reach from its middle, on the islet
             internal string Environment;
             internal Transform InteriorTransform;
             internal DungeonGenerator Generator;
@@ -182,6 +183,20 @@ namespace IslandsOfValheim
                 (generator != null ? generator.name + " at " + generator.transform.localPosition.ToString("F0") : "none"));
 
             DungeonInterior interior = new DungeonInterior();
+            // How far the entrance reaches (its meshes, not the interior far up), so nothing else is built on it.
+            foreach (MeshFilter filter in group.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null || !ActiveBelow(filter.transform, group.transform)) continue;
+                Bounds mb = filter.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = group.transform.InverseTransformPoint(filter.transform.TransformPoint(corner));
+                    if (p.y > 500f) continue;
+                    interior.Footprint = Mathf.Max(interior.Footprint, new Vector2(p.x, p.z).magnitude);
+                }
+            }
+            Plugin.Debug(tag + ": the entrance reaches " + interior.Footprint.ToString("F1") + " m from its middle");
             if (vanillaLocation != null)
             {
                 interior.ExteriorRadius = vanillaLocation.m_exteriorRadius;
@@ -211,12 +226,14 @@ namespace IslandsOfValheim
                 if (__result.y > 1000f) return; // into an interior
                 Location location = Location.GetLocation(__result, false);
                 if (location == null || !Utils.GetPrefabName(location.gameObject).StartsWith("IoV_")) return;
-                RaycastHit hit;
-                int mask = LayerMask.GetMask("Default", "static_solid", "terrain", "piece");
-                if (Physics.Raycast(__result + Vector3.up * 2f, Vector3.down, out hit, 4f, mask, QueryTriggerInteraction.Ignore) && hit.point.y > __result.y)
+                // Only the islet's own ground counts: an arch or roof over the doorway must not catch it.
+                int mask = LayerMask.GetMask("static_solid");
+                foreach (RaycastHit hit in Physics.RaycastAll(__result + Vector3.up * 3f, Vector3.down, 6f, mask, QueryTriggerInteraction.Ignore))
                 {
+                    if (hit.collider == null || hit.collider.name != "IoV_Ground" || hit.point.y <= __result.y) continue;
                     Plugin.Debug("Dungeon exit lifted " + (hit.point.y + 0.1f - __result.y).ToString("F1") + " m onto the islet's ground");
                     __result.y = hit.point.y + 0.1f;
+                    break;
                 }
             }
         }

@@ -120,14 +120,20 @@ namespace IslandsOfValheim
                 if (source != null) interior = AddDungeon(source, Vector2.zero, cliffDeg + 180f, locationName);
                 else Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
             }
-            // The kind's ruin to one side (its guards and chest with it), the ridge structure on the cliff.
-            Shifted(Polar(cliffDeg + 150f, kind.Plateau * 0.6f), MainDesign());
+            // A ring of what the people left around it, clear of the dungeon's entrance, each facing the middle:
+            // the kind's ruin (its guards and chest with it), two houses, a well or graves, their fire, and a
+            // watchtower to see the islet by. The ridge structure stands on the cliff.
+            float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 7.5f, kind.Plateau * 0.5f, kind.Plateau - 6f);
+            bool swamp = tier.Biome == Heightmap.Biome.Swamp;
+            Village(cliffDeg + 150f, ring, MainDesign());
+            Village(cliffDeg + 80f, ring, () => RuinedHouse(swamp));
+            Village(cliffDeg + 220f, ring, () => RuinedHouse(swamp));
+            Village(cliffDeg + 290f, ring + 1f, swamp ? (System.Action)Graveyard : Well);
+            Village(cliffDeg + 35f, ring - 1f, Campfire);
+            Village(cliffDeg + 330f, ring + 1f, WatchTower);
             RidgeDesign();
             RidgeGuard();
-            // The old beacon tower on the other side, tall enough to be seen from the sea.
-            Vector2 tower = Polar(cliffDeg + 255f, kind.Plateau * 0.62f);
-            BeaconTower(tower, 5);
-            Vector2 keeper = tower + Polar(cliffDeg + 255f, -3f); // at the tower's foot, on the inner side
+            Vector2 keeper = Polar(cliffDeg + 330f, ring - 3f); // by the watchtower, on the inner side
             kind.KeeperOffset = new Vector3(keeper.x, PlateauHeight, keeper.y);
             PlaceNetworked(kind.KeeperName, kind.KeeperOffset, 0f);
             if (kind.Extra != null)
@@ -168,17 +174,21 @@ namespace IslandsOfValheim
             Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ", " + built + " parts, " + missing + " prefabs not found)");
         }
 
-        // A ruin design built around another point of the plateau (the designs are laid out around (0, 0);
-        // the plateau is flat, so the ground is the same there).
-        static void Shifted(Vector2 at, System.Action design)
+        // A design built at deg degrees and radius r on the plateau, its front (-z) towards the middle. The
+        // designs are laid out around (0, 0), and the placing works in the location's own space, so it's
+        // built there first and then moved and turned as a whole (like Turned); the plateau is flat, so the
+        // ground is the same where it ends up.
+        static void Village(float deg, float r, System.Action design)
         {
-            GameObject group = new GameObject("IoV_Shifted");
+            Vector2 at = Polar(deg, r);
+            GameObject group = new GameObject("IoV_Village");
             group.transform.SetParent(parent, false);
-            group.transform.localPosition = new Vector3(at.x, 0f, at.y);
             Transform outer = parent;
             parent = group.transform;
             design();
             parent = outer;
+            group.transform.localPosition = new Vector3(at.x, 0f, at.y);
+            group.transform.localRotation = Quaternion.Euler(0f, 90f - deg, 0f);
         }
 
         static System.Action MainDesign()
