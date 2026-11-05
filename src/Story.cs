@@ -263,7 +263,8 @@ namespace IslandsOfValheim
             effect.m_icon = item.ItemDrop.m_itemData.GetIcon();
         }
 
-        // Ketill: an Elite Draugr with his name, a boss's bar over him, and the first fragment.
+        // Ketill: an Elite Draugr with his name, a boss's bar over him, and the first fragment; his looks and
+        // his fight are his own (KetillBoss).
         static void RegisterKetill()
         {
             if (PrefabManager.Instance.GetPrefab("Draugr_Elite") == null) return;
@@ -274,8 +275,8 @@ namespace IslandsOfValheim
                 body.m_name = "$iov_ketill";
                 body.m_boss = true;
                 body.m_bossEvent = "";
-                body.m_health *= 1.5f;
             }
+            KetillBoss.Setup(go);
             CharacterDrop drops = go.GetComponent<CharacterDrop>();
             GameObject fragment = PrefabManager.Instance.GetPrefab(Piece1);
             if (drops != null && fragment != null)

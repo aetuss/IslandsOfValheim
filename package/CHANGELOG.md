@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0
+
+- Ketill is a boss of his own now: bigger, dark and wet as one who lay long in the sea, the fragment glowing on his chest. Now and then his blow sends a ring of poisoned water around him; at two thirds of his health his dead crew rises around him, and at one third the fragment's curse wakes: he grows faster, the sky darkens and lightning falls where you stand (a mist marks the spot first). He has words for you, too. A world where he already walks gets the new Ketill as well.
+
 ## 1.7.0
 
 - Works in existing worlds: once per world, the server adds the islets a world is missing, Sævar's harbour and the islets of his tale too. Most go where nobody has sailed yet; only if there's no such sea left in a kind's ring, a few are built in sailed ocean, well away from players' buildings, ships and players. `PlaceInExistingWorlds` turns it off, `iov_placeislets` runs it again.
