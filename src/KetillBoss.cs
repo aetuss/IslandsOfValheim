@@ -177,6 +177,10 @@ namespace IslandsOfValheim
         {
             if (PrefabManager.Instance.GetPrefab(LastLight) != null) return;
             GameObject go = PrefabManager.Instance.CreateEmptyPrefab(LastLight, true);
+            // CreateEmptyPrefab makes a cube; only the light should show.
+            Object.DestroyImmediate(go.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(go.GetComponent<MeshFilter>());
+            Object.DestroyImmediate(go.GetComponent<Collider>());
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = Glow;
@@ -272,8 +276,9 @@ namespace IslandsOfValheim
     {
         const string StageKey = "IoV_KetillStage";
         const float CrewAt = 2f / 3f, CurseAt = 1f / 3f;
-        const float SlamEvery = 12f, SlamEveryCursed = 8f, SlamReach = 7f;
-        const float BoltEveryMin = 4.5f, BoltEveryMax = 7f, BoltWarning = 1.8f, BoltReach = 30f;
+        const float SlamEvery = 22f, SlamEveryCursed = 15f, SlamReach = 5f;
+        const float BoltEveryMin = 8f, BoltEveryMax = 12f, BoltWarning = 1.8f, BoltReach = 30f;
+        const float SlamAhead = 1.6f; // where his blade meets the ground, in front of him
         const float StormReach = 60f;
         static readonly string[] Crew = { "Draugr", "Draugr", "Draugr_Ranged" };
         static readonly int[] CrewLevel = { 1, 2, 1 };
@@ -403,18 +408,27 @@ namespace IslandsOfValheim
             slamming = true;
             nextSlam = Time.time + (Stage >= 2 ? SlamEveryCursed : SlamEvery);
             KetillBoss.Effect("fx_Bonemass_aoe_start", transform.position);
-            KetillBoss.Effect("vfx_prespawn", transform.position);
+            KetillBoss.Effect("vfx_prespawn", SlamPoint());
         }
 
+        // The blow lands: the ground breaks where his blade hits it, and the poisoned water wells up there.
         internal void AttackLanded()
         {
             if (!slamming) return;
             slamming = false;
             if (nview == null || !nview.IsValid() || !nview.IsOwner()) return;
-            Vector3 at = transform.position + transform.forward * 1.2f;
-            Vector3? ground = KetillBoss.Ground(at);
-            KetillBoss.Spawn(KetillBoss.Tide, ground ?? transform.position, body);
+            Vector3 at = SlamPoint();
+            KetillBoss.Effect("vfx_troll_groundslam", at);
+            KetillBoss.Effect("sfx_trollfire_attack_slam_impact", at);
+            KetillBoss.Spawn(KetillBoss.Tide, at, body);
             Plugin.Debug("Ketill: tide slam");
+        }
+
+        Vector3 SlamPoint()
+        {
+            Vector3 ahead = transform.position + transform.forward * SlamAhead * KetillBoss.Scale;
+            Vector3? ground = KetillBoss.Ground(ahead);
+            return ground ?? transform.position;
         }
 
         // ---- his crew (once, at two thirds) ----
