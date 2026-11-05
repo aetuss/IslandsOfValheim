@@ -163,8 +163,11 @@ namespace IslandsOfValheim
             At("woodwall", new Vector3(-1f, floor, -3f), Vector3.zero, false);
             At("wood_wall_half", new Vector3(2f, floor, -2f), new Vector3(0f, 90f, 0f), false);
             // The roof fell in: one slope lies on the floor, one in the mud, a beam across the doorway.
-            At("wood_roof", new Vector3(0.5f, floor, -0.5f), new Vector3(10f, 20f, 0f), false);
-            At("wood_roof", new Vector3(4f, PlateauHeight - 0.1f, -1f), new Vector3(15f, 80f, 20f), false);
+            if (!buildingLarge) // on a large islet, among whole-looking houses, roof slopes lying flat look out of place
+            {
+                At("wood_roof", new Vector3(0.5f, floor, -0.5f), new Vector3(10f, 20f, 0f), false);
+                At("wood_roof", new Vector3(4f, PlateauHeight - 0.1f, -1f), new Vector3(15f, 80f, 20f), false);
+            }
             At("wood_beam", new Vector3(1f, floor, -2.5f), new Vector3(0f, 30f, 0f), false);
             // A rotten fence and bones around it.
             At("wood_fence", new Vector3(-4.5f, PlateauHeight - 0.05f, -2f), new Vector3(0f, 80f, 0f), false);

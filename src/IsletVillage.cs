@@ -39,10 +39,10 @@ namespace IslandsOfValheim
             // Front: a doorway in the middle.
             At("woodwall", new Vector3(-2f, b, -4f), Vector3.zero, false);
             At("wood_wall_half", new Vector3(2f, b, -4f), Vector3.zero, false);
-            // A beam still across the back, the roof fallen in, and a wall lying outside.
+            // A beam still across the back, the roof long gone (its beams lie about), and a wall lying outside.
             At("wood_beam", new Vector3(0f, back, 3.6f), Vector3.zero, false);
-            At("wood_roof", new Vector3(0.6f, floor, 0.8f), new Vector3(12f, 20f, 0f), false);
-            At("wood_roof", new Vector3(-0.8f, floor, -1.6f), new Vector3(-9f, 190f, 4f), false);
+            At("wood_beam", new Vector3(0.8f, floor, 0.6f), new Vector3(0f, 35f, 0f), false);
+            At("wood_beam", new Vector3(-1.2f, floor, -1.4f), new Vector3(0f, 100f, 0f), false);
             At("woodwall", new Vector3(5.2f, PlateauHeight - 0.1f, 2.6f), new Vector3(0f, 80f, 84f), false);
             At("wood_beam", new Vector3(-4.6f, PlateauHeight - 0.05f, -2f), new Vector3(0f, 25f, 0f), false);
             if (!stilts) Prop(new[] { "barrell_static", "barrell" }, new Vector2(-1.8f, 2.6f), 30f, 0.05f);
@@ -85,6 +85,111 @@ namespace IslandsOfValheim
             At("wood_fence", new Vector3(0f, g, 2.6f), Vector3.zero, false);
             At("wood_fence", new Vector3(-3.2f, g, 0.2f), new Vector3(0f, 90f, 0f), false);
             At("wood_fence", new Vector3(3.2f, g, 0.8f), new Vector3(0f, 90f, 6f), false);
+        }
+
+        // ---- the Plains: a Fuling stronghold ----
+
+        // A palisade 13 m out with a gate between two totems and a few breaches, three huts inside facing
+        // the middle, a great fire with a totem by it, their beds, rubbish and banners, and the Fulings.
+        static void FulingStronghold()
+        {
+            float g = PlateauHeight - 0.05f;
+            const float Wall = 13f;
+            for (int i = 0; i < 30; i++)
+            {
+                float deg = i * 12f;
+                if (Mathf.Abs(Mathf.DeltaAngle(deg, 270f)) < 10f || i % 11 == 5) continue; // the gate, and breaches
+                Vector2 p = Polar(deg, Wall);
+                At("goblin_fence", new Vector3(p.x, Height(p.x, p.y) - 0.2f, p.y), new Vector3(0f, -(deg + 90f), 0f), false);
+            }
+            Vector2 gl = Polar(258f, Wall + 0.6f), gr = Polar(282f, Wall + 0.6f);
+            At("goblin_totempole", new Vector3(gl.x, g, gl.y), new Vector3(0f, 180f, 0f), false);
+            At("goblin_totempole", new Vector3(gr.x, g, gr.y), new Vector3(0f, 180f, 0f), false);
+            Vector2 banner = Polar(270f, Wall - 1.5f);
+            At("goblin_banner", new Vector3(banner.x - 2.4f, g, banner.y), new Vector3(0f, 180f, 0f), false);
+            At("goblin_banner", new Vector3(banner.x + 2.4f, g, banner.y), new Vector3(0f, 180f, 0f), false);
+            // Their huts, round the inside of the wall.
+            Village(40f, 8.5f, FulingHut);
+            Village(150f, 8.5f, FulingHut);
+            Village(210f, 8.5f, FulingHut);
+            // The great fire in the middle.
+            Prop(new[] { "fire_pit" }, Vector2.zero, 0f, 0.05f);
+            At("goblin_totempole", new Vector3(0f, g, 2.6f), Vector3.zero, false);
+            Prop(new[] { "goblin_strawpile" }, new Vector2(-6f, -3f), 30f, 0.1f);
+            Prop(new[] { "goblin_strawpile" }, new Vector2(5.5f, -4f), 200f, 0.1f);
+            Prop(new[] { "goblin_trashpile" }, new Vector2(-9f, 4.5f), 60f, 0.1f);
+            Prop(new[] { "goblin_trashpile" }, new Vector2(9.5f, -1f), 140f, 0.1f);
+            Prop(new[] { "goblin_stepladder" }, Polar(330f, Wall - 1.2f), 330f, 0.05f);
+            // Who holds it, and what they've piled up.
+            float y = PlateauHeight + 0.2f;
+            PlaceNetworked(IsletTier.SpawnerName("Goblin"), new Vector3(3f, y, -2f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("Goblin"), new Vector3(-3f, y, -1f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("GoblinArcher"), new Vector3(0f, y, -8f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("GoblinShaman"), new Vector3(-1.5f, y, 3.5f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("Goblin"), new Vector3(6f, y, 6f), 0f);
+            PlaceNetworked(tier.ChestName, new Vector3(1.4f, PlateauHeight, 4f), 180f);
+        }
+
+        // A Fuling hut: two walls of rough logs at the back and sides, poles, a steep roof, straw inside.
+        static void FulingHut()
+        {
+            float b = PlateauHeight - 0.05f;
+            float back = Mathf.Min(Top(At("goblin_woodwall_2m", new Vector3(-1f, b, 1f), Vector3.zero, false), b + 2f),
+                Top(At("goblin_woodwall_2m", new Vector3(1f, b, 1f), Vector3.zero, false), b + 2f));
+            At("goblin_woodwall_2m_ribs", new Vector3(-2f, b, 0f), new Vector3(0f, 90f, 0f), false);
+            At("goblin_woodwall_2m", new Vector3(2f, b, 0f), new Vector3(0f, 90f, 0f), false);
+            At("goblin_pole", new Vector3(-2f, b, 1f), Vector3.zero, false);
+            At("goblin_pole", new Vector3(2f, b, 1f), Vector3.zero, false);
+            At("goblin_roof_45d", new Vector3(0f, back, 0.5f), Vector3.zero, false);
+            At("goblin_roof_45d", new Vector3(0f, back, -0.5f), new Vector3(0f, 180f, 0f), false);
+            Prop(new[] { "goblin_strawpile" }, new Vector2(0f, 0.2f), 0f, 0.1f);
+        }
+
+        // ---- the Ashlands: a charred fortress ----
+
+        // Tall broken grausten walls round a 20 m square, a gate in the front, a corner tower at each
+        // corner, the ruined keep in the middle (with its guards and chest), and the charred dead at the
+        // gate and on the walls.
+        static void CharredFortress()
+        {
+            float g = PlateauHeight - 0.05f;
+            const float Half = 10f;
+            string[] walls = { "Ashlands_Ruins_Wall_Broken3_4x6", "Ashlands_Ruins_Wall_Window_4x6_broken2" };
+            for (int side = 0; side < 4; side++)
+            {
+                float yaw = side * 90f;
+                for (int k = -2; k <= 2; k++)
+                {
+                    if (side == 0 && k == 0) continue; // the gate
+                    Vector3 along = Quaternion.Euler(0f, yaw, 0f) * new Vector3(k * 4f, 0f, -Half);
+                    if ((side * 5 + k + 10) % 7 == 3)
+                    {
+                        // A stretch that fell: its blocks lie in the ash.
+                        At("Piece_grausten_wall_2x2", new Vector3(along.x * 1.12f, PlateauHeight - 0.15f, along.z * 1.12f), new Vector3(0f, yaw + 20f, 85f), false);
+                        continue;
+                    }
+                    At(walls[(side + k + 4) % 2], new Vector3(along.x, g, along.z), new Vector3(0f, yaw, 0f), false);
+                }
+            }
+            for (int cx = -1; cx <= 1; cx += 2)
+                for (int cz = -1; cz <= 1; cz += 2)
+                {
+                    float x = cx * (Half + 0.5f), z = cz * (Half + 0.5f);
+                    float top = Top(At("Ashlands_Fortress_Wall_Pillar_base", new Vector3(x, g, z), Vector3.zero, false), g + 2f);
+                    if (cx > 0 || cz > 0) top = Top(At("Ashlands_Fortress_Wall_Pillar", new Vector3(x, top, z), Vector3.zero, false), top + 4f);
+                    if (cx > 0 && cz > 0) At("Ashlands_Fortress_Wall_PillarTop", new Vector3(x, top, z), Vector3.zero, false);
+                }
+            GraustenFort(); // the keep, with its guards and chest
+            float y = PlateauHeight + 0.2f;
+            PlaceNetworked(IsletTier.SpawnerName("Charred_Melee"), new Vector3(-2.5f, y, -Half + 2f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("Charred_Melee"), new Vector3(2.5f, y, -Half + 2f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("Charred_Archer"), new Vector3(Half - 2f, y, Half - 2f), 0f);
+            PlaceNetworked(IsletTier.SpawnerName("Charred_Mage"), new Vector3(-Half + 2f, y, 6f), 0f);
+            Prop(new[] { "grausten_pile" }, new Vector2(-7f, -6f), 0f, 0.2f);
+            Prop(new[] { "grausten_pile" }, new Vector2(7.5f, 5f), 80f, 0.2f);
+            Prop(new[] { "ashland_pot1_red" }, new Vector2(6f, -7f), 0f, 0.02f);
+            Prop(new[] { "ashland_pot2_green" }, new Vector2(-6.5f, 7f), 30f, 0.02f);
+            Prop(new[] { "ashland_pot3_red" }, new Vector2(7f, -6.2f), 60f, 0.02f);
         }
 
         // A stone watchtower four storeys high, broken down to one corner at the top, rubble at its foot.

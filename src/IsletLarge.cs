@@ -15,6 +15,7 @@ namespace IslandsOfValheim
     {
         internal const string LargePrefix = "IoV_Large_";
         const float LargeScale = 2.5f;
+        static bool buildingLarge; // while a large islet is being built (some designs leave things out)
 
         internal enum Where { Plateau, Slope, Shore, Water, Air }
 
@@ -31,7 +32,8 @@ namespace IslandsOfValheim
             internal int Variant;
             internal float Height;          // the plateau above the sea
             internal string[] Dungeon;      // vanilla dungeon locations, the first that exists; null: none
-            internal string Guardian;
+            internal Layout Layout;
+            internal string[] Guardian;     // the first that exists
             internal Life[] Life;
             internal string[] Extra;        // more vanilla things to place (a wild beehive...)
             // Worked out while it's built: radii, and where the keeper stands from the middle.
@@ -47,11 +49,23 @@ namespace IslandsOfValheim
 
         internal static readonly List<LargeKind> LargeKinds = new List<LargeKind>
         {
-            new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Guardian = "Greydwarf_Elite",
+            new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Layout = Layout.Village,
+                Guardian = new[] { "Greydwarf_Elite" },
                 Life = new[] { L("Deer", 3, Where.Slope), L("Boar", 3, Where.Plateau), L("Neck", 2, Where.Shore) }, Extra = new[] { "Beehive" } },
-            new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Guardian = "Abomination",
+            new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Layout = Layout.Village,
+                Guardian = new[] { "Abomination" },
                 Life = new[] { L("Leech", 4, Where.Water), L("Crow", 3, Where.Air) } },
+            new LargeKind { Tier = IsletTier.All[2], Variant = 0, Height = 5f, Layout = Layout.FulingStronghold,
+                Guardian = new[] { "GoblinBrute" },
+                Life = new[] { L("Lox", 2, Where.Slope), L("Deathsquito", 2, Where.Air) } },
+            new LargeKind { Tier = IsletTier.All[5], Variant = 0, Height = 6f, Layout = Layout.CharredFortress,
+                Guardian = new[] { "Morgen_NonSleeping", "Morgen", "Charred_Melee_Dyrnwyn" },
+                Life = new[] { L("Asksvin", 3, Where.Plateau), L("Volture", 2, Where.Air) } },
         };
+
+        // What stands in the middle of a large islet: a vanilla dungeon with the people's village around it,
+        // or (where the land has no dungeon) a stronghold of whoever holds it now.
+        internal enum Layout { Village, FulingStronghold, CharredFortress }
 
         internal static LargeKind LargeKindOf(string prefabName)
         {
@@ -86,9 +100,10 @@ namespace IslandsOfValheim
             if (Plugin.LargeIslets.Value <= 0) return;
             foreach (LargeKind kind in LargeKinds)
             {
+                buildingLarge = true;
                 try { LargeIsletOf(kind); }
                 catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; }
+                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; }
             }
         }
 
@@ -120,20 +135,27 @@ namespace IslandsOfValheim
                 if (source != null) interior = AddDungeon(source, Vector2.zero, cliffDeg + 180f, locationName);
                 else Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
             }
-            // A ring of what the people left around it, clear of the dungeon's entrance, each facing the middle:
-            // the kind's ruin (its guards and chest with it), two houses, a well or graves, their fire, and a
-            // watchtower to see the islet by. The ridge structure stands on the cliff.
-            float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 7.5f, kind.Plateau * 0.5f, kind.Plateau - 6f);
-            bool swamp = tier.Biome == Heightmap.Biome.Swamp;
-            Village(cliffDeg + 150f, ring, MainDesign());
-            Village(cliffDeg + 80f, ring, () => RuinedHouse(swamp));
-            Village(cliffDeg + 220f, ring, () => RuinedHouse(swamp));
-            Village(cliffDeg + 290f, ring + 1f, swamp ? (System.Action)Graveyard : Well);
-            Village(cliffDeg + 35f, ring - 1f, Campfire);
-            Village(cliffDeg + 330f, ring + 1f, WatchTower);
+            Vector2 keeper;
+            if (kind.Layout == Layout.Village)
+            {
+                // A ring of what the people left around it, clear of the dungeon's entrance, each facing the
+                // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
+                // a well or graves, their fire, and a watchtower to see the islet by.
+                float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 7.5f, kind.Plateau * 0.5f, kind.Plateau - 6f);
+                bool swamp = tier.Biome == Heightmap.Biome.Swamp;
+                float[] at = RingOf(ring,
+                    Item(MainDesign(), 7f), Item(() => RuinedHouse(swamp), 5.5f), Item(swamp ? (System.Action)Graveyard : Well, swamp ? 3.6f : 2.4f),
+                    Item(() => RuinedHouse(swamp), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f));
+                keeper = Polar(at[at.Length - 1], ring - 4.5f); // by the watchtower, on the inner side
+            }
+            else
+            {
+                if (kind.Layout == Layout.FulingStronghold) FulingStronghold();
+                else CharredFortress();
+                keeper = Polar(cliffDeg + 200f, kind.Plateau - 3f); // between the walls and the plateau's edge
+            }
             RidgeDesign();
             RidgeGuard();
-            Vector2 keeper = Polar(cliffDeg + 330f, ring - 3f); // by the watchtower, on the inner side
             kind.KeeperOffset = new Vector3(keeper.x, PlateauHeight, keeper.y);
             PlaceNetworked(kind.KeeperName, kind.KeeperOffset, 0f);
             if (kind.Extra != null)
@@ -172,6 +194,39 @@ namespace IslandsOfValheim
             config.MinDistanceFromSimilar = 900f;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ", " + built + " parts, " + missing + " prefabs not found)");
+        }
+
+        // One design for RingOf, with the radius it takes up.
+        class RingItem
+        {
+            internal System.Action Design;
+            internal float Size;
+        }
+
+        static RingItem Item(System.Action design, float size) { return new RingItem { Design = design, Size = size }; }
+
+        // The designs round the plateau at radius ring, in order, from just past the cliff side (where the
+        // ridge structure stands) most of the way round: each gets an arc for its size and a gap of at
+        // least Gap metres to the next, the room left over shared out evenly. Returns where each went.
+        static float[] RingOf(float ring, params RingItem[] items)
+        {
+            const float Gap = 3f;
+            float start = cliffDeg + 28f, end = cliffDeg + 332f;
+            float room = (end - start) * Mathf.Deg2Rad * ring, need = 0f;
+            foreach (RingItem item in items) need += item.Size * 2f + Gap;
+            float spare = Mathf.Max(0f, room - need) / items.Length;
+            if (need > room) Plugin.Log.LogWarning(locationName + ": its buildings need " + need.ToString("0") + " m of a " + room.ToString("0") + " m ring; some stand close.");
+            float[] at = new float[items.Length];
+            float deg = start;
+            for (int i = 0; i < items.Length; i++)
+            {
+                float half = (items[i].Size + (Gap + spare) * 0.5f) / ring * Mathf.Rad2Deg;
+                deg += half;
+                at[i] = deg;
+                Village(deg, ring, items[i].Design);
+                deg += half;
+            }
+            return at;
         }
 
         // A design built at deg degrees and radius r on the plateau, its front (-z) towards the middle. The
@@ -327,14 +382,16 @@ namespace IslandsOfValheim
         {
             int band = Band;
             Vector3 p;
-            if (Point(IsletBuilder.Where.Plateau, out p)) Spawn(kind.Guardian, p, Level(band, true));
+            string guardian = null;
+            foreach (string g in kind.Guardian) if (guardian == null && ZNetScene.instance.GetPrefab(g) != null) guardian = g;
+            if (guardian != null && Point(IsletBuilder.Where.Plateau, out p)) Spawn(guardian, p, Level(band, true));
             string[] guards = kind.Tier.Guards;
             for (int i = 0; i < 4; i++)
                 if (Point(IsletBuilder.Where.Plateau, out p)) Spawn(guards[i % guards.Length], p, Level(band, false));
             GameObject chest = ZNetScene.instance.GetPrefab(kind.ChestName(band));
             Vector3 at = transform.position + transform.rotation * new Vector3(1.8f, 0.2f, 1.2f);
             if (chest != null) Instantiate(chest, Ground(at), transform.rotation);
-            Plugin.Debug("Large " + kind.Tier.Name + " islet at " + transform.position.ToString("F0") + ": band " + band + ", guardian " + kind.Guardian + " and guards out, chest " + (chest != null));
+            Plugin.Debug("Large " + kind.Tier.Name + " islet at " + transform.position.ToString("F0") + ": band " + band + ", guardian " + guardian + " and guards out, chest " + (chest != null));
             foreach (IsletBuilder.Life life in kind.Life)
                 for (int i = 0; i < life.Cap; i++)
                     if (Point(life.Where, out p)) Spawn(life.Prefab, p, Level(band, false));

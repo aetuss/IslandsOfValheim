@@ -158,7 +158,9 @@ namespace IslandsOfValheim
             harbours.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
             ZoneSystem.LocationInstance best = harbours[0];
             foreach (ZoneSystem.LocationInstance instance in harbours) if (instance.m_placed) best = instance;
-            Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau + 3f, best.m_position.z);
+            IsletBuilder.LargeKind large = IsletBuilder.LargeKindOf(location);
+            float plateau = large != null ? large.Height : IsletBuilder.SmallPlateau;
+            Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + plateau + 3f, best.m_position.z);
             Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
             context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to " + what + " (" + location + ").");
         }
