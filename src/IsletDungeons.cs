@@ -145,7 +145,9 @@ namespace IslandsOfValheim
                 location.m_noBuild = vanillaLocation.m_noBuild;
                 Plugin.Debug("Dungeon test " + name + ": interior " + location.m_hasInterior + ", radius " + location.m_interiorRadius + ", environment " + location.m_interiorEnvironment);
             }
-            Object.DestroyImmediate(vanilla);
+            // The emptied clone is known to Jötunn: it goes from there too, or Jötunn tries to load it.
+            ZoneManager.Instance.DestroyCustomLocation(clone.Name);
+            if (vanilla != null) Object.DestroyImmediate(vanilla);
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
