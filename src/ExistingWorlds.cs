@@ -326,8 +326,9 @@ namespace IslandsOfValheim
                 Vector3 q = p + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * Ring;
                 if (world.GetBiome(q) != Heightmap.Biome.Ocean || world.GetHeight(q.x, q.z) > water - 2f) return false;
             }
+            float spacing = location.m_prefabName.StartsWith(IsletBuilder.LargePrefix) ? 250f : IsletSpacing;
             foreach (Vector3 o in ours)
-                if (new Vector2(o.x - p.x, o.z - p.z).sqrMagnitude < IsletSpacing * IsletSpacing) return false;
+                if (new Vector2(o.x - p.x, o.z - p.z).sqrMagnitude < spacing * spacing) return false;
             List<Vector3> similar;
             if (!string.IsNullOrEmpty(location.m_group) && location.m_minDistanceFromSimilar > 0f && byGroup.TryGetValue(location.m_group, out similar))
                 foreach (Vector3 o in similar)

@@ -227,8 +227,9 @@ namespace IslandsOfValheim
                 {
                     // Jitter the grid a little so it doesn't show as rings.
                     int s = seg % segments;
-                    float a = (seg + 0.3f * Noise(ring * 1.7f + 0.5f, s * 1.3f + 0.5f)) * Mathf.PI * 2f / segments;
-                    float r = (ring + 0.3f * Noise(s * 2.1f + 7.5f, ring * 0.9f + 3.5f)) * RingStep;
+                    float jitter = cuts.Count > 0 ? 0f : 0.3f; // not where the ground is cut steeply: it would fold over
+                    float a = (seg + jitter * Noise(ring * 1.7f + 0.5f, s * 1.3f + 0.5f)) * Mathf.PI * 2f / segments;
+                    float r = (ring + jitter * Noise(s * 2.1f + 7.5f, ring * 0.9f + 3.5f)) * RingStep;
                     float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
                     float y = Height(x, z);
                     verts.Add(new Vector3(x, y, z));

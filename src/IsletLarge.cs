@@ -51,10 +51,10 @@ namespace IslandsOfValheim
 
         internal static readonly List<LargeKind> LargeKinds = new List<LargeKind>
         {
-            new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Layout = Layout.Village,
+            new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Scale = 3.2f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Layout = Layout.Village,
                 Guardian = new[] { "Greydwarf_Elite" },
                 Life = new[] { L("Deer", 3, Where.Slope), L("Boar", 3, Where.Plateau), L("Neck", 2, Where.Shore) }, Extra = new[] { "Beehive" } },
-            new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Layout = Layout.Village,
+            new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Scale = 2.8f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Layout = Layout.Village,
                 Guardian = new[] { "Abomination" },
                 Life = new[] { L("Leech", 4, Where.Water), L("Crow", 3, Where.Air) } },
             new LargeKind { Tier = IsletTier.All[2], Variant = 0, Height = 5f, Layout = Layout.FulingStronghold,
@@ -64,13 +64,13 @@ namespace IslandsOfValheim
                 Guardian = new[] { "Morgen_NonSleeping", "Morgen", "Charred_Melee_Dyrnwyn" },
                 Life = new[] { L("Asksvin", 3, Where.Plateau), L("Volture", 2, Where.Air) } },
             // The dungeons dug into the ground stand on tall islets, so their pits stay above the sea.
-            new LargeKind { Tier = IsletTier.All[3], Variant = 0, Height = 16f, Scale = 3f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
+            new LargeKind { Tier = IsletTier.All[3], Variant = 0, Height = 16f, Scale = 4f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
                 Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
                 Life = new[] { L("Hare", 3, Where.Plateau) } },
-            new LargeKind { Tier = IsletTier.All[4], Variant = 3, Height = 16f, Scale = 3f, Dungeon = new[] { "Mistlands_DvergrTownEntrance2", "Mistlands_DvergrTownEntrance1" },
+            new LargeKind { Tier = IsletTier.All[4], Variant = 0, Height = 16f, Scale = 4f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1" },
                 Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
                 Life = new[] { L("Hare", 3, Where.Plateau) } },
-            new LargeKind { Tier = IsletTier.All[6], Variant = 0, Height = 12f, Scale = 2.8f, Dungeon = new[] { "MorkBorg", "TheDarkestHole" },
+            new LargeKind { Tier = IsletTier.All[6], Variant = 0, Height = 15f, Scale = 4f, Dungeon = new[] { "MorkBorg", "TheDarkestHole" },
                 Shaped = true, Layout = Layout.Village, Guardian = new[] { "JotunWarrior", "Fenring" },
                 Life = new[] { L("Moose", 2, Where.Slope), L("Seal", 3, Where.Shore), L("Bjorn", 1, Where.Slope) } },
         };
@@ -115,7 +115,7 @@ namespace IslandsOfValheim
                 buildingLarge = true;
                 try { LargeIsletOf(kind); }
                 catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); }
+                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
             }
         }
 
@@ -150,8 +150,13 @@ namespace IslandsOfValheim
                 // A ring of what the people left around it, clear of the dungeon's entrance, each facing the
                 // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
                 // a well or graves, their fire, and a watchtower to see the islet by.
-                float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 9f, kind.Plateau * 0.5f, kind.Plateau - 6f);
-                float[] at = RingOf(ring, interior != null ? interior.DoorDeg : float.NaN, VillageOf(kind));
+                RingItem[] village = VillageOf(kind);
+                float biggest = 0f;
+                foreach (RingItem item in village) biggest = Mathf.Max(biggest, item.Size);
+                float clear = Mathf.Max(interior != null ? interior.Footprint : 4f, CutsReach());
+                float ring = Mathf.Clamp(clear + biggest + 2f, kind.Plateau * 0.5f, kind.Plateau - biggest - 1f);
+                if (clear + biggest + 2f > kind.Plateau - biggest - 1f) Plugin.Log.LogWarning(locationName + ": the plateau is small for its dungeon; buildings stand close to it.");
+                float[] at = RingOf(ring, interior != null ? interior.DoorDeg : float.NaN, village);
                 if (tier.DvergrOutpost) PlaceDvergrWard(); // the islet is theirs
                 keeper = Polar(at[at.Length - 1], ring - 4.5f); // by the watchtower, on the inner side
             }
@@ -421,11 +426,12 @@ namespace IslandsOfValheim
             foreach (string g in kind.Guardian) if (guardian == null && ZNetScene.instance.GetPrefab(g) != null) guardian = g;
             if (guardian != null && Point(IsletBuilder.Where.Plateau, out p)) Spawn(guardian, p, Level(band, true));
             string[] guards = kind.Tier.Guards;
-            for (int i = 0; i < 4; i++)
+            int extra = kind.Tier.Band >= 3 ? 2 : 4; // the strong lands' islets have plenty to fight already
+            for (int i = 0; i < extra; i++)
                 if (Point(IsletBuilder.Where.Plateau, out p)) Spawn(guards[i % guards.Length], p, Level(band, false));
             GameObject chest = ZNetScene.instance.GetPrefab(kind.ChestName(band));
             Vector3 at = transform.position + transform.rotation * new Vector3(1.8f, 0.2f, 1.2f);
-            if (chest != null) Instantiate(chest, Ground(at), transform.rotation);
+            if (chest != null) Instantiate(chest, Ground(at) - Vector3.up * 0.35f, transform.rotation); // on the ground: one held up has no support and breaks
             Plugin.Debug("Large " + kind.Tier.Name + " islet at " + transform.position.ToString("F0") + ": band " + band + ", guardian " + guardian + " and guards out, chest " + (chest != null));
             foreach (IsletBuilder.Life life in kind.Life)
                 for (int i = 0; i < life.Cap; i++)

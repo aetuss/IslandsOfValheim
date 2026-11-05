@@ -135,6 +135,15 @@ namespace IslandsOfValheim
         }
 
         static readonly List<TerrainCut> cuts = new List<TerrainCut>();
+        static float dungeonShift; // how far the dungeon is raised so its own ground is the plateau (ReadCuts)
+
+        // How far out from the middle the shaped ground reaches.
+        static float CutsReach()
+        {
+            float reach = 0f;
+            foreach (TerrainCut cut in cuts) reach = Mathf.Max(reach, Mathf.Sqrt(cut.X * cut.X + cut.Z * cut.Z) + cut.Smooth);
+            return reach;
+        }
 
         // The levelling of a vanilla location as it will stand at (at.x, at.y) on the plateau, turned rotY.
         static void ReadCuts(string source, Vector2 at, float rotY, string tag)
@@ -164,6 +173,22 @@ namespace IslandsOfValheim
                 Plugin.Debug("  " + tag + ": ground levelled to " + cut.Y.ToString("F1") + " within " + cut.Level.ToString("F1") + " m (blending out to " + cut.Smooth.ToString("F1") + ")" + (cut.Square ? ", square" : "") + " at (" + cut.X.ToString("F1") + ", " + cut.Z.ToString("F1") + ")");
             }
             cuts.Sort((a, b) => a.Order.CompareTo(b.Order));
+            // A broad, shallow levelling is the ground the location stands on (the mine's fort sits a metre
+            // and a half below its origin): the dungeon is raised or lowered so that ground is the plateau,
+            // and that levelling is no longer needed. Without it the plateau around would slope down under
+            // the islet's other buildings.
+            dungeonShift = 0f;
+            TerrainCut floor = null;
+            foreach (TerrainCut cut in cuts)
+                if (cut.Level >= 7f && Mathf.Abs(cut.Y - PlateauHeight) < 3.5f && (floor == null || cut.Level > floor.Level)) floor = cut;
+            if (floor != null)
+            {
+                dungeonShift = PlateauHeight - floor.Y;
+                foreach (TerrainCut cut in cuts) cut.Y += dungeonShift;
+                cuts.RemoveAll(c => Mathf.Abs(c.Y - PlateauHeight) < 0.4f);
+                lowest += dungeonShift;
+                Plugin.Debug("  " + tag + ": raised " + dungeonShift.ToString("F1") + " m so it stands on the plateau; " + cuts.Count + " levellings left");
+            }
             if (cuts.Count > 0 && lowest < 0.5f) Plugin.Log.LogWarning(tag + ": its ground goes down to " + lowest.ToString("F1") + " m, under the sea; the plateau should be higher.");
             ZoneManager.Instance.DestroyCustomLocation(clone.Name);
         }
@@ -210,7 +235,7 @@ namespace IslandsOfValheim
 
             GameObject group = new GameObject("IoV_Dungeon");
             group.transform.SetParent(parent, false);
-            group.transform.localPosition = new Vector3(at.x, PlateauHeight - 0.05f, at.y);
+            group.transform.localPosition = new Vector3(at.x, PlateauHeight - 0.05f + (shaped ? dungeonShift : 0f), at.y);
             group.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
             List<Transform> parts = new List<Transform>();
             foreach (Transform child in vanilla.transform) parts.Add(child);

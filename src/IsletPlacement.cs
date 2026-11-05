@@ -17,14 +17,37 @@ namespace IslandsOfValheim
 
         static void Postfix(ZoneSystem __instance, AssetID assetID, string group, Vector3 p, bool maxGroup, ref bool __result)
         {
-            if (__result || maxGroup) return;
+            if (__result || maxGroup || group == null || !group.StartsWith("IoV_")) return;
             // The tale's two outer islets: each unique location is its own group.
-            if (group == Story.AshIslet) { __result = p.z > 0f; return; }
-            if (group == Story.HiddenIslet) { __result = p.z <= 0f; return; }
-            if (group != IsletBuilder.Group && group != "IoV_Large") return;
-            if (mappedFor != __instance) Map(__instance);
-            IsletTier tier;
-            if (sided.TryGetValue(assetID, out tier) && !tier.Allows(p)) __result = true;
+            if (group == Story.AshIslet && p.z > 0f) { __result = true; return; }
+            if (group == Story.HiddenIslet && p.z <= 0f) { __result = true; return; }
+            if (group == IsletBuilder.Group || group == "IoV_Large")
+            {
+                if (mappedFor != __instance) Map(__instance);
+                IsletTier tier;
+                if (sided.TryGetValue(assetID, out tier) && !tier.Allows(p)) { __result = true; return; }
+            }
+            // Each kind only keeps its distance from its own group; ours also keep apart from one another,
+            // or a small islet could come up on a large one's shore.
+            if (NearOurs(__instance, p, group == "IoV_Large")) __result = true;
+        }
+
+        const float Apart = 130f, ApartLarge = 230f;
+
+        static bool NearOurs(ZoneSystem zones, Vector3 p, bool large)
+        {
+            Vector2s zone = ZoneSystem.GetZone(p);
+            for (int dx = -4; dx <= 4; dx++)
+                for (int dy = -4; dy <= 4; dy++)
+                {
+                    ZoneSystem.LocationInstance other;
+                    if (!zones.m_locationInstances.TryGetValue(new Vector2s(zone.x + dx, zone.y + dy), out other) || other.m_location == null) continue;
+                    string name = other.m_location.m_prefabName;
+                    if (name == null || !name.StartsWith("IoV_")) continue;
+                    float keep = large || name.StartsWith(IsletBuilder.LargePrefix) ? ApartLarge : Apart;
+                    if (new Vector2(other.m_position.x - p.x, other.m_position.z - p.z).sqrMagnitude < keep * keep) return true;
+                }
+            return false;
         }
 
         // Which of the registered locations belong to a kind that keeps to one half.

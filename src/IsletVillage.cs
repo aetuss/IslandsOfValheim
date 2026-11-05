@@ -119,7 +119,6 @@ namespace IslandsOfValheim
             Prop(new[] { "goblin_strawpile" }, new Vector2(5.5f, -4f), 200f, 0.1f);
             Prop(new[] { "goblin_trashpile" }, new Vector2(-9f, 4.5f), 60f, 0.1f);
             Prop(new[] { "goblin_trashpile" }, new Vector2(9.5f, -1f), 140f, 0.1f);
-            Prop(new[] { "goblin_stepladder" }, Polar(330f, Wall - 1.2f), 330f, 0.05f);
             // Who holds it, and what they've piled up.
             float y = PlateauHeight + 0.2f;
             PlaceNetworked(IsletTier.SpawnerName("Goblin"), new Vector3(3f, y, -2f), 0f);
@@ -182,9 +181,7 @@ namespace IslandsOfValheim
             GraustenFort(); // the keep, with its guards and chest
             float y = PlateauHeight + 0.2f;
             PlaceNetworked(IsletTier.SpawnerName("Charred_Melee"), new Vector3(-2.5f, y, -Half + 2f), 0f);
-            PlaceNetworked(IsletTier.SpawnerName("Charred_Melee"), new Vector3(2.5f, y, -Half + 2f), 0f);
             PlaceNetworked(IsletTier.SpawnerName("Charred_Archer"), new Vector3(Half - 2f, y, Half - 2f), 0f);
-            PlaceNetworked(IsletTier.SpawnerName("Charred_Mage"), new Vector3(-Half + 2f, y, 6f), 0f);
             Prop(new[] { "grausten_pile" }, new Vector2(-7f, -6f), 0f, 0.2f);
             Prop(new[] { "grausten_pile" }, new Vector2(7.5f, 5f), 80f, 0.2f);
             Prop(new[] { "ashland_pot1_red" }, new Vector2(6f, -7f), 0f, 0.02f);
