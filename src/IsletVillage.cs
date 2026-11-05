@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace IslandsOfValheim
@@ -188,75 +187,6 @@ namespace IslandsOfValheim
             Prop(new[] { "ashland_pot1_red" }, new Vector2(6f, -7f), 0f, 0.02f);
             Prop(new[] { "ashland_pot2_green" }, new Vector2(-6.5f, 7f), 30f, 0.02f);
             Prop(new[] { "ashland_pot3_red" }, new Vector2(7f, -6.2f), 60f, 0.02f);
-        }
-
-        // ---- the Deep North: the game's own north village ----
-
-        // The vanilla north village is put together by a dungeon generator from its "rooms": houses, a
-        // granary, a stable, a tower... The game keeps those in its room list (DungeonDB); a Deep North
-        // large islet takes some of them whole, so they look like the land's own.
-        static List<GameObject> northRooms;
-
-        static void LoadNorthRooms()
-        {
-            if (northRooms != null) return;
-            northRooms = new List<GameObject>();
-            List<DungeonDB.RoomData> rooms = DungeonDB.GetRooms();
-            if (rooms == null) return;
-            foreach (DungeonDB.RoomData room in rooms)
-            {
-                if (room == null || (room.m_theme & Room.Theme.NorthVillage) == 0) continue;
-                room.m_prefab.Load();
-                GameObject asset = room.m_prefab.Asset;
-                if (asset != null) northRooms.Add(asset);
-            }
-            List<string> names = new List<string>();
-            foreach (GameObject asset in northRooms) names.Add(asset.name);
-            Plugin.Debug("North village rooms: " + string.Join(", ", names.ToArray()));
-        }
-
-        // One of the north village's buildings as a ring item, sized by how far it reaches from its middle;
-        // null if it isn't there.
-        static RingItem NorthPart(string name)
-        {
-            LoadNorthRooms();
-            Transform part = null;
-            foreach (GameObject asset in northRooms)
-                if (asset.name.StartsWith(name, System.StringComparison.OrdinalIgnoreCase)) { part = asset.transform; break; }
-            if (part == null)
-            {
-                Plugin.Debug("North village: no " + name);
-                return null;
-            }
-            float size = 0f;
-            foreach (MeshFilter filter in part.GetComponentsInChildren<MeshFilter>(true))
-            {
-                if (filter.sharedMesh == null) continue;
-                Bounds mb = filter.sharedMesh.bounds;
-                for (int i = 0; i < 8; i++)
-                {
-                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
-                    Vector3 p = part.InverseTransformPoint(filter.transform.TransformPoint(corner));
-                    size = Mathf.Max(size, new Vector2(p.x, p.z).magnitude);
-                }
-            }
-            Plugin.Debug("North village: " + part.name + " reaches " + size.ToString("F1") + " m");
-            return Item(() => PlaceNorthPart(part), Mathf.Clamp(size, 2.5f, 9f));
-        }
-
-        // The room's parts on the plateau: what made it a dungeon room (its doorways to other rooms) and
-        // any levelling of the ground left out.
-        static void PlaceNorthPart(Transform part)
-        {
-            GameObject copy = Object.Instantiate(part.gameObject, parent, false);
-            copy.name = part.name;
-            copy.transform.localPosition = new Vector3(0f, PlateauHeight - 0.05f, 0f);
-            copy.transform.localRotation = Quaternion.identity; // the village ring turns it
-            foreach (RoomConnection connection in copy.GetComponentsInChildren<RoomConnection>(true)) Object.DestroyImmediate(connection.gameObject);
-            foreach (Room room in copy.GetComponentsInChildren<Room>(true)) Object.DestroyImmediate(room);
-            foreach (TerrainModifier modifier in copy.GetComponentsInChildren<TerrainModifier>(true)) Object.DestroyImmediate(modifier);
-            foreach (TerrainOp op in copy.GetComponentsInChildren<TerrainOp>(true)) Object.DestroyImmediate(op);
-            built++;
         }
 
         // A spire of black marble, the dvergr's own landmark: a base, two tall columns and the tip.

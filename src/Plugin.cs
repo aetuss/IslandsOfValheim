@@ -91,7 +91,6 @@ namespace IslandsOfValheim
                 IsletBuilder.RegisterStoryIslets(); // the tale is his to tell
             }
             IsletBuilder.RegisterLargeIslets();
-            IsletBuilder.RegisterDungeonTests(); // 1.7.0 in progress: can a vanilla dungeon sit on an islet?
         }
 
         internal static void Debug(string message)

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0
+
+- Works in existing worlds: once per world, the server adds the islets a world is missing, Sævar's harbour and the islets of his tale too. Most go where nobody has sailed yet; only if there's no such sea left in a kind's ring, a few are built in sailed ocean, well away from players' buildings, ships and players. `PlaceInExistingWorlds` turns it off, `iov_placeislets` runs it again.
+- Large islets, two or three of each kind (`LargeIsletsPerKind`), three to four times a normal islet:
+  - Meadows: a burial chamber and a ruined village round it.
+  - Swamp: a sunken crypt, houses on stilts, a graveyard.
+  - Plains: a Fuling stronghold.
+  - Mistlands: an infested mine dug into a tall islet, dvergr ruins, a Seeker nest.
+  - Dvergr: an infested mine with the dvergr's camp round it.
+  - Ashlands: a charred fortress.
+  - Deep North: Mørkhalla's way down and a frost keep.
+- Each large islet has a starred guardian, a chest, and animals that come back (not near a player's base). Stars and loot grow the further out in its ring it is. You may build there; the hoe and the cultivator don't work on islet ground.
+- Our islets keep apart from each other when the game places them.
+- Leaving a dungeon on an islet puts you on its ground, not under it.
+- The README says that Jötunn is needed at the top instead of at the end of the Dvergr section.
 ## 1.6.1
 
 - The README now says that the tale's foes and the trader's goods use the game's own models, reworked. No changes in the game.

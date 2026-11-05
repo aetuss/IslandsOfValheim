@@ -219,17 +219,8 @@ namespace IslandsOfValheim
                     return new[] { Item(DvergrRuin, 7f), Item(NestSite, 5.5f), Item(DvergrOutpost, 6f), Item(MarbleSpire, 2.6f) };
                 case RuinStyle.DvergrCamp: // the dvergr who live here, digging round the mine
                     return new[] { Item(DvergrCamp, 7f), Item(DvergrDigSite, 6f), Item(MarbleSpire, 2.6f) };
-                case RuinStyle.FrostKeep: // the frost keep among the north village's own buildings, its tower last
-                {
-                    List<RingItem> north = new List<RingItem> { Item(FrostKeep, 6.5f) };
-                    foreach (string part in new[] { "northvillage_house1", "northvillage_granary", "northvillage_house2", "northvillage_woodpile", "northvillage_tower" })
-                    {
-                        RingItem item = NorthPart(part);
-                        if (item != null) north.Add(item);
-                    }
-                    if (north.Count == 1) return new[] { Item(FrostKeep, 6.5f), Item(FrozenCamp, 6f), Item(Graveyard, 3.6f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
-                    return north.ToArray();
-                }
+                case RuinStyle.FrostKeep: // the frost keep, a house left to the snow, graves, their fire and the watchtower
+                    return new[] { Item(FrostKeep, 6.5f), Item(() => RuinedHouse(false), 5.5f), Item(Graveyard, 3.6f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
                 default:
                     return new[] { Item(StoneHall, 7f), Item(() => RuinedHouse(false), 5.5f), Item(Well, 2.4f), Item(() => RuinedHouse(false), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f) };
             }

@@ -71,8 +71,7 @@ namespace IslandsOfValheim
         // dungeon tests).
         static bool Ours(ZoneSystem.ZoneLocation location)
         {
-            return location != null && location.m_enable && location.m_prefabName != null && location.m_prefabName.StartsWith("IoV_") &&
-                !location.m_prefabName.StartsWith("IoV_DungeonTest_");
+            return location != null && location.m_enable && location.m_prefabName != null && location.m_prefabName.StartsWith("IoV_");
         }
 
         // Which half of the world a location keeps to, as IsletPlacement does when a world is made.

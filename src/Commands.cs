@@ -135,8 +135,6 @@ namespace IslandsOfValheim
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
             foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
                 if (string.Equals(arg, "large_" + kind.Tier.Name, System.StringComparison.OrdinalIgnoreCase)) return kind.LocationName;
-            for (int i = 1; i <= IsletBuilder.DungeonTests.Length; i++)
-                if (string.Equals(arg, "dungeon" + i, System.StringComparison.OrdinalIgnoreCase)) return IsletBuilder.DungeonTests[i - 1];
             return null;
         }
 

@@ -1,6 +1,8 @@
 # IslandsOfValheim
 
-Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, and a sea trader on one of them.
+Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, a few large islets with a vanilla dungeon or a stronghold and life of their own, and a sea trader with a tale to tell. Works in new and existing worlds.
+
+Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
 ## What changes?
 
@@ -12,6 +14,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 - **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
 - **Fishing grounds** around about half the islets (see below).
+- **Large islets**, two or three of each kind: a vanilla dungeon or a stronghold, a ruined village, animals and a starred guardian (see below).
 - **The sea trader**, the last of the people who built the islet ruins, keeps a harbour on one islet (see below).
 
 The further from the world centre, the tougher the islet:
@@ -63,6 +66,25 @@ About half the islets have more fish in the shallow water around them than the o
 
 There aren't endless fish: a ground holds a few at a time and puts one back every few minutes. Now and then your hook brings up a sodden pouch instead of a fish, with some coins and a small piece of the islet's treasure, and very rarely a sea vegvisir shard.
 
+## Large islets
+
+Rarely, two or three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones:
+
+| Large islet | What's on it |
+|---|---|
+| Meadows | a burial chamber in the middle, and round it what's left of a village: a stone hall, plank houses, a well, their fire and a broken watchtower |
+| Swamp | a sunken crypt (it needs the Swamp key, as on land), houses on stilts, a graveyard and a watchtower |
+| Plains | a Fuling stronghold: a palisade with a totem gate, huts, a great fire and the Fulings who hold it |
+| Mistlands | an infested mine, dug into a tall islet the way the game digs it on land, old dvergr ruins, a Seeker nest and a black marble spire |
+| Dvergr | an infested mine with the dvergr's camp and dig site round it (theirs, as on their outposts) |
+| Ashlands | a charred fortress: tall broken grausten walls, corner towers and a ruined keep |
+| Deep North | Mørkhalla's way down, a frost keep, a house left to the snow, graves and a watchtower |
+
+Each has a starred guardian, a few of the kind's creatures and a chest of its own, and life that comes back: deer, boar and necks in the Meadows, leeches and crows in the Swamp, lox and deathsquitos on the Plains, hares in the Mistlands, asksvin and voltures in the Ashlands, moose, seals and a bear in the Deep North. When there are fewer than a few, one comes back every few minutes, but not near a player's base. Boar, lox and asksvin can be tamed. Trees, berries and mushrooms grow back the game's way.
+
+Like the small islets, the further out in its ring a large islet is, the tougher it gets: in the inner third its creatures have no stars, in the middle third some have one, in the outer third some have two, and the chest grows with it.
+
+You may build on a large islet and settle there. The islet's ground isn't the game's terrain, though, so the hoe and the cultivator don't work on it.
 ## The sea trader
 
 Somewhere in the Swamp or Plains waters there's one peaceful islet with a harbour, the last one the seafaring people kept: a thatched plank house on the stone floor of their old harbour hall, his counter in front of it and a paved path down to the shore, a campfire with benches, a fisher's corner, an old hull he's mending, a jetty with a moored karve, a statue of one of their captains and, on the ridge, one of their beacon towers, whole, its fire never out. No guards, and creatures keep away from it. Sævar lives there, the last of the seafaring people whose ruins are on the other islets. He's one of the shadows of the Deep North, the ghosts of the fallen, standing at his counter. His seal Bára lies on her straw mat by the campfire (you can pet her), and like a vendor's camp, his islet is under a see-through dome nobody can build under.
@@ -93,7 +115,7 @@ Like Haldor, the game picks several possible spots for his harbour, and the firs
 - Salted Fish: 25 health, 50 stamina, lasts 40 minutes.
 - Seafarer's Hardtack: 35 health, 35 stamina, lasts an hour.
 
-The trader only appears in a new world, or after `genloc` in ocean nobody has visited yet.
+In an existing world his harbour is added like the islets (see below).
 
 ## Sævar's tale
 
@@ -121,15 +143,12 @@ Some islets in the Mistlands ring aren't ruins: dvergr live there. Like the dver
 
 Now and then you arrive in the middle of a fight: Seekers have come ashore and the dvergr are fighting them.
 
-Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
-
 ## New worlds and existing worlds
 
 Valheim decides where locations go when a world is created, and only builds them when someone first comes near.
 
 - **New world:** islets are there from the start.
-- **Existing world:** run `genloc` once in the console (needs `devcommands`, as the host or in single player). Islets then appear in ocean areas nobody has visited yet. Ocean you've already sailed through doesn't get any.
-
+- **Existing world:** once per world, the server (or the host, or you in single player) adds the islets the world is missing, Sævar's harbour and the islets of his tale too. Most go where nobody has sailed yet and appear when someone gets there. Only if a kind's ring has no such sea left, a few are built in ocean you've already sailed, well away from anything players built, from ships and from players. It runs about ten seconds after the world loads and writes what it added to the log. `PlaceInExistingWorlds` turns it off, and `iov_placeislets` runs it again.
 ## Bigger worlds
 
 The distances above are for a vanilla-sized world. With [Expand World Size](https://thunderstore.io/c/valheim/p/JereKuusela/Expand_World_Size/) the rings grow with the world radius (that mod moves every location's distances itself), so a Meadows islet is still near the centre and Ashlands islets are still far out. The outer ring is split by a line running east-west through the world centre, the same way the game divides the Deep North from the Ashlands, so that stays true in any world size.
@@ -137,6 +156,8 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 ## Configuration
 
 - `MeadowsIslets`, `SwampIslets`, `PlainsIslets`, `MistlandsIslets`, `DvergrIslets`, `AshlandsIslets`, `DeepNorthIslets`: how many islets of each kind the game tries to place (0 turns a kind off). Only used when locations are generated (new world or `genloc`).
+- `LargeIsletsPerKind`: how many large islets of each kind the game tries to place (0 turns them off).
+- `PlaceInExistingWorlds`: adds the missing islets to a world once (on by default).
 - `SeaTraderIslets`: how many possible spots the game picks for the sea trader's harbour (only the first one somebody comes near is built). 0 turns him off.
 - `GroundStyle`: how the islet ground looks: `Terrain` (like the game's own land) or `Rock` (bare stone). Needs a restart.
 - `DebugLog`: writes how the islands were built and where they are to the BepInEx log.
@@ -144,7 +165,8 @@ The distances above are for a vanilla-sized world. With [Expand World Size](http
 ## Console commands
 
 - `iov_info`: how many islets of each kind this world has and how far the closest ones are (host or single player).
-- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour, `iov_goto story1` to `iov_goto story7` to the islets of his tale.
+- `iov_goto [kind]` (needs `devcommands`): teleports you to the closest islet nobody has been to yet, for example `iov_goto swamp`, `iov_goto dvergr` or `iov_goto deepnorth`. `iov_goto trader` takes you to the sea trader's harbour, `iov_goto story1` to `iov_goto story7` to the islets of his tale, `iov_goto large_meadows` (`large_swamp`, `large_plains`, `large_mistlands`, `large_dvergr`, `large_ashlands`, `large_deepnorth`) to a large islet.
+- `iov_placeislets` (needs `devcommands`, host or single player): adds the islets this world is missing now.
 - `iov_light` (needs `devcommands`): shows the light from the end of Sævar's tale in front of you, without spoiling the tale.
 
 ## Translations
