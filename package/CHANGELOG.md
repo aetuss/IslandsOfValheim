@@ -2,7 +2,7 @@
 
 ## 1.8.0
 
-- Ketill is a boss of his own now: bigger, dark and wet as one who lay long in the sea, the fragment glowing on his chest. Now and then he strikes the ground with a heavy blow that throws back whoever stands near; at two thirds of his health his dead crew rises around him, and at one third the fragment's curse wakes: he grows faster, the sky darkens and lightning falls where you stand (a mist marks the spot first). He has words for you, too. A world where he already walks gets the new Ketill as well.
+- Ketill is a boss of his own now: bigger, dark and wet as one who lay long in the sea, the fragment glowing on his chest. Now and then he strikes the ground with a heavy blow that throws back whoever stands near, and some of his cuts poison you; at two thirds of his health his dead crew rises around him, and at one third the fragment's curse wakes: he grows faster, the sky darkens and lightning falls where you stand (a mist marks the spot first). He has words for you, too. A world where he already walks gets the new Ketill as well.
 
 ## 1.7.0
 

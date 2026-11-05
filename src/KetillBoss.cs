@@ -269,6 +269,22 @@ namespace IslandsOfValheim
             }
         }
 
+        // His blade lay long in the swamp: now and then a cut of his carries poison too (only the game's
+        // own poisoning shows, nothing of ours). On the client that runs him, where his blows are dealt.
+        const float PoisonChance = 0.3f, PoisonAmount = 20f;
+
+        [HarmonyPatch(typeof(Character), "Damage")]
+        static class PoisonBladePatch
+        {
+            static void Prefix(HitData hit)
+            {
+                if (hit == null || hit.m_damage.m_slash <= 0f) return; // his sword, not the heavy blow or the lightning
+                Character attacker = hit.GetAttacker();
+                if (attacker == null || Utils.GetPrefabName(attacker.gameObject) != Story.Ketill || Random.value >= PoisonChance) return;
+                hit.m_damage.m_poison += PoisonAmount;
+            }
+        }
+
         // He falls: his last words, and the fragment's light going out where he lay.
         [HarmonyPatch(typeof(Character), "OnDeath")]
         static class DeathPatch
