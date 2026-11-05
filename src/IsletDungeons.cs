@@ -25,7 +25,7 @@ namespace IslandsOfValheim
             new[] { "Crypt4", "Crypt3", "Crypt2" },
             new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" },
             new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
-            new[] { "*Morkhalla", "*MorkHalla", "*DeepNorth_Dungeon", "*Morgen" },
+            new[] { "MorkBorg", "TheDarkestHole", "TheHole01" },
         };
         static readonly int[] DungeonTiers = { 0, 1, 3, 6 };
 
@@ -87,6 +87,32 @@ namespace IslandsOfValheim
             int removed = 0;
             foreach (TerrainModifier modifier in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(modifier.gameObject); removed++; }
             foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); removed++; }
+            // An infested mine's way in is at the bottom of a pit the terrain is dug out for; the islet can't
+            // be dug, and the pit would reach below the sea. Its steps and shaft go, and the gateway comes up
+            // to the fort's floor.
+            if (source.StartsWith("Mistlands_DvergrTown"))
+            {
+                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                    if (t.parent != null && t.parent.name == "fort" && (t.name.StartsWith("stair") || t.name == "mine"))
+                    {
+                        t.gameObject.SetActive(false);
+                        Plugin.Debug("  " + name + ": " + t.name + " (below ground) left out");
+                    }
+                Transform gateway = root.transform.Find("Gateway");
+                if (gateway != null)
+                {
+                    gateway.localPosition = new Vector3(gateway.localPosition.x, PlateauHeight + 0.05f, gateway.localPosition.z);
+                    Plugin.Debug("  " + name + ": gateway raised to " + gateway.localPosition.ToString("F1"));
+                }
+            }
+            // Spawners meant for terrain at the location's own height would sit inside the islet's ground.
+            foreach (CreatureSpawner spawner in root.GetComponentsInChildren<CreatureSpawner>(true))
+            {
+                Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
+                if (p.y > 1000f || p.y >= PlateauHeight + 0.2f) continue; // the interior's are far up
+                spawner.transform.position = root.transform.TransformPoint(new Vector3(p.x, PlateauHeight + 0.3f, p.z));
+                Plugin.Debug("  " + name + ": spawner " + spawner.name + " raised to the ground");
+            }
             DungeonGenerator generator = root.GetComponentInChildren<DungeonGenerator>(true);
             Plugin.Debug("Dungeon test " + name + ": " + parts.Count + " parts moved, " + removed + " terrain changes left out, generator " +
                 (generator != null ? generator.name + " at " + generator.transform.localPosition.ToString("F0") : "none"));
