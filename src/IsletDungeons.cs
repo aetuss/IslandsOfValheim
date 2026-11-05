@@ -103,6 +103,16 @@ namespace IslandsOfValheim
                 {
                     gateway.localPosition = new Vector3(gateway.localPosition.x, PlateauHeight + 0.05f, gateway.localPosition.z);
                     Plugin.Debug("  " + name + ": gateway raised to " + gateway.localPosition.ToString("F1"));
+                    // The dark doorway (the gateway's cube, 3 m behind it) framed by a black marble arch on
+                    // two columns, like the dvergr's own gates.
+                    Vector3 door = gateway.localPosition + gateway.localRotation * new Vector3(0f, 0f, -3f);
+                    Vector3 side = gateway.localRotation * Vector3.right;
+                    Vector3 turn = new Vector3(0f, gateway.localEulerAngles.y, 0f);
+                    float g = PlateauHeight - 0.05f;
+                    Vector3 left = door - side * 1.3f, right = door + side * 1.3f;
+                    float l = Top(At("blackmarble_column_1", new Vector3(left.x, g, left.z), turn, false), g + 3f);
+                    float r = Top(At("blackmarble_column_1", new Vector3(right.x, g, right.z), turn, false), g + 3f);
+                    At("blackmarble_arch", new Vector3(door.x, Mathf.Min(l, r), door.z), turn, true);
                 }
             }
             // Spawners meant for terrain at the location's own height would sit inside the islet's ground.
@@ -156,6 +166,27 @@ namespace IslandsOfValheim
             config.MinDistanceFromSimilar = 500f;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered dungeon test " + name + " from " + source);
+        }
+
+        // The game puts whoever comes out of a dungeon a metre below the exit's gateway: on terrain that's
+        // fine, the ground pushes them up, but an islet's ground is a thin surface and they end up under
+        // it. On our islets the point is lifted onto whatever ground is just above it.
+        [HarmonyLib.HarmonyPatch(typeof(Teleport), "GetTeleportPoint")]
+        static class ExitOnGroundPatch
+        {
+            static void Postfix(ref Vector3 __result)
+            {
+                if (__result.y > 1000f) return; // into an interior
+                Location location = Location.GetLocation(__result, false);
+                if (location == null || !Utils.GetPrefabName(location.gameObject).StartsWith("IoV_")) return;
+                RaycastHit hit;
+                int mask = LayerMask.GetMask("Default", "static_solid", "terrain", "piece");
+                if (Physics.Raycast(__result + Vector3.up * 2f, Vector3.down, out hit, 4f, mask, QueryTriggerInteraction.Ignore) && hit.point.y > __result.y)
+                {
+                    Plugin.Debug("Dungeon exit lifted " + (hit.point.y + 0.1f - __result.y).ToString("F1") + " m onto the islet's ground");
+                    __result.y = hit.point.y + 0.1f;
+                }
+            }
         }
 
         static string DescribeTree(Transform t, int depth, int maxDepth)
