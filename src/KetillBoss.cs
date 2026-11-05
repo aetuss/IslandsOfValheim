@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // Ketill as a boss of his own, made of the game's own parts: an Elite Draugr grown bigger, dark and wet
     // as one who lay long in the sea, with the fragment glowing sea-green on his chest. His fight goes in
     // three stages by his health:
-    //   0. full: now and then a tide slam, his blade breaks the ground and sea water bursts up from it;
+    //   0. full: now and then a heavy blow, his blade strikes the ground and throws back whoever is near;
     //   1. two thirds: he calls his dead crew up out of the ground (once);
     //   2. one third: the fragment's curse wakes, he glows and moves faster, the sky darkens and lightning
     //      falls where you stand (a mist marks the spot first).
@@ -130,8 +130,8 @@ namespace IslandsOfValheim
             Plugin.Debug("Ketill wears a Brim cape");
         }
 
-        // The tide slam's blow: the troll's ground slam (only the hurt, nothing to see; the water burst is
-        // shown on its own when it lands), Ketill's own and as strong as a Swamp boss's should be.
+        // The heavy blow's hurt: the troll's ground slam (only the hurt, nothing to see; a sword-sized hit
+        // is shown on its own when it lands), Ketill's own and as strong as a Swamp boss's should be.
         static void RegisterTide()
         {
             if (PrefabManager.Instance.GetPrefab(Tide) != null) return;
@@ -423,7 +423,7 @@ namespace IslandsOfValheim
             if (target == null || Vector3.Distance(target.transform.position, transform.position) > SlamReach) return;
             slamming = true;
             nextSlam = Time.time + (Stage >= 2 ? SlamEveryCursed : SlamEvery);
-            KetillBoss.Effect("fx_Bonemass_aoe_start", transform.position);
+            KetillBoss.Effect("sfx_sledge_swing", transform.position);
             KetillBoss.Effect("vfx_prespawn", SlamPoint());
         }
 
@@ -434,9 +434,9 @@ namespace IslandsOfValheim
             slamming = false;
             if (nview == null || !nview.IsValid() || !nview.IsOwner()) return;
             Vector3 at = SlamPoint();
-            KetillBoss.Effect("vfx_troll_groundslam", at);
-            KetillBoss.Effect("fx_WaterImpact_Big", at);
-            KetillBoss.Effect("sfx_trollfire_attack_slam_impact", at);
+            // A sword's blow, not a troll's: the iron sledge's hit on the ground, his size.
+            KetillBoss.Effect("vfx_sledge_iron_hit", at);
+            KetillBoss.Effect("sfx_sledge_iron_hit", at);
             KetillBoss.Spawn(KetillBoss.Tide, at, body);
             Plugin.Debug("Ketill: tide slam");
         }
