@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // Ketill as a boss of his own, made of the game's own parts: an Elite Draugr grown bigger, dark and wet
     // as one who lay long in the sea, with the fragment glowing sea-green on his chest. His fight goes in
     // three stages by his health:
-    //   0. full: now and then a tide slam, his blow sends a ring of poisoned water around him;
+    //   0. full: now and then a tide slam, his blade breaks the ground and sea water bursts up from it;
     //   1. two thirds: he calls his dead crew up out of the ground (once);
     //   2. one third: the fragment's curse wakes, he glows and moves faster, the sky darkens and lightning
     //      falls where you stand (a mist marks the spot first).
@@ -16,7 +16,7 @@ namespace IslandsOfValheim
     // the glow and the storm. When he falls the fragment's light goes out slowly where he lay.
     static class KetillBoss
     {
-        internal const string Tide = "IoV_KetillTide";           // the poisoned water of his slam
+        internal const string Tide = "IoV_KetillTide";           // the blow of his tide slam
         internal const string Bolt = "IoV_KetillBolt";           // the curse's lightning
         internal const string LastLight = "IoV_KetillLastLight"; // the fragment's glow going out where he fell
         internal const string GlowChild = "IoV_KetillGlow";
@@ -130,23 +130,26 @@ namespace IslandsOfValheim
             Plugin.Debug("Ketill wears a Brim cape");
         }
 
-        // The tide slam's water: Bonemass's poison cloud, smaller and weaker, Ketill's own.
+        // The tide slam's blow: the troll's ground slam (only the hurt, nothing to see; the water burst is
+        // shown on its own when it lands), Ketill's own and as strong as a Swamp boss's should be.
         static void RegisterTide()
         {
-            if (PrefabManager.Instance.GetPrefab(Tide) != null || PrefabManager.Instance.GetPrefab("bonemass_aoe") == null) return;
-            GameObject go = PrefabManager.Instance.CreateClonedPrefab(Tide, "bonemass_aoe");
-            GroundOnly(go);
+            if (PrefabManager.Instance.GetPrefab(Tide) != null) return;
+            string baseName = PrefabManager.Instance.GetPrefab("troll_groundslam_aoe") != null ? "troll_groundslam_aoe" : "bonemass_aoe";
+            if (PrefabManager.Instance.GetPrefab(baseName) == null) return;
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(Tide, baseName);
+            NoLooks(go);
             Aoe aoe = go.GetComponentInChildren<Aoe>(true);
             if (aoe != null)
             {
                 float radius = 5f;
-                if (aoe.m_radius > 0.5f) go.transform.localScale = go.transform.localScale * (radius / aoe.m_radius);
-                Plugin.Debug("Ketill's tide: Bonemass's cloud was " + aoe.m_radius + " m, now " + radius + " m");
+                if (aoe.m_radius > 0.5f && aoe.m_useCollider == null) go.transform.localScale = go.transform.localScale * (radius / aoe.m_radius);
+                Plugin.Debug("Ketill's tide from " + baseName + ": its reach was " + aoe.m_radius + " m, now " + radius + " m");
                 aoe.m_radius = radius;
                 HitData.DamageTypes damage = new HitData.DamageTypes();
-                damage.m_poison = 30f;
-                damage.m_blunt = 12f;
+                damage.m_blunt = 32f;
                 aoe.m_damage = damage;
+                aoe.m_attackForce = Mathf.Max(aoe.m_attackForce, 40f); // it throws you back a little
                 aoe.m_damagePerLevel = new HitData.DamageTypes();
                 aoe.m_hitFriendly = false;
                 aoe.m_hitOwner = false;
@@ -155,31 +158,16 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(go, false));
         }
 
-        // Bonemass's cloud is made for a giant: part of it pours down from high above him. Ketill's water
-        // wells up from the ground, so whatever starts up high or falls is left out.
-        static void GroundOnly(GameObject go)
+        // Only the hurt: whatever the base shows (particles, lights) is turned off.
+        static void NoLooks(GameObject go)
         {
             foreach (ParticleSystem ps in go.GetComponentsInChildren<ParticleSystem>(true))
             {
-                float height = go.transform.InverseTransformPoint(ps.transform.position).y;
-                ParticleSystem.MainModule main = ps.main;
-                float gravity = main.gravityModifier.constant;
-                float speed = main.startSpeed.constant;
-                ParticleSystem.ShapeModule shape = ps.shape;
-                bool high = height > 1.5f || (shape.enabled && shape.position.y > 1.5f);
-                bool falls = gravity > 0.05f && main.simulationSpace == ParticleSystemSimulationSpace.World;
-                bool rises = gravity < -0.05f;
-                ParticleSystemRenderer look = ps.GetComponent<ParticleSystemRenderer>();
-                bool streaks = look != null && (look.renderMode == ParticleSystemRenderMode.Stretch || look.renderMode == ParticleSystemRenderMode.VerticalBillboard);
-                bool drop = high || falls || rises || streaks;
-                Plugin.Debug("Ketill's tide: " + ps.name + " at " + height.ToString("0.0") + " m, gravity " + gravity.ToString("0.00") + ", speed " + speed.ToString("0.0") +
-                    ", shape " + (shape.enabled ? shape.shapeType.ToString() + " y " + shape.position.y.ToString("0.0") : "off") +
-                    ", drawn " + (look != null ? look.renderMode.ToString() : "-") + (drop ? ": left out" : ""));
-                if (!drop) continue;
                 ParticleSystem.EmissionModule emission = ps.emission;
                 emission.enabled = false;
                 if (ps.gameObject != go) ps.gameObject.SetActive(false);
             }
+            foreach (Light light in go.GetComponentsInChildren<Light>(true)) light.enabled = false;
         }
 
         // The curse's lightning: the game's lightning strike, set to hurt as much as a Swamp boss should.
@@ -447,6 +435,7 @@ namespace IslandsOfValheim
             if (nview == null || !nview.IsValid() || !nview.IsOwner()) return;
             Vector3 at = SlamPoint();
             KetillBoss.Effect("vfx_troll_groundslam", at);
+            KetillBoss.Effect("fx_WaterImpact_Big", at);
             KetillBoss.Effect("sfx_trollfire_attack_slam_impact", at);
             KetillBoss.Spawn(KetillBoss.Tide, at, body);
             Plugin.Debug("Ketill: tide slam");
