@@ -141,9 +141,9 @@ namespace IslandsOfValheim
                 // A ring of what the people left around it, clear of the dungeon's entrance, each facing the
                 // middle and kept apart by its size: the kind's ruin (its guards and chest with it), two houses,
                 // a well or graves, their fire, and a watchtower to see the islet by.
-                float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 7.5f, kind.Plateau * 0.5f, kind.Plateau - 6f);
+                float ring = Mathf.Clamp((interior != null ? interior.Footprint : 4f) + 9f, kind.Plateau * 0.5f, kind.Plateau - 6f);
                 bool swamp = tier.Biome == Heightmap.Biome.Swamp;
-                float[] at = RingOf(ring,
+                float[] at = RingOf(ring, interior != null ? interior.DoorDeg : float.NaN,
                     Item(MainDesign(), 7f), Item(() => RuinedHouse(swamp), 5.5f), Item(swamp ? (System.Action)Graveyard : Well, swamp ? 3.6f : 2.4f),
                     Item(() => RuinedHouse(swamp), 5.5f), Item(Campfire, 3f), Item(WatchTower, 3.6f));
                 keeper = Polar(at[at.Length - 1], ring - 4.5f); // by the watchtower, on the inner side
@@ -206,13 +206,22 @@ namespace IslandsOfValheim
         static RingItem Item(System.Action design, float size) { return new RingItem { Design = design, Size = size }; }
 
         // The designs round the plateau at radius ring, in order, from just past the cliff side (where the
-        // ridge structure stands) most of the way round: each gets an arc for its size and a gap of at
-        // least Gap metres to the next, the room left over shared out evenly. Returns where each went.
-        static float[] RingOf(float ring, params RingItem[] items)
+        // ridge structure stands) most of the way round, leaving the way in to the dungeon open (doorDeg,
+        // NaN if none): each gets an arc for its size and a gap of at least Gap metres to the next, the
+        // room left over shared out evenly. Returns where each went.
+        static float[] RingOf(float ring, float doorDeg, params RingItem[] items)
         {
-            const float Gap = 3f;
+            const float Gap = 3f, DoorClear = 34f; // degrees kept open either side of the way in
             float start = cliffDeg + 28f, end = cliffDeg + 332f;
-            float room = (end - start) * Mathf.Deg2Rad * ring, need = 0f;
+            float doorFrom = float.NaN, doorTo = float.NaN;
+            if (!float.IsNaN(doorDeg))
+            {
+                doorFrom = start + Mathf.Repeat(doorDeg - DoorClear - start, 360f);
+                doorTo = doorFrom + DoorClear * 2f;
+                if (doorFrom > end) doorFrom = doorTo = float.NaN; // it opens towards the cliff side, already clear
+            }
+            float blocked = float.IsNaN(doorFrom) ? 0f : Mathf.Min(doorTo, end) - doorFrom;
+            float room = (end - start - blocked) * Mathf.Deg2Rad * ring, need = 0f;
             foreach (RingItem item in items) need += item.Size * 2f + Gap;
             float spare = Mathf.Max(0f, room - need) / items.Length;
             if (need > room) Plugin.Log.LogWarning(locationName + ": its buildings need " + need.ToString("0") + " m of a " + room.ToString("0") + " m ring; some stand close.");
@@ -221,6 +230,7 @@ namespace IslandsOfValheim
             for (int i = 0; i < items.Length; i++)
             {
                 float half = (items[i].Size + (Gap + spare) * 0.5f) / ring * Mathf.Rad2Deg;
+                if (!float.IsNaN(doorFrom) && deg + half * 2f > doorFrom && deg < doorTo) deg = doorTo; // past the way in
                 deg += half;
                 at[i] = deg;
                 Village(deg, ring, items[i].Design);
@@ -464,12 +474,14 @@ namespace IslandsOfValheim
             return false;
         }
 
+        // The islet's own ground below a point: not a tree's crown, a roof or a wall that happens to be over
+        // it (a chest set down on those hangs in the air and breaks).
         static Vector3 Ground(Vector3 q)
         {
-            RaycastHit hit;
-            int mask = LayerMask.GetMask("Default", "static_solid", "terrain", "piece");
+            int mask = LayerMask.GetMask("static_solid");
             Vector3 from = new Vector3(q.x, ZoneSystem.instance.m_waterLevel + 60f, q.z);
-            if (Physics.Raycast(from, Vector3.down, out hit, 90f, mask, QueryTriggerInteraction.Ignore)) return hit.point + Vector3.up * 0.3f;
+            foreach (RaycastHit hit in Physics.RaycastAll(from, Vector3.down, 90f, mask, QueryTriggerInteraction.Ignore))
+                if (hit.collider != null && hit.collider.name == "IoV_Ground") return hit.point + Vector3.up * 0.3f;
             return new Vector3(q.x, ZoneSystem.instance.m_waterLevel - 5f, q.z);
         }
     }

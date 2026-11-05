@@ -103,6 +103,7 @@ namespace IslandsOfValheim
             internal bool HasInterior, UseCustomTransform, NoBuild;
             internal float Radius, ExteriorRadius;
             internal float Footprint; // how far its entrance's parts reach from its middle, on the islet
+            internal float DoorDeg = float.NaN; // which way its way in opens, in the islet's degrees (as Polar)
             internal string Environment;
             internal Transform InteriorTransform;
             internal DungeonGenerator Generator;
@@ -196,7 +197,16 @@ namespace IslandsOfValheim
                     interior.Footprint = Mathf.Max(interior.Footprint, new Vector2(p.x, p.z).magnitude);
                 }
             }
-            Plugin.Debug(tag + ": the entrance reaches " + interior.Footprint.ToString("F1") + " m from its middle");
+            // The way in: the teleport outside (not the one in the interior far up) faces where you come out.
+            foreach (Teleport door in group.GetComponentsInChildren<Teleport>(true))
+            {
+                Vector3 p = root.transform.InverseTransformPoint(door.transform.position);
+                if (p.y > 500f) continue;
+                Vector3 forward = root.transform.InverseTransformDirection(door.transform.forward);
+                interior.DoorDeg = Mathf.Atan2(forward.z, forward.x) * Mathf.Rad2Deg;
+            }
+            Plugin.Debug(tag + ": the entrance reaches " + interior.Footprint.ToString("F1") + " m from its middle, its way in faces " +
+                (float.IsNaN(interior.DoorDeg) ? "?" : interior.DoorDeg.ToString("0")) + " degrees");
             if (vanillaLocation != null)
             {
                 interior.ExteriorRadius = vanillaLocation.m_exteriorRadius;
