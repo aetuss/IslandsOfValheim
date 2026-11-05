@@ -15,7 +15,10 @@ namespace IslandsOfValheim
     // pickables, spawners and the chest are networked objects that behave like their vanilla selves.
     static partial class IsletBuilder
     {
-        internal const float PlateauHeight = 3f;
+        internal const float SmallPlateau = 3f;
+        // The plateau's height above the sea for the islet being built: SmallPlateau for most, more for a
+        // large islet (set while it's built, then back).
+        internal static float PlateauHeight = SmallPlateau;
 
         // Per variant (see Register): the variants of a tier differ in size, outline and features.
         static float plateauRadius, shoreRadius, maxRadius, seed;
@@ -24,12 +27,13 @@ namespace IslandsOfValheim
         static float coveDeg = float.NaN; // a bay cut into the shore
         static float hillDeg = float.NaN; // a second hump on the slope
         const float Bottom = -30f;
-        const int Segments = 72;
+        const int SmallSegments = 72;
+        static int segments = SmallSegments; // around each ring of the ground mesh (more for a large islet)
 
         const float RingStep = 1f;
         // Floor tiles stick out of the ground a little: a piece only gets support where it touches the
         // ground mesh's surface, and one entirely below it touches nothing.
-        const float FloorTop = PlateauHeight + 0.25f;
+        static float FloorTop { get { return PlateauHeight + 0.25f; } }
 
         // Where the Rock ground style takes its material from.
         static readonly string[] bigRocks = { "rock4_coast", "rock1_mountain", "Rock_7", "rock3_mountain", "Rock_3" };
@@ -199,7 +203,7 @@ namespace IslandsOfValheim
             int rings = Mathf.RoundToInt(maxRadius / RingStep);
             // Rings of Segments + 1 vertices: the last repeats the first, so the texture can wrap around
             // without a seam. Normals come from the height function, so the surface is shaded smoothly.
-            int perRing = Segments + 1;
+            int perRing = segments + 1;
             List<Vector3> verts = new List<Vector3>();
             List<Vector3> normals = new List<Vector3>();
             List<Vector2> uvs = new List<Vector2>();
@@ -209,15 +213,15 @@ namespace IslandsOfValheim
             {
                 verts.Add(new Vector3(0f, Height(0f, 0f), 0f));
                 normals.Add(Vector3.up);
-                uvs.Add(new Vector2((float)seg / Segments, 0f));
+                uvs.Add(new Vector2((float)seg / segments, 0f));
             }
             for (int ring = 1; ring <= rings; ring++)
             {
                 for (int seg = 0; seg < perRing; seg++)
                 {
                     // Jitter the grid a little so it doesn't show as rings.
-                    int s = seg % Segments;
-                    float a = (seg + 0.3f * Noise(ring * 1.7f + 0.5f, s * 1.3f + 0.5f)) * Mathf.PI * 2f / Segments;
+                    int s = seg % segments;
+                    float a = (seg + 0.3f * Noise(ring * 1.7f + 0.5f, s * 1.3f + 0.5f)) * Mathf.PI * 2f / segments;
                     float r = (ring + 0.3f * Noise(s * 2.1f + 7.5f, ring * 0.9f + 3.5f)) * RingStep;
                     float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
                     float y = Height(x, z);
@@ -234,7 +238,7 @@ namespace IslandsOfValheim
             for (int ring = 0; ring < rings; ring++)
             {
                 int inner = ring * perRing, outer = (ring + 1) * perRing;
-                for (int seg = 0; seg < Segments; seg++)
+                for (int seg = 0; seg < segments; seg++)
                 {
                     tris.Add(inner + seg); tris.Add(inner + seg + 1); tris.Add(outer + seg);
                     tris.Add(inner + seg + 1); tris.Add(outer + seg + 1); tris.Add(outer + seg);

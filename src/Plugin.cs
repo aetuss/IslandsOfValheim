@@ -22,6 +22,7 @@ namespace IslandsOfValheim
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
         internal static ConfigEntry<bool> PlaceInExistingWorlds;
+        internal static ConfigEntry<int> LargeIslets;
         internal static ConfigEntry<bool> DebugLog;
 
         internal const string GroundTerrain = "Terrain";
@@ -42,6 +43,9 @@ namespace IslandsOfValheim
             SeaTraderIslets = Config.Bind("1 - World generation", "SeaTraderIslets", 6,
                 new ConfigDescription("How many possible spots the game picks for the sea trader's harbour islet, in the Swamp and Plains waters. Like Haldor, only the first one somebody comes near is built; the others vanish. 0: no sea trader. Only used when locations are generated (new world or genloc).",
                     new AcceptableValueRange<int>(0, 30)));
+            LargeIslets = Config.Bind("1 - World generation", "LargeIsletsPerKind", 3,
+                new ConfigDescription("How many large islets of each kind the game tries to place, in the same ring as that kind's small islets. 0 turns them off. Only used when locations are generated (a new world, genloc, or the existing-world pass). Needs a restart.",
+                    new AcceptableValueRange<int>(0, 10)));
             PlaceInExistingWorlds = Config.Bind("1 - World generation", "PlaceInExistingWorlds", true,
                 "Once per world, the server (or the host) adds the islets an existing world is missing (one made before the mod, or before a kind of islet came out): " +
                 "where nobody has sailed yet, they appear when somebody gets there; if there's no room left there, a few are built in sailed ocean, away from anything players built. " +
@@ -73,6 +77,7 @@ namespace IslandsOfValheim
             IsletPrefabs.Register();
             IsletBeacons.Register();
             IsletFishing.Register();
+            IsletBuilder.RegisterLargePrefabs(); // after the beacons and chests
         }
 
         void OnVanillaLocations()
@@ -85,6 +90,7 @@ namespace IslandsOfValheim
                 IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
                 IsletBuilder.RegisterStoryIslets(); // the tale is his to tell
             }
+            IsletBuilder.RegisterLargeIslets();
             IsletBuilder.RegisterDungeonTests(); // 1.7.0 in progress: can a vanilla dungeon sit on an islet?
         }
 

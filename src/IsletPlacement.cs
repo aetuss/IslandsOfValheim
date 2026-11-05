@@ -21,7 +21,7 @@ namespace IslandsOfValheim
             // The tale's two outer islets: each unique location is its own group.
             if (group == Story.AshIslet) { __result = p.z > 0f; return; }
             if (group == Story.HiddenIslet) { __result = p.z <= 0f; return; }
-            if (group != IsletBuilder.Group) return;
+            if (group != IsletBuilder.Group && group != "IoV_Large") return;
             if (mappedFor != __instance) Map(__instance);
             IsletTier tier;
             if (sided.TryGetValue(assetID, out tier) && !tier.Allows(p)) __result = true;
@@ -36,7 +36,7 @@ namespace IslandsOfValheim
             {
                 if (location == null || location.m_prefabName == null) continue;
                 foreach (IsletTier tier in IsletTier.All)
-                    if (tier.Side != IsletTier.Half.Any && location.m_prefabName.StartsWith(tier.LocationPrefix))
+                    if (tier.Side != IsletTier.Half.Any && (location.m_prefabName.StartsWith(tier.LocationPrefix) || location.m_prefabName == IsletBuilder.LargePrefix + tier.Name))
                         sided[location.m_prefab.m_assetID] = tier;
             }
             Plugin.Debug("Islet kinds that keep to one half of the world: " + sided.Count + " locations");

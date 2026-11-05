@@ -81,7 +81,7 @@ namespace IslandsOfValheim
             if (prefabName == Story.AshIslet) return p.z <= 0f;
             if (prefabName == Story.HiddenIslet) return p.z > 0f;
             foreach (IsletTier tier in IsletTier.All)
-                if (prefabName.StartsWith(tier.LocationPrefix)) return tier.Allows(p);
+                if (prefabName.StartsWith(tier.LocationPrefix) || prefabName == IsletBuilder.LargePrefix + tier.Name) return tier.Allows(p);
             return true;
         }
 

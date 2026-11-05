@@ -113,6 +113,32 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
+        // A large islet's chest, for the inner (0), middle (1) or outer (2) third of its ring: more things
+        // and bigger stacks than a hoard, the further out the more, and in the outer third the tier's rarest
+        // things come up more often.
+        internal static void AddLargeChest(IsletTier tier, string name, int band)
+        {
+            AddChest(tier, name, true);
+            GameObject go = PrefabManager.Instance.GetPrefab(name);
+            Container container = go != null ? go.GetComponent<Container>() : null;
+            if (container == null) return;
+            DropTable table = container.m_defaultItems;
+            table.m_dropMin += 1 + band * 2;
+            table.m_dropMax += 1 + band * 2;
+            float stacks = 1f + 0.35f * band;
+            float rarest = float.MaxValue;
+            foreach (DropTable.DropData drop in table.m_drops) rarest = Mathf.Min(rarest, drop.m_weight);
+            for (int i = 0; i < table.m_drops.Count; i++)
+            {
+                DropTable.DropData drop = table.m_drops[i];
+                drop.m_stackMin = Mathf.Max(1, Mathf.RoundToInt(drop.m_stackMin * stacks));
+                drop.m_stackMax = Mathf.Max(drop.m_stackMin, Mathf.RoundToInt(drop.m_stackMax * stacks));
+                if (band == 2 && drop.m_weight <= rarest + 0.01f) drop.m_weight *= 2.5f;
+                table.m_drops[i] = drop;
+            }
+            container.m_defaultItems = table;
+        }
+
         static DropTable LootTable(IsletTier tier, bool hoard)
         {
             DropTable table = new DropTable();

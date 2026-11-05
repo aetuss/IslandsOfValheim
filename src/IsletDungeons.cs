@@ -68,86 +68,13 @@ namespace IslandsOfValheim
 
         static void DungeonIslet(string name, string source, IsletTier kind)
         {
-            CustomLocation clone = ZoneManager.Instance.CreateClonedLocation(name + "_Source", source);
-            if (clone == null || clone.Prefab == null) { Plugin.Log.LogWarning("Dungeon test " + name + ": couldn't clone " + source); return; }
-            GameObject vanilla = clone.Prefab;
-            Location vanillaLocation = vanilla.GetComponent<Location>();
-            Plugin.Debug("Dungeon test " + name + " from " + source + ":\n" + DescribeTree(vanilla.transform, 0, 3));
-
             BeginStory(name, kind, 0, 2000f + name.GetHashCode() % 500);
-            // The vanilla parts, raised onto the plateau. Terrain changes are left out: here they'd dig into
-            // or raise the sea floor under the islet.
-            List<Transform> parts = new List<Transform>();
-            foreach (Transform child in vanilla.transform) parts.Add(child);
-            foreach (Transform part in parts)
-            {
-                part.SetParent(root.transform, false);
-                part.localPosition += new Vector3(0f, PlateauHeight - 0.05f, 0f);
-            }
-            int removed = 0;
-            foreach (TerrainModifier modifier in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(modifier.gameObject); removed++; }
-            foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); removed++; }
-            // An infested mine's way in is at the bottom of a pit the terrain is dug out for; the islet can't
-            // be dug, and the pit would reach below the sea. Its steps and shaft go, and the gateway comes up
-            // to the fort's floor.
-            if (source.StartsWith("Mistlands_DvergrTown"))
-            {
-                foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-                    if (t.parent != null && t.parent.name == "fort" && (t.name.StartsWith("stair") || t.name == "mine"))
-                    {
-                        t.gameObject.SetActive(false);
-                        Plugin.Debug("  " + name + ": " + t.name + " (below ground) left out");
-                    }
-                Transform gateway = root.transform.Find("Gateway");
-                if (gateway != null)
-                {
-                    gateway.localPosition = new Vector3(gateway.localPosition.x, PlateauHeight + 0.05f, gateway.localPosition.z);
-                    Plugin.Debug("  " + name + ": gateway raised to " + gateway.localPosition.ToString("F1"));
-                    // The dark doorway (the gateway's cube, 3 m behind it) framed by a black marble arch on
-                    // two columns, like the dvergr's own gates.
-                    Vector3 door = gateway.localPosition + gateway.localRotation * new Vector3(0f, 0f, -3f);
-                    Vector3 side = gateway.localRotation * Vector3.right;
-                    Vector3 turn = new Vector3(0f, gateway.localEulerAngles.y, 0f);
-                    float g = PlateauHeight - 0.05f;
-                    Vector3 left = door - side * 1.3f, right = door + side * 1.3f;
-                    float l = Top(At("blackmarble_column_1", new Vector3(left.x, g, left.z), turn, false), g + 3f);
-                    float r = Top(At("blackmarble_column_1", new Vector3(right.x, g, right.z), turn, false), g + 3f);
-                    At("blackmarble_arch", new Vector3(door.x, Mathf.Min(l, r), door.z), turn, true);
-                }
-            }
-            // Spawners meant for terrain at the location's own height would sit inside the islet's ground.
-            foreach (CreatureSpawner spawner in root.GetComponentsInChildren<CreatureSpawner>(true))
-            {
-                Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
-                if (p.y > 1000f || p.y >= PlateauHeight + 0.2f) continue; // the interior's are far up
-                spawner.transform.position = root.transform.TransformPoint(new Vector3(p.x, PlateauHeight + 0.3f, p.z));
-                Plugin.Debug("  " + name + ": spawner " + spawner.name + " raised to the ground");
-            }
-            DungeonGenerator generator = root.GetComponentInChildren<DungeonGenerator>(true);
-            Plugin.Debug("Dungeon test " + name + ": " + parts.Count + " parts moved, " + removed + " terrain changes left out, generator " +
-                (generator != null ? generator.name + " at " + generator.transform.localPosition.ToString("F0") : "none"));
-
+            DungeonInterior interior = AddDungeon(source, Vector2.zero, 0f, name);
             PlaceDock(cliffDeg + 229f);
             PlacePlants();
-
             Location location = root.AddComponent<Location>();
             location.m_applyRandomDamage = false;
-            if (vanillaLocation != null)
-            {
-                location.m_exteriorRadius = Mathf.Max(vanillaLocation.m_exteriorRadius, 30f);
-                location.m_hasInterior = vanillaLocation.m_hasInterior;
-                location.m_interiorRadius = vanillaLocation.m_interiorRadius;
-                location.m_interiorEnvironment = vanillaLocation.m_interiorEnvironment;
-                location.m_interiorTransform = vanillaLocation.m_interiorTransform;
-                location.m_useCustomInteriorTransform = vanillaLocation.m_useCustomInteriorTransform;
-                location.m_generator = vanillaLocation.m_generator != null ? vanillaLocation.m_generator : generator;
-                location.m_interiorPrefab = vanillaLocation.m_interiorPrefab;
-                location.m_noBuild = vanillaLocation.m_noBuild;
-                Plugin.Debug("Dungeon test " + name + ": interior " + location.m_hasInterior + ", radius " + location.m_interiorRadius + ", environment " + location.m_interiorEnvironment);
-            }
-            // The emptied clone is known to Jötunn: it goes from there too, or Jötunn tries to load it.
-            ZoneManager.Instance.DestroyCustomLocation(clone.Name);
-            if (vanilla != null) Object.DestroyImmediate(vanilla);
+            if (interior != null) interior.CopyTo(location);
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
@@ -170,6 +97,109 @@ namespace IslandsOfValheim
             Plugin.Log.LogInfo("Registered dungeon test " + name + " from " + source);
         }
 
+        // What a vanilla dungeon location says about its interior, for the islet's own Location.
+        internal class DungeonInterior
+        {
+            internal bool HasInterior, UseCustomTransform, NoBuild;
+            internal float Radius, ExteriorRadius;
+            internal string Environment;
+            internal Transform InteriorTransform;
+            internal DungeonGenerator Generator;
+            internal GameObject InteriorPrefab;
+
+            internal void CopyTo(Location location)
+            {
+                location.m_exteriorRadius = Mathf.Max(location.m_exteriorRadius, ExteriorRadius);
+                location.m_hasInterior = HasInterior;
+                location.m_interiorRadius = Radius;
+                location.m_interiorEnvironment = Environment;
+                location.m_interiorTransform = InteriorTransform;
+                location.m_useCustomInteriorTransform = UseCustomTransform;
+                location.m_generator = Generator;
+                location.m_interiorPrefab = InteriorPrefab;
+            }
+        }
+
+        // A vanilla dungeon location's parts (entrance, interior with its generator, the teleports between
+        // them) moved onto the islet being built, its middle at (at.x, at.y) on the plateau, turned rotY.
+        // Its terrain changes are left out (here they'd dig into or raise the sea floor). Null if the vanilla
+        // location can't be had.
+        static DungeonInterior AddDungeon(string source, Vector2 at, float rotY, string tag)
+        {
+            CustomLocation clone = ZoneManager.Instance.CreateClonedLocation(tag + "_Source", source);
+            if (clone == null || clone.Prefab == null) { Plugin.Log.LogWarning(tag + ": couldn't clone the vanilla location " + source); return null; }
+            GameObject vanilla = clone.Prefab;
+            Location vanillaLocation = vanilla.GetComponent<Location>();
+            Plugin.Debug(tag + ": dungeon from " + source + ":\n" + DescribeTree(vanilla.transform, 0, 3));
+
+            GameObject group = new GameObject("IoV_Dungeon");
+            group.transform.SetParent(parent, false);
+            group.transform.localPosition = new Vector3(at.x, PlateauHeight - 0.05f, at.y);
+            group.transform.localRotation = Quaternion.Euler(0f, rotY, 0f);
+            List<Transform> parts = new List<Transform>();
+            foreach (Transform child in vanilla.transform) parts.Add(child);
+            foreach (Transform part in parts) part.SetParent(group.transform, false);
+            int removed = 0;
+            foreach (TerrainModifier modifier in group.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(modifier.gameObject); removed++; }
+            foreach (TerrainOp op in group.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); removed++; }
+            // An infested mine's way in is at the bottom of a pit the terrain is dug out for; the islet can't
+            // be dug, and the pit would reach below the sea. Its steps and shaft go, and the gateway comes up
+            // to the fort's floor.
+            if (source.StartsWith("Mistlands_DvergrTown"))
+            {
+                foreach (Transform t in group.GetComponentsInChildren<Transform>(true))
+                    if (t.parent != null && t.parent.name == "fort" && (t.name.StartsWith("stair") || t.name == "mine"))
+                    {
+                        t.gameObject.SetActive(false);
+                        Plugin.Debug("  " + tag + ": " + t.name + " (below ground) left out");
+                    }
+                Transform gateway = group.transform.Find("Gateway");
+                if (gateway != null)
+                {
+                    gateway.localPosition = new Vector3(gateway.localPosition.x, 0.1f, gateway.localPosition.z);
+                    // The dark doorway (the gateway's cube, 3 m behind it) framed by a black marble arch on
+                    // two columns, like the dvergr's own gates.
+                    Vector3 door = root.transform.InverseTransformPoint(gateway.TransformPoint(new Vector3(0f, 0f, -3f)));
+                    Vector3 side = Quaternion.Euler(0f, rotY, 0f) * gateway.localRotation * Vector3.right;
+                    Vector3 turn = new Vector3(0f, rotY + gateway.localEulerAngles.y, 0f);
+                    float g = PlateauHeight - 0.05f;
+                    Vector3 left = door - side * 1.3f, right = door + side * 1.3f;
+                    float l = Top(At("blackmarble_column_1", new Vector3(left.x, g, left.z), turn, false), g + 3f);
+                    float r = Top(At("blackmarble_column_1", new Vector3(right.x, g, right.z), turn, false), g + 3f);
+                    At("blackmarble_arch", new Vector3(door.x, Mathf.Min(l, r), door.z), turn, true);
+                }
+            }
+            // Spawners meant for terrain at the location's own height would sit inside the islet's ground.
+            foreach (CreatureSpawner spawner in group.GetComponentsInChildren<CreatureSpawner>(true))
+            {
+                Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
+                if (p.y > 1000f || p.y >= PlateauHeight + 0.2f) continue; // the interior's are far up
+                spawner.transform.position = root.transform.TransformPoint(new Vector3(p.x, PlateauHeight + 0.3f, p.z));
+                Plugin.Debug("  " + tag + ": spawner " + spawner.name + " raised to the ground");
+            }
+            DungeonGenerator generator = group.GetComponentInChildren<DungeonGenerator>(true);
+            Plugin.Debug(tag + ": " + parts.Count + " parts moved, " + removed + " terrain changes left out, generator " +
+                (generator != null ? generator.name + " at " + generator.transform.localPosition.ToString("F0") : "none"));
+
+            DungeonInterior interior = new DungeonInterior();
+            if (vanillaLocation != null)
+            {
+                interior.ExteriorRadius = vanillaLocation.m_exteriorRadius;
+                interior.HasInterior = vanillaLocation.m_hasInterior;
+                interior.Radius = vanillaLocation.m_interiorRadius;
+                interior.Environment = vanillaLocation.m_interiorEnvironment;
+                interior.InteriorTransform = vanillaLocation.m_interiorTransform;
+                interior.UseCustomTransform = vanillaLocation.m_useCustomInteriorTransform;
+                interior.Generator = vanillaLocation.m_generator != null ? vanillaLocation.m_generator : generator;
+                interior.InteriorPrefab = vanillaLocation.m_interiorPrefab;
+                interior.NoBuild = vanillaLocation.m_noBuild;
+            }
+            built++;
+            // The emptied clone is known to Jötunn: it goes from there too, or Jötunn tries to load it.
+            ZoneManager.Instance.DestroyCustomLocation(clone.Name);
+            if (vanilla != null) Object.DestroyImmediate(vanilla);
+            return interior;
+        }
         // The game puts whoever comes out of a dungeon a metre below the exit's gateway: on terrain that's
         // fine, the ground pushes them up, but an islet's ground is a thin surface and they end up under
         // it. On our islets the point is lifted onto whatever ground is just above it.

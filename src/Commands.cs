@@ -113,7 +113,7 @@ namespace IslandsOfValheim
                         args.Context.AddString("No islet left that hasn't been generated yet.");
                         return;
                     }
-                    Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.PlateauHeight + 3f, best.m_position.z);
+                    Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau + 3f, best.m_position.z);
                     Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
                     args.Context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to a new " + TierName(best) + " islet.");
                 }, true, optionsFetcher: () =>
@@ -122,6 +122,7 @@ namespace IslandsOfValheim
                     foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
                     names.Add("trader");
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
+                    foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("large_" + kind.Tier.Name.ToLowerInvariant());
                     return names;
                 });
         }
@@ -132,6 +133,8 @@ namespace IslandsOfValheim
         {
             for (int i = 1; i <= Story.Islets.Length; i++)
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
+            foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
+                if (string.Equals(arg, "large_" + kind.Tier.Name, System.StringComparison.OrdinalIgnoreCase)) return kind.LocationName;
             for (int i = 1; i <= IsletBuilder.DungeonTests.Length; i++)
                 if (string.Equals(arg, "dungeon" + i, System.StringComparison.OrdinalIgnoreCase)) return IsletBuilder.DungeonTests[i - 1];
             return null;
@@ -155,7 +158,7 @@ namespace IslandsOfValheim
             harbours.Sort((a, b) => Distance(a, from).CompareTo(Distance(b, from)));
             ZoneSystem.LocationInstance best = harbours[0];
             foreach (ZoneSystem.LocationInstance instance in harbours) if (instance.m_placed) best = instance;
-            Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.PlateauHeight + 3f, best.m_position.z);
+            Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau + 3f, best.m_position.z);
             Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
             context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to " + what + " (" + location + ").");
         }
