@@ -135,6 +135,7 @@ namespace IslandsOfValheim
         {
             if (PrefabManager.Instance.GetPrefab(Tide) != null || PrefabManager.Instance.GetPrefab("bonemass_aoe") == null) return;
             GameObject go = PrefabManager.Instance.CreateClonedPrefab(Tide, "bonemass_aoe");
+            GroundOnly(go);
             Aoe aoe = go.GetComponentInChildren<Aoe>(true);
             if (aoe != null)
             {
@@ -152,6 +153,33 @@ namespace IslandsOfValheim
                 aoe.m_useAttackSettings = false;
             }
             PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(go, false));
+        }
+
+        // Bonemass's cloud is made for a giant: part of it pours down from high above him. Ketill's water
+        // wells up from the ground, so whatever starts up high or falls is left out.
+        static void GroundOnly(GameObject go)
+        {
+            foreach (ParticleSystem ps in go.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                float height = go.transform.InverseTransformPoint(ps.transform.position).y;
+                ParticleSystem.MainModule main = ps.main;
+                float gravity = main.gravityModifier.constant;
+                float speed = main.startSpeed.constant;
+                ParticleSystem.ShapeModule shape = ps.shape;
+                bool high = height > 1.5f || (shape.enabled && shape.position.y > 1.5f);
+                bool falls = gravity > 0.05f && main.simulationSpace == ParticleSystemSimulationSpace.World;
+                bool rises = gravity < -0.05f;
+                ParticleSystemRenderer look = ps.GetComponent<ParticleSystemRenderer>();
+                bool streaks = look != null && (look.renderMode == ParticleSystemRenderMode.Stretch || look.renderMode == ParticleSystemRenderMode.VerticalBillboard);
+                bool drop = high || falls || rises || streaks;
+                Plugin.Debug("Ketill's tide: " + ps.name + " at " + height.ToString("0.0") + " m, gravity " + gravity.ToString("0.00") + ", speed " + speed.ToString("0.0") +
+                    ", shape " + (shape.enabled ? shape.shapeType.ToString() + " y " + shape.position.y.ToString("0.0") : "off") +
+                    ", drawn " + (look != null ? look.renderMode.ToString() : "-") + (drop ? ": left out" : ""));
+                if (!drop) continue;
+                ParticleSystem.EmissionModule emission = ps.emission;
+                emission.enabled = false;
+                if (ps.gameObject != go) ps.gameObject.SetActive(false);
+            }
         }
 
         // The curse's lightning: the game's lightning strike, set to hurt as much as a Swamp boss should.
