@@ -90,6 +90,22 @@ namespace IslandsOfValheim
             if (fx != null) Object.Instantiate(fx, at, Quaternion.identity);
         }
 
+        // A vanilla effect shown only here, on this client, following parent (its networking left out, so
+        // it doesn't linger in the world after the boss is gone).
+        internal static GameObject LocalEffect(string name, Transform parent)
+        {
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(name) : null;
+            if (prefab == null) return null;
+            ZNetView.m_forceDisableInit = true;
+            GameObject go;
+            try { go = Object.Instantiate(prefab, parent.position, parent.rotation, parent); }
+            finally { ZNetView.m_forceDisableInit = false; }
+            foreach (ZSyncTransform sync in go.GetComponentsInChildren<ZSyncTransform>(true)) Object.DestroyImmediate(sync);
+            foreach (ZNetView view in go.GetComponentsInChildren<ZNetView>(true)) Object.DestroyImmediate(view);
+            foreach (TimedDestruction timed in go.GetComponentsInChildren<TimedDestruction>(true)) Object.DestroyImmediate(timed);
+            return go;
+        }
+
         // A thing of ours that hurts, set up as the boss's own: it spares the boss and its side.
         internal static void Spawn(string name, Vector3 at, Character owner)
         {
@@ -191,6 +207,8 @@ namespace IslandsOfValheim
         protected Light glow;
         protected float walkSpeed, runSpeed;
         int seenStage = -1;
+        float nextStageAllowed;
+        protected virtual float StageGap { get { return 10f; } }
 
         protected abstract string StageKey { get; }
         protected abstract float[] Thresholds { get; } // health left at which stage 1, 2... begin
@@ -224,9 +242,10 @@ namespace IslandsOfValheim
             Everywhere(stage);
             if (!nview.IsOwner() || body.IsDead()) return;
             float[] thresholds = Thresholds;
-            if (stage < thresholds.Length && body.GetHealthPercentage() <= thresholds[stage])
+            if (stage < thresholds.Length && body.GetHealthPercentage() <= thresholds[stage] && Time.time >= nextStageAllowed)
             {
                 stage++;
+                nextStageAllowed = Time.time + StageGap; // a heavy blow doesn't run two stages into one
                 nview.GetZDO().Set(StageKey, stage);
                 Plugin.Debug(name + ": stage " + stage + " at " + Mathf.RoundToInt(body.GetHealthPercentage() * 100f) + "% health");
                 Begin(stage);
