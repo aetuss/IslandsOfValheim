@@ -4,7 +4,7 @@ namespace IslandsOfValheim
 {
     // Grímr, the son, first of the hidden islet's keepers: grown up guarding the treasure for his mother,
     // cold as the north. A Jotun warrior in frost colours with a pale blue light on his chest.
-    //   0. full: now and then a breath of frost warns of it, and his blow brings ice up from the ground
+    //   0. full: now and then a cold sound warns of it, and his blow brings ice up from the ground
     //      around his feet (the Fenring's frost nova, his size): it hurts, and Grímr's frost stiffens you
     //      for a few seconds;
     //   1. three quarters: a frost shield (the staff of protection's), which takes the hurt until it
@@ -51,7 +51,28 @@ namespace IslandsOfValheim
             BossKit.RegisterHurt(Nova, "FenringIceNova_aoe", damage, 0f, 30f);
             GameObject nova = Jotunn.Managers.PrefabManager.Instance.GetPrefab(Nova);
             if (nova != null)
-                foreach (Aoe aoe in nova.GetComponentsInChildren<Aoe>(true)) aoe.m_statusEffect = Chill;
+                foreach (Aoe aoe in nova.GetComponentsInChildren<Aoe>(true))
+                {
+                    aoe.m_statusEffect = Chill;
+                    OneShot(aoe);
+                }
+        }
+
+        // The Fenring's nova keeps hurting whoever stands in it for as long as it lasts, which kept the
+        // chill going after the ring had gone. Grímr's hits once, as the ring rises, over the ring's reach.
+        static void OneShot(Aoe aoe)
+        {
+            SphereCollider sphere = aoe.GetComponent<SphereCollider>();
+            Plugin.Debug("Grímr's nova was: triggers " + aoe.m_useTriggers + ", radius " + aoe.m_radius + ", collider " + (sphere != null ? sphere.radius.ToString() : "none") +
+                ", delay " + aoe.m_activationDelay + ", interval " + aoe.m_hitInterval + ", ttl " + aoe.m_ttl);
+            if (aoe.m_useTriggers && sphere != null) aoe.m_radius = Mathf.Max(aoe.m_radius, sphere.radius * aoe.transform.lossyScale.x);
+            if (aoe.m_radius <= 0.5f) aoe.m_radius = 4f;
+            aoe.m_useTriggers = false;
+            aoe.m_triggerEnterOnly = false;
+            aoe.m_hitInterval = 0f;
+            aoe.m_hitAfterTtl = false;
+            if (sphere != null) sphere.enabled = false;
+            Plugin.Debug("Grímr's nova now hits once within " + aoe.m_radius + " m");
         }
 
         // The chill's icon: the game's own frost, once the game's status effects are there.
@@ -158,8 +179,7 @@ namespace IslandsOfValheim
             if (target == null || Vector3.Distance(target.transform.position, transform.position) > NovaReach) return;
             novaPending = true;
             nextNova = Time.time + (Stage >= RageStage ? NovaEveryRaging : NovaEvery);
-            BossKit.Effect("sfx_dverger_ice_aoe_start", transform.position);
-            BossKit.Effect("fx_fenring_frost", transform.position + Vector3.up * 0.3f);
+            BossKit.Effect("sfx_dverger_ice_aoe_start", transform.position); // the sound gives it away
         }
 
         internal override void AttackLanded()

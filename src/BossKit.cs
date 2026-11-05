@@ -186,6 +186,35 @@ namespace IslandsOfValheim
             }
         }
 
+        // Our status effects' names sit a little higher over their icons, clear of them (a long name like
+        // "Grímr's Frost" otherwise touches the icon). The list's rows are reused, so others are put back.
+        static readonly System.Reflection.FieldInfo hudRows = AccessTools.Field(typeof(Hud), "m_statusEffects");
+        static readonly System.Type textType = AccessTools.TypeByName("TMPro.TMP_Text");
+        static readonly System.Collections.Generic.Dictionary<int, Vector2> namePlaces = new System.Collections.Generic.Dictionary<int, Vector2>();
+        const float NameRaise = 5f;
+
+        [HarmonyPatch(typeof(Hud), "UpdateStatusEffects")]
+        static class StatusNamePatch
+        {
+            static void Postfix(Hud __instance, System.Collections.Generic.List<StatusEffect> statusEffects)
+            {
+                if (hudRows == null || textType == null || statusEffects == null) return;
+                System.Collections.Generic.List<RectTransform> rows = hudRows.GetValue(__instance) as System.Collections.Generic.List<RectTransform>;
+                if (rows == null) return;
+                for (int i = 0; i < rows.Count && i < statusEffects.Count; i++)
+                {
+                    Component text = rows[i] != null ? rows[i].GetComponentInChildren(textType) : null;
+                    RectTransform place = text != null ? text.transform as RectTransform : null;
+                    if (place == null) continue;
+                    int id = place.GetInstanceID();
+                    Vector2 home;
+                    if (!namePlaces.TryGetValue(id, out home)) { home = place.anchoredPosition; namePlaces[id] = home; }
+                    bool ours = statusEffects[i] != null && statusEffects[i].name.StartsWith("IoV_SE_");
+                    place.anchoredPosition = ours ? home + new Vector2(0f, NameRaise) : home;
+                }
+            }
+        }
+
         // A keeper's blow being dealt (on the client that runs it): its own touch (frost, a drain...).
         [HarmonyPatch(typeof(Character), "Damage")]
         static class DealPatch
