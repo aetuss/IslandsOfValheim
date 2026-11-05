@@ -55,6 +55,15 @@ namespace IslandsOfValheim
                     args.Context.AddString("Teleport to the closest new one: iov_goto [tier] (needs devcommands)");
                 });
 
+            new Terminal.ConsoleCommand("iov_placeislets",
+                "- IslandsOfValheim: adds the islets this world is missing now (host or single player, needs devcommands); it also runs once per world on its own",
+                args =>
+                {
+                    if (!OnServer(args.Context)) return;
+                    args.Context.AddString("Looking for missing islets... (the result shows here and in the log)");
+                    ExistingWorlds.RunNow(args.Context);
+                }, true);
+
             new Terminal.ConsoleCommand("iov_light",
                 "- IslandsOfValheim: shows the light from the end of Sævar's tale a few metres in front of you (needs devcommands)",
                 args =>

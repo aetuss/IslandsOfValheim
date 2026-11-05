@@ -21,6 +21,7 @@ namespace IslandsOfValheim
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
+        internal static ConfigEntry<bool> PlaceInExistingWorlds;
         internal static ConfigEntry<bool> DebugLog;
 
         internal const string GroundTerrain = "Terrain";
@@ -41,6 +42,10 @@ namespace IslandsOfValheim
             SeaTraderIslets = Config.Bind("1 - World generation", "SeaTraderIslets", 6,
                 new ConfigDescription("How many possible spots the game picks for the sea trader's harbour islet, in the Swamp and Plains waters. Like Haldor, only the first one somebody comes near is built; the others vanish. 0: no sea trader. Only used when locations are generated (new world or genloc).",
                     new AcceptableValueRange<int>(0, 30)));
+            PlaceInExistingWorlds = Config.Bind("1 - World generation", "PlaceInExistingWorlds", true,
+                "Once per world, the server (or the host) adds the islets an existing world is missing (one made before the mod, or before a kind of islet came out): " +
+                "where nobody has sailed yet, they appear when somebody gets there; if there's no room left there, a few are built in sailed ocean, away from anything players built. " +
+                "Sævar's harbour and the islets of his tale are added too. The console command iov_placeislets (devcommands) runs it again.");
             DebugLog = Config.Bind("2 - Debug", "DebugLog", false,
                 "Writes how the islands were built and where they are to the BepInEx log. Useful when reporting a problem.");
 
@@ -50,6 +55,11 @@ namespace IslandsOfValheim
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
             new Harmony(Guid).PatchAll(typeof(Plugin).Assembly);
+        }
+
+        void Update()
+        {
+            ExistingWorlds.Tick();
         }
 
         // Spawners and chests are networked objects, so they need prefabs of their own in ZNetScene.
