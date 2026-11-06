@@ -83,6 +83,11 @@ namespace IslandsOfValheim
                         GotoHarbour(args.Context);
                         return;
                     }
+                    if (args.Length > 1 && string.Equals(args[1], "terraintest", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        TerrainIsletTest.Goto(args.Context); // research prototype
+                        return;
+                    }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
