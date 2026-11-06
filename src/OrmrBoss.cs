@@ -15,6 +15,8 @@ namespace IslandsOfValheim
         internal const float Scale = 1.05f;
         internal static readonly Color Glow = new Color(0.62f, 0.32f, 1f);
 
+        internal const string Shade = "IoV_OrmrShade";
+
         internal static void Setup(GameObject go)
         {
             go.transform.localScale = go.transform.localScale * Scale;
@@ -23,6 +25,32 @@ namespace IslandsOfValheim
             BossKit.Tint(go, BossKit.Cast(new Color(0.26f, 0.2f, 0.32f), 0.45f, 0.85f), 0f, "Ormr");
             BossKit.AddGlow(go, Glow, 3.5f, 1.3f, "Ormr");
             go.AddComponent<OrmrFight>();
+            if (body != null) RegisterShade(body.m_faction);
+        }
+
+        // His crew's shades: wraiths on his side (a wraith of its own would go for him too), that don't
+        // fade with the daylight as wraiths do.
+        static void RegisterShade(Character.Faction side)
+        {
+            if (Jotunn.Managers.PrefabManager.Instance.GetPrefab(Shade) != null || Jotunn.Managers.PrefabManager.Instance.GetPrefab("Wraith") == null) return;
+            GameObject go = Jotunn.Managers.PrefabManager.Instance.CreateClonedPrefab(Shade, "Wraith");
+            Character c = go.GetComponent<Character>();
+            if (c != null) c.m_faction = side;
+            MonsterAI ai = go.GetComponent<MonsterAI>();
+            System.Reflection.FieldInfo inDay = HarmonyLib.AccessTools.Field(typeof(MonsterAI), "m_despawnInDay");
+            if (ai != null && inDay != null) inDay.SetValue(ai, false);
+            CharacterDrop drops = go.GetComponent<CharacterDrop>();
+            if (drops != null) drops.m_drops.Clear(); // shades leave nothing behind
+            Jotunn.Managers.PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(go, false));
+            Plugin.Debug("Ormr's shades are on the " + side + " side");
+        }
+
+        // Going into the mist, and coming out of it: the Jotun witch's own vanishing, his size.
+        internal static void Mist(Vector3 at, bool coming)
+        {
+            BossKit.Effect("fx_JotunWitch_Dodge", at + Vector3.up);
+            BossKit.Effect("sfx_jotunwitch_dodge", at);
+            BossKit.Effect(coming ? "vfx_ghost_spawn" : "vfx_prespawn", at);
         }
     }
 
@@ -33,7 +61,6 @@ namespace IslandsOfValheim
         const float DrainShare = 0.35f, DrainMax = 60f;
         const int ShadeStage = 1, FedStage = 2;
         static readonly float[] stages = { 2f / 3f, 1f / 3f };
-        const string Shade = "Wraith";
         const int Shades = 2, ShadeLevel = 3;
 
         Renderer[] looks;
@@ -93,7 +120,7 @@ namespace IslandsOfValheim
         IEnumerator Vanish(Character target)
         {
             vanishing = true;
-            BossKit.Effect("vfx_prespawn", transform.position);
+            OrmrBossFight.Mist(transform.position, false);
             nview.GetZDO().Set(HiddenKey, true);
             yield return new WaitForSeconds(VanishFor);
             if (!Owner || target == null || target.IsDead())
@@ -112,7 +139,7 @@ namespace IslandsOfValheim
                 if (to.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(to);
                 Rigidbody rb = GetComponent<Rigidbody>();
                 if (rb != null) { rb.position = transform.position; rb.linearVelocity = Vector3.zero; }
-                BossKit.Effect("vfx_prespawn", spot.Value);
+                OrmrBossFight.Mist(spot.Value, true);
                 Plugin.Debug("Ormr comes out of the mist behind " + target.m_name);
             }
             nview.GetZDO().Set(HiddenKey, false);
@@ -133,7 +160,7 @@ namespace IslandsOfValheim
                 BossKit.Effect("fx_summon_spirit_spawn", spots[count - 1]);
             }
             yield return new WaitForSeconds(1.5f);
-            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(Shade) : null;
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(OrmrBossFight.Shade) : null;
             if (prefab == null || nview == null || !nview.IsValid()) yield break;
             for (int i = 0; i < count; i++)
             {
