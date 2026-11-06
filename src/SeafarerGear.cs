@@ -69,17 +69,28 @@ namespace IslandsOfValheim
             SE_Stats storm = Effect("IoV_SE_StormMead", "iov_se_storm");  // no Wet, no Cold: see WeatherPatch
             if (storm != null) storm.m_ttl = 600f;
             SE_Stats ran = Effect("IoV_SE_RansBlessing", "iov_se_ran");
-            if (ran != null) { ran.m_ttl = 600f; ran.m_swimSpeedModifier = 0.4f; ran.m_swimStaminaUseModifier = -0.4f; }
+            if (ran != null)
+            {
+                ran.m_ttl = 600f; ran.m_swimSpeedModifier = 0.4f; ran.m_swimStaminaUseModifier = -0.4f;
+                // Drunk, the sea answers: a splash of water about you (a bait's splash, your size, and its sound).
+                ran.m_startEffects = Effects("fx_float_hitwater", "sfx_land_water");
+            }
             Mead(StormMead, new[] { "MeadFrostResist" }, "iov_stormmead", storm, Recolor.ToHue(0.6f, 0.45f, 0.75f));
             Mead(RansBlessing, new[] { "MeadStaminaLingering", "MeadTasty" }, "iov_ransblessing", ran, Recolor.ToHue(0.48f, 0.6f, 0.9f));
 
             // Mid-strength voyage food: weaker than a good cooked meal, but it lasts.
             Food(SaltedFish, new[] { "FishCooked" }, "iov_saltedfish", 25f, 50f, 2400f, 2f, Recolor.Pale(0.45f, 1.1f));
-            Food(Hardtack, new[] { "Bread" }, "iov_hardtack", 35f, 35f, 3600f, 2f, Recolor.ToHue(0.1f, 0.35f, 1.05f));
+            Food(Hardtack, new[] { "Bread" }, "iov_hardtack", 35f, 35f, 3600f, 2f, Recolor.ToHue(0.1f, 0.28f, 1.2f)); // dry and pale, baked hard
 
             Simple(Lure, new[] { "FishingBaitOcean", "FishingBait" }, "iov_lure", 50, 0.1f, Recolor.ToHue(0.11f, 0.7f, 1.1f));
             CustomItem caulk = Simple(Caulk, new[] { "Tar" }, "iov_caulk", 10, 2f, Recolor.Lift(0.08f, 0.55f, 0.35f));
-            if (caulk != null) caulk.ItemDrop.m_itemData.m_shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
+            if (caulk != null)
+            {
+                caulk.ItemDrop.m_itemData.m_shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
+                // Tar, oakum and a mallet: the game's hammer, stained with tar (it still works as the kit).
+                Reskin(caulk.ItemPrefab, caulk.ItemDrop.m_itemData.m_shared, "Hammer", BossKit.Cast(new Color(0.16f, 0.11f, 0.08f), 0.5f, 0.9f));
+            }
+            Glow(Lure, new Color(1f, 0.72f, 0.3f), 1.2f, 0.8f, 1f); // old amber, carved: it catches the light
 
             hatEffect = Hash(hat); vestEffect = Hash(vest); trousersEffect = Hash(trousers); capeEffect = Hash(cape);
             setEffect = Hash(set); stormEffect = Hash(storm); ranEffect = Hash(ran);
@@ -96,6 +107,24 @@ namespace IslandsOfValheim
             Color result = v > 0.5f ? Color.HSVToRGB(0.11f, 0.12f, Mathf.Clamp01(v * 1.15f)) : Color.HSVToRGB(0.61f, 0.55f, Mathf.Clamp01(v * 0.85f));
             result.a = c.a;
             return result;
+        }
+
+        // Effects that play once where something happens (not following anyone).
+        static EffectList Effects(params string[] names)
+        {
+            List<EffectList.EffectData> list = new List<EffectList.EffectData>();
+            foreach (string n in names)
+            {
+                GameObject prefab = PrefabManager.Instance.GetPrefab(n);
+                if (prefab == null) continue;
+                EffectList.EffectData e = new EffectList.EffectData();
+                e.m_prefab = prefab;
+                e.m_enabled = true;
+                list.Add(e);
+            }
+            EffectList effects = new EffectList();
+            effects.m_effectPrefabs = list.ToArray();
+            return effects;
         }
 
         // A gull's white: the shading kept, the colour all but gone.

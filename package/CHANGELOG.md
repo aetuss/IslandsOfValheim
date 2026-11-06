@@ -6,6 +6,7 @@
   - Seafarer set: the Captain's Hat is a broad navy hat with a gold band, the Seafarer's Vest navy and sailcloth, the Deckhand's Trousers tarred canvas with a shine to them, the Seafarer's Cape oiled sea-green wool.
   - The Heart of the Sea is a heart now (the Crystal Heart's look, in sea gold), with a little light of its own where it lies. It does what it did. Its text no longer says the sea sends no serpents after you: that's only ever while you carry a fragment, and by the time you have the Heart there are none left to carry.
   - From Sævar's tale: the Storm Glass has a calm blue light breathing slowly inside it, the Brim Oil a beacon fuel's warm glow, the Ash-sea Tar the embers of the burning sea; the Gull Feather is a gull's white, and the Brim Harpoon salt-greyed from long at sea.
+  - The Caulking Kit is a tar-stained mallet, the Ancient Lure catches the light like old amber, the Seafarer's Hardtack is dry and pale, and drinking Rán's Blessing brings a splash of the sea about you.
 - The mod's status effects have their names in one size, a little smaller, so two long ones side by side don't run together.
 
 ## 1.8.0
