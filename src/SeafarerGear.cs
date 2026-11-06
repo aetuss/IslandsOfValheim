@@ -48,13 +48,13 @@ namespace IslandsOfValheim
 
             // Each piece as its text says: a captain's broad hat with a gull's feather, a vest of navy and
             // sailcloth, trousers of tarred canvas, a cape of oiled wool.
-            Armor(Hat, new[] { "HelmetFishingHat", "HelmetHat4", "HelmetHat10", "HelmetLeather" }, "iov_hat", 6f, 1f, hat, Recolor.ToHue(0.62f, 0.6f, 0.65f));
+            // (The gull's feather on the hat was tried and dropped: the game's feathers are a bundle, and
+            // on a hat they read as a dark blot. A captain's gold band instead.)
+            Armor(Hat, new[] { "HelmetFishingHat", "HelmetHat4", "HelmetHat10", "HelmetLeather" }, "iov_hat", 6f, 1f, hat, NavyAndGold);
             Armor(Vest, new[] { "ArmorLeatherChest" }, "iov_vest", 10f, 5f, vest, NavyAndSailcloth);
             Armor(Trousers, new[] { "ArmorLeatherLegs" }, "iov_trousers", 10f, 5f, trousers, Tarred);
-            Armor(Cape, new[] { "CapeLinen", "CapeDeerHide" }, "iov_cape", 1f, 1f, cape, OiledWool);
-            Untint(Cape); // the linen cape's red is a tint on its material, not in its texture
-            GameObject hatPrefab = PrefabManager.Instance.GetPrefab(Hat);
-            if (hatPrefab != null) Plume(hatPrefab);
+            // The deer hide cape takes our colour; the linen cape's red isn't in the textures we can change.
+            Armor(Cape, new[] { "CapeDeerHide", "CapeLinen" }, "iov_cape", 1f, 1f, cape, OiledWool);
             Gloss(Trousers, 0.65f); // tar shines
             Gloss(Cape, 0.4f);      // so does oiled wool, a little
             foreach (GameObject piece in Items)
@@ -98,6 +98,17 @@ namespace IslandsOfValheim
             return result;
         }
 
+        // The hat: navy, its lighter parts (the band) a captain's dull gold.
+        static Color NavyAndGold(Color c)
+        {
+            float h, s, v;
+            Color.RGBToHSV(c, out h, out s, out v);
+            if (v < 0.06f) return c;
+            Color result = v > 0.55f ? Color.HSVToRGB(0.12f, 0.6f, Mathf.Clamp01(v * 0.9f)) : Color.HSVToRGB(0.62f, 0.6f, Mathf.Clamp01(v * 0.7f));
+            result.a = c.a;
+            return result;
+        }
+
         // The trousers: tarred canvas, near black with a little brown in it, the weave still showing.
         static Color Tarred(Color c)
         {
@@ -117,23 +128,6 @@ namespace IslandsOfValheim
             return result;
         }
 
-        // A colour laid over a piece's materials (a dye in the material, not its texture) taken off, so its
-        // texture shows as it is.
-        static void Untint(string name)
-        {
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
-            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
-            if (prefab == null) return;
-            foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
-                foreach (Material m in renderer.sharedMaterials)
-                {
-                    if (m == null || !m.HasProperty("_Color")) continue;
-                    Color was = m.GetColor("_Color");
-                    Plugin.Debug(name + ": " + m.name + " was tinted " + was);
-                    m.SetColor("_Color", new Color(1f, 1f, 1f, was.a));
-                }
-        }
-
         // A shine on a piece's materials, worn and lying about (tar, oiled wool).
         static void Gloss(string name, float gloss)
         {
@@ -146,65 +140,6 @@ namespace IslandsOfValheim
                     if (m != null && m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", Mathf.Max(m.GetFloat("_Glossiness"), gloss));
             Material body = drop.m_itemData.m_shared.m_armorMaterial;
             if (body != null && body.HasProperty("_Glossiness")) body.SetFloat("_Glossiness", Mathf.Max(body.GetFloat("_Glossiness"), gloss));
-        }
-
-        // The captain's feather: a gull's feather (the game's own feathers, made white) tucked into the
-        // hat's band, on the hat as worn and as it lies about.
-        static void Plume(GameObject hat)
-        {
-            GameObject feathers = PrefabManager.Instance.GetPrefab("Feathers");
-            MeshFilter feather = null;
-            if (feathers != null)
-                foreach (MeshFilter f in feathers.GetComponentsInChildren<MeshFilter>(true))
-                    if (f.sharedMesh != null && f.GetComponent<Renderer>() != null) { feather = f; break; }
-            if (feather == null) { Plugin.Debug("Captain's hat: no feather to put on it"); return; }
-            // A gull's white: the feathers' own shading kept, the colour all but gone.
-            Recolor.Shift gull = c =>
-            {
-                float light = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
-                Color result = Color.Lerp(new Color(0.93f, 0.93f, 0.9f), new Color(0.6f, 0.62f, 0.64f), 1f - Mathf.Clamp01(light * 1.6f));
-                result.a = c.a;
-                return result;
-            };
-            int added = 0;
-            List<Transform> parts = new List<Transform>();
-            if (hat.GetComponent<MeshFilter>() != null) parts.Add(hat.transform); // the hat as it lies about, when it's on the root
-            foreach (Transform child in hat.transform) parts.Add(child);
-            foreach (Transform part in parts)
-            {
-                MeshFilter brim = part == hat.transform ? hat.GetComponent<MeshFilter>() : null;
-                if (brim == null)
-                    foreach (MeshFilter f in part.GetComponentsInChildren<MeshFilter>(true))
-                        if (f.sharedMesh != null) { brim = f; break; }
-                if (brim == null) continue;
-                // The hat's size where it sits, from its mesh: the feather goes in at the side, towards the
-                // back, leaning back, about as tall as the hat.
-                Bounds b = brim.sharedMesh.bounds;
-                Matrix4x4 toPart = part.worldToLocalMatrix * brim.transform.localToWorldMatrix;
-                Vector3 centre = toPart.MultiplyPoint3x4(b.center);
-                Vector3 size = toPart.MultiplyVector(b.size);
-                size = new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
-                float tall = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
-                Bounds fb = feather.sharedMesh.bounds;
-                float featherTall = Mathf.Max(fb.size.x, Mathf.Max(fb.size.y, fb.size.z));
-                if (tall <= 0.001f || featherTall <= 0.001f) continue;
-                GameObject plume = new GameObject("IoV_GullPlume");
-                plume.transform.SetParent(part, false);
-                // At the side of the crown, leaning out and back, a little taller than the hat: seen from the
-                // front and the side, not only from behind.
-                plume.transform.localPosition = centre + new Vector3(size.x * 0.46f, size.y * 0.3f, -size.z * 0.05f);
-                plume.transform.localRotation = Quaternion.Euler(-20f, 0f, -30f);
-                plume.transform.localScale = Vector3.one * (tall * 1.2f / featherTall);
-                plume.AddComponent<MeshFilter>().sharedMesh = feather.sharedMesh;
-                MeshRenderer look = plume.AddComponent<MeshRenderer>();
-                Material[] mats = feather.GetComponent<Renderer>().sharedMaterials;
-                if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
-                    for (int i = 0; i < mats.Length; i++) mats[i] = Recolor.Material(mats[i], gull);
-                look.sharedMaterials = mats;
-                added++;
-                Plugin.Debug("Captain's hat: a feather on " + part.name + " (hat " + tall.ToString("0.00") + " m)");
-            }
-            if (added == 0) Plugin.Debug("Captain's hat: nowhere to put the feather");
         }
 
         // A piece made to look like another of the game's (its models and icons) while keeping what it

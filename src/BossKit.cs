@@ -233,7 +233,39 @@ namespace IslandsOfValheim
         static readonly System.Reflection.FieldInfo hudRows = AccessTools.Field(typeof(Hud), "m_statusEffects");
         static readonly System.Type textType = AccessTools.TypeByName("TMPro.TMP_Text");
         static readonly System.Collections.Generic.Dictionary<int, Vector2> namePlaces = new System.Collections.Generic.Dictionary<int, Vector2>();
-        const float NameRaise = 5f, NameScale = 0.8f;
+        const float NameRaise = 5f, NameScale = 0.72f;
+        static readonly System.Reflection.PropertyInfo autoSize = textType != null ? AccessTools.Property(textType, "enableAutoSizing") : null;
+        static readonly System.Reflection.PropertyInfo fontSize = textType != null ? AccessTools.Property(textType, "fontSize") : null;
+        static readonly System.Reflection.PropertyInfo fontSizeMax = textType != null ? AccessTools.Property(textType, "fontSizeMax") : null;
+        static readonly System.Collections.Generic.Dictionary<int, float> nameSizes = new System.Collections.Generic.Dictionary<int, float>();
+
+        // A name's size: ours one fixed size (a share of the largest the game would give it), the game's
+        // own sized to fit as it does.
+        static void Size(Component text, bool ours)
+        {
+            if (autoSize == null || fontSize == null || fontSizeMax == null) return;
+            int id = text.GetInstanceID();
+            if (!nameSizes.ContainsKey(id))
+            {
+                bool auto = (bool)autoSize.GetValue(text, null);
+                nameSizes[id] = auto ? (float)fontSizeMax.GetValue(text, null) : (float)fontSize.GetValue(text, null);
+                nameAuto[id] = auto;
+                nameFixed[id] = (float)fontSize.GetValue(text, null);
+            }
+            if (ours)
+            {
+                autoSize.SetValue(text, false, null);
+                fontSize.SetValue(text, nameSizes[id] * NameScale, null);
+            }
+            else
+            {
+                autoSize.SetValue(text, nameAuto[id], null);
+                if (!nameAuto[id]) fontSize.SetValue(text, nameFixed[id], null);
+            }
+        }
+
+        static readonly System.Collections.Generic.Dictionary<int, bool> nameAuto = new System.Collections.Generic.Dictionary<int, bool>();
+        static readonly System.Collections.Generic.Dictionary<int, float> nameFixed = new System.Collections.Generic.Dictionary<int, float>();
 
         [HarmonyPatch(typeof(Hud), "UpdateStatusEffects")]
         static class StatusNamePatch
@@ -253,8 +285,9 @@ namespace IslandsOfValheim
                     if (!namePlaces.TryGetValue(id, out home)) { home = place.anchoredPosition; namePlaces[id] = home; }
                     bool ours = statusEffects[i] != null && statusEffects[i].name.StartsWith("IoV_SE_");
                     place.anchoredPosition = ours ? home + new Vector2(0f, NameRaise) : home;
-                    // Ours run long ("Denizin çocuğu"): a little smaller, so two side by side don't run into each other.
-                    place.localScale = ours ? new Vector3(NameScale, NameScale, 1f) : Vector3.one;
+                    // Ours run long ("Denizin çocuğu"). The game sizes each name to fit, so a longer one came out
+                    // smaller than its neighbour: ours all get one fixed, smaller size instead.
+                    Size(text, ours);
                 }
             }
         }

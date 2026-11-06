@@ -3,8 +3,9 @@
 ## 1.9.0
 
 - The mod's goods look like what they are:
-  - Seafarer set: the Captain's Hat is a broad navy hat with a gull's feather in its band, the Seafarer's Vest navy and sailcloth, the Deckhand's Trousers tarred canvas with a shine to them, the Seafarer's Cape oiled sea-green wool.
-  - The Heart of the Sea is a heart now (the Crystal Heart's look, in sea gold), with a little light of its own where it lies. It does what it did.
+  - Seafarer set: the Captain's Hat is a broad navy hat with a gold band, the Seafarer's Vest navy and sailcloth, the Deckhand's Trousers tarred canvas with a shine to them, the Seafarer's Cape oiled sea-green wool.
+  - The Heart of the Sea is a heart now (the Crystal Heart's look, in sea gold), with a little light of its own where it lies. It does what it did. Its text no longer says the sea sends no serpents after you: that's only ever while you carry a fragment, and by the time you have the Heart there are none left to carry.
+- The mod's status effects have their names in one size, a little smaller, so two long ones side by side don't run together.
 
 ## 1.8.0
 

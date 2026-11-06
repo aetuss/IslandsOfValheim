@@ -135,7 +135,7 @@ While you carry a fragment of what the Brim Folk found, the sea turns against yo
 | Ormr | Brim Harpoon: an Abyssal Harpoon that hits 30% harder |
 | The dvergr | Serpent Charm (10 minutes): serpents deal half damage to you, and the restless sea sends none |
 | The Ashlands shore | Ash-sea Tar (10 minutes): the burning sea doesn't harm the ship you're on |
-| The end of the tale | (not sold) Heart of the Sea, a trinket: you swim 30% faster and use 30% less stamina swimming, serpents deal half damage to you and the restless sea sends none |
+| The end of the tale | (not sold) Heart of the Sea, a trinket: you swim 30% faster and use 30% less stamina swimming, and serpents deal half damage to you |
 
 ### The tale's bosses
 
