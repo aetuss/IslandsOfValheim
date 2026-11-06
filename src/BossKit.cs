@@ -233,7 +233,7 @@ namespace IslandsOfValheim
         static readonly System.Reflection.FieldInfo hudRows = AccessTools.Field(typeof(Hud), "m_statusEffects");
         static readonly System.Type textType = AccessTools.TypeByName("TMPro.TMP_Text");
         static readonly System.Collections.Generic.Dictionary<int, Vector2> namePlaces = new System.Collections.Generic.Dictionary<int, Vector2>();
-        const float NameRaise = 5f;
+        const float NameRaise = 5f, NameScale = 0.8f;
 
         [HarmonyPatch(typeof(Hud), "UpdateStatusEffects")]
         static class StatusNamePatch
@@ -253,6 +253,8 @@ namespace IslandsOfValheim
                     if (!namePlaces.TryGetValue(id, out home)) { home = place.anchoredPosition; namePlaces[id] = home; }
                     bool ours = statusEffects[i] != null && statusEffects[i].name.StartsWith("IoV_SE_");
                     place.anchoredPosition = ours ? home + new Vector2(0f, NameRaise) : home;
+                    // Ours run long ("Denizin çocuğu"): a little smaller, so two side by side don't run into each other.
+                    place.localScale = ours ? new Vector3(NameScale, NameScale, 1f) : Vector3.one;
                 }
             }
         }
