@@ -37,7 +37,7 @@ namespace IslandsOfValheim
         const string PullsKey = "IoV_HafdisPulls", PullWhoKey = "IoV_HafdisPullWho";
         const float RainEvery = 14f, RainEveryStorm = 9f, RainReach = 25f, RainWarning = 1.4f, RainHeight = 14f, RainSpread = 2.2f, RainLead = 0.6f;
         const int Feathers = 5, FeathersStorm = 8;
-        const float FeatherPierce = 110f; // Deep North armour takes most of a smaller blow (38 hurt next to nothing)
+        const float FeatherPierce = 60f; // Deep North armour takes most of a small blow (38 hurt next to nothing, 110 too much)
         const float PullEvery = 16f, PullEveryStorm = 10f, PullReach = 18f, PullWarning = 1.2f, PullSpeed = 1.6f, PullMax = 15f, PullStormFactor = 1.25f;
         static readonly int wet = "Wet".GetStableHashCode();
         const int PullStage = 1, StormStage = 2;
@@ -109,6 +109,30 @@ namespace IslandsOfValheim
             Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
             BossKit.Effect(HafdisBoss.Beam, at);
             BossKit.Effect("vfx_odin_despawn", at); // the Allfather's own going, where she fell
+        }
+
+        // ---- her claws: she comes down to strike ----
+        // Kept up to 3 m over her hall (FinalStand), her claws passed over your head. While a claw attack
+        // is under way she may come down to the floor (on the client that runs her, where FinalStand
+        // keeps her in reach).
+        const float DiveFor = 1.8f;
+        float diveUntil;
+
+        internal static bool Diving(Character c)
+        {
+            HafdisFight fight = c != null ? c.GetComponent<HafdisFight>() : null;
+            return fight != null && Time.time < fight.diveUntil;
+        }
+
+        internal override void AttackStarted()
+        {
+            Humanoid self = body as Humanoid;
+            ItemDrop.ItemData weapon = self != null ? self.GetCurrentWeapon() : null;
+            string prefab = weapon != null && weapon.m_dropPrefab != null ? weapon.m_dropPrefab.name : "";
+            Plugin.Debug("Hafdís attacks: " + prefab);
+            if (prefab.IndexOf("claw", System.StringComparison.OrdinalIgnoreCase) < 0 && prefab.IndexOf("swoop", System.StringComparison.OrdinalIgnoreCase) < 0) return;
+            diveUntil = Time.time + DiveFor;
+            Plugin.Debug("Hafdís comes down for " + prefab);
         }
 
         // A feather finding its mark (logged, to see in tests that they hit).

@@ -925,6 +925,7 @@ namespace IslandsOfValheim
 
         const float ReachHeight = 3f;  // Hafdís stays at most this far above her hall's floor,
         const float ReachRadius = 9f;  // and this close to its middle: within a sword's reach, over the islet
+        const float DiveHeight = 0.4f; // while her claws strike
 
         // On the client that runs the keeper (what it does there, everyone sees): Hafdís is kept low over
         // her hall, so she can be fought without wings; and while she speaks her offer, she looks at you.
@@ -954,7 +955,7 @@ namespace IslandsOfValheim
             Vector3 centre = transform.position;
             Vector3 p = c.transform.position;
             Vector3 want = p;
-            float top = centre.y + ReachHeight;
+            float top = centre.y + (HafdisFight.Diving(c) ? DiveHeight : ReachHeight); // down to the floor for her claws
             if (p.y > top) want.y = Mathf.MoveTowards(p.y, top, 10f * Time.deltaTime);
             Vector3 flat = new Vector3(p.x - centre.x, 0f, p.z - centre.z);
             if (flat.magnitude > ReachRadius)
