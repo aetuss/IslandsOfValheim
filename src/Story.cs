@@ -226,6 +226,18 @@ namespace IslandsOfValheim
                 shared.m_equipStatusEffect = heart;
                 shared.m_maxQuality = 1;
                 shared.m_teleportable = true;
+                // It does what the Fins of Destiny do, but it is a heart: the Crystal Heart's look, in
+                // sea gold, with a little light of its own where it lies.
+                SeafarerGear.Reskin(trinket.ItemPrefab, shared, "TrinketSilverResist", Recolor.ToHue(0.13f, 0.6f, 1.25f));
+                GameObject glow = new GameObject("IoV_HeartGlow");
+                glow.transform.SetParent(trinket.ItemPrefab.transform, false);
+                glow.transform.localPosition = Vector3.up * 0.15f;
+                Light light = glow.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.85f, 0.55f);
+                light.range = 1.8f;
+                light.intensity = 0.9f;
+                light.shadows = LightShadows.None;
                 heart.m_icon = trinket.ItemDrop.m_itemData.GetIcon();
             }
             heartEffect = heart.NameHash();
