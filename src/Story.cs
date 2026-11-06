@@ -390,6 +390,7 @@ namespace IslandsOfValheim
                 }
             }
             if (keeper.Prefab == Grimr) GrimrBoss.Setup(go);
+            if (keeper.Prefab == OrmrBoss) OrmrBossFight.Setup(go);
             Plugin.Debug("Keeper " + keeper.Prefab + " made from " + keeper.Body + (humanoid != null ? " (humanoid)" : ""));
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
