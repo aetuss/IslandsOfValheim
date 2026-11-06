@@ -55,7 +55,7 @@ namespace IslandsOfValheim
         // A light on the chest that moves with the body.
         internal static void AddGlow(GameObject go, Color color, float range, float intensity, string who)
         {
-            Transform chest = Bone(go.transform, "Spine2") ?? Bone(go.transform, "Spine1") ?? Bone(go.transform, "Spine");
+            Transform chest = Bone(go.transform, "Spine2") ?? Bone(go.transform, "Spine1") ?? Bone(go.transform, "Spine") ?? BoneLike(go.transform, "chest") ?? BoneLike(go.transform, "spine");
             GameObject glow = new GameObject(GlowChild);
             if (chest != null)
             {
@@ -82,6 +82,38 @@ namespace IslandsOfValheim
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
                 if (t.name == name) return t;
             return null;
+        }
+
+        // A bone whose name has this in it (rigs other than the humanoid one name theirs their own way):
+        // the last one in the hierarchy, the highest up a spine.
+        static Transform BoneLike(Transform root, string part)
+        {
+            Transform found = null;
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name.IndexOf(part, System.StringComparison.OrdinalIgnoreCase) >= 0 && t.GetComponent<Renderer>() == null) found = t;
+            return found;
+        }
+
+        // A networked light that shows for a moment and fades (a mark on the ground, a last glow).
+        internal static void RegisterLight(string name, Color color, float range, float intensity, float seconds)
+        {
+            if (PrefabManager.Instance.GetPrefab(name) != null) return;
+            GameObject go = PrefabManager.Instance.CreateEmptyPrefab(name, true);
+            // CreateEmptyPrefab makes a cube; only the light should show.
+            Object.DestroyImmediate(go.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(go.GetComponent<MeshFilter>());
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            Light light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = range;
+            light.intensity = intensity;
+            light.shadows = LightShadows.None;
+            go.AddComponent<FadingLight>();
+            TimedDestruction timed = go.AddComponent<TimedDestruction>();
+            timed.m_timeout = seconds;
+            timed.m_triggerOnAwake = true;
+            PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(go, false));
         }
 
         internal static void Effect(string name, Vector3 at)
