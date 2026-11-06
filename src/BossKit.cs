@@ -52,6 +52,16 @@ namespace IslandsOfValheim
             };
         }
 
+        // A boss isn't so easily knocked off its feet: the hurt it takes before it staggers is a share of its
+        // health (m_staggerDamageFactor), made two and a half times what the vanilla body takes. (A body
+        // that never staggers stays so.)
+        internal static void Steady(Character body, string who)
+        {
+            if (body == null || body.m_staggerDamageFactor <= 0f) return;
+            Plugin.Debug(who + " staggers after " + Mathf.RoundToInt(body.m_staggerDamageFactor * 100f) + "% of their health in vanilla; now " + Mathf.RoundToInt(body.m_staggerDamageFactor * 250f) + "%");
+            body.m_staggerDamageFactor *= 2.5f;
+        }
+
         // A light on the chest that moves with the body.
         internal static void AddGlow(GameObject go, Color color, float range, float intensity, string who)
         {
@@ -312,7 +322,7 @@ namespace IslandsOfValheim
 
         void Start()
         {
-            LightBeam.Over(transform.position, seconds, width, fade, true);
+            LightBeam.Over(transform.position, seconds, width, 0.3f, fade, true); // there at once, with the fall
         }
     }
 

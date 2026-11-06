@@ -260,7 +260,7 @@ namespace IslandsOfValheim
         // width: of the column; fade: how long it takes to come and to go.
         internal static void Over(Vector3 foot, float seconds, float Width, float fade)
         {
-            Over(foot, seconds, Width, fade, false);
+            Over(foot, seconds, Width, fade, fade, false);
         }
 
         static Texture2D softTexture;
@@ -290,7 +290,8 @@ namespace IslandsOfValheim
             return softTexture;
         }
 
-        internal static void Over(Vector3 foot, float seconds, float Width, float fade, bool soft)
+        // fadeIn and fade (out) apart: a beam that comes at once with what it marks, and goes slowly.
+        internal static void Over(Vector3 foot, float seconds, float Width, float fadeIn, float fade, bool soft)
         {
             Shader shader = null;
             foreach (string name in new[] { "Sprites/Default", "Legacy Shaders/Particles/Additive", "Particles/Standard Unlit", "Unlit/Transparent" })
@@ -301,7 +302,8 @@ namespace IslandsOfValheim
             LightBeam beam = root.AddComponent<LightBeam>();
             beam.born = Time.time;
             beam.life = seconds;
-            beam.fadeIn = beam.fadeOut = Mathf.Min(fade, seconds * 0.5f);
+            beam.fadeIn = Mathf.Min(fadeIn, seconds * 0.5f);
+            beam.fadeOut = Mathf.Min(fade, seconds * 0.5f);
             beam.material = new Material(shader);
             if (soft)
             {

@@ -41,7 +41,7 @@ namespace IslandsOfValheim
             if (body != null)
             {
                 body.m_health = Health;
-                body.m_staggerDamageFactor *= 0.5f; // a boss: not so easily knocked off his feet
+                BossKit.Steady(body, "Ketill"); // a boss: not so easily knocked off his feet
             }
             Look(go);
             AddGlow(go);

@@ -19,7 +19,7 @@ namespace IslandsOfValheim
         internal static void Setup(GameObject go)
         {
             Character body = go.GetComponent<Character>();
-            if (body != null) body.m_staggerDamageFactor *= 0.5f;
+            BossKit.Steady(body, "Hafdís");
             BossKit.Tint(go, BossKit.Cast(new Color(0.9f, 0.85f, 0.7f), 0.5f, 1.15f), 0.3f, "Hafdís");
             BossKit.AddGlow(go, Glow, 6f, 2f, "Hafdís");
             go.AddComponent<HafdisFight>();
@@ -37,7 +37,7 @@ namespace IslandsOfValheim
         const string PullsKey = "IoV_HafdisPulls", PullWhoKey = "IoV_HafdisPullWho";
         const float RainEvery = 14f, RainEveryStorm = 9f, RainReach = 25f, RainWarning = 1.4f, RainHeight = 14f, RainSpread = 2.2f, RainLead = 0.6f;
         const int Feathers = 5, FeathersStorm = 8;
-        const float FeatherPierce = 38f;
+        const float FeatherPierce = 110f; // Deep North armour takes most of a smaller blow (38 hurt next to nothing)
         const float PullEvery = 16f, PullEveryStorm = 10f, PullReach = 18f, PullWarning = 1.2f, PullSpeed = 1.6f, PullMax = 15f, PullStormFactor = 1.25f;
         static readonly int wet = "Wet".GetStableHashCode();
         const int PullStage = 1, StormStage = 2;
@@ -109,6 +109,12 @@ namespace IslandsOfValheim
             Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
             BossKit.Effect(HafdisBoss.Beam, at);
             BossKit.Effect("vfx_odin_despawn", at); // the Allfather's own going, where she fell
+        }
+
+        // A feather finding its mark (logged, to see in tests that they hit).
+        internal override void Dealing(Character target, HitData hit)
+        {
+            if (Mathf.Approximately(hit.m_damage.m_pierce, FeatherPierce)) Plugin.Debug("Hafdís's feather hits " + target.m_name);
         }
 
         // ---- feather rain ----

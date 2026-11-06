@@ -25,7 +25,7 @@ namespace IslandsOfValheim
         {
             go.transform.localScale = go.transform.localScale * Scale;
             Character body = go.GetComponent<Character>();
-            if (body != null) body.m_staggerDamageFactor *= 0.5f;
+            BossKit.Steady(body, "Grímr");
             BossKit.Tint(go, BossKit.Cast(new Color(0.55f, 0.72f, 0.9f), 0.4f, 1.05f), 0.35f, "Grímr");
             BossKit.AddGlow(go, Glow, 4f, 1.4f, "Grímr");
             go.AddComponent<GrimrFight>();
