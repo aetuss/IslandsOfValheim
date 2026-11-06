@@ -245,13 +245,19 @@ namespace IslandsOfValheim
     // out, with a warm light at its foot. Local to this client, made in code (no vanilla effect does this).
     class LightBeam : MonoBehaviour
     {
-        const float Height = 80f, Width = 1.6f, FadeIn = 4f, FadeOut = 4f;
-        float born, life;
+        const float Height = 80f;
+        float born, life, fadeIn = 4f, fadeOut = 4f;
         Material material;
         Light glow;
         Color color = new Color(1f, 0.93f, 0.72f, 0.38f);
 
         internal static void Over(Vector3 foot, float seconds)
+        {
+            Over(foot, seconds, 1.6f, 4f);
+        }
+
+        // width: of the column; fade: how long it takes to come and to go.
+        internal static void Over(Vector3 foot, float seconds, float Width, float fade)
         {
             Shader shader = null;
             foreach (string name in new[] { "Sprites/Default", "Legacy Shaders/Particles/Additive", "Particles/Standard Unlit", "Unlit/Transparent" })
@@ -262,6 +268,7 @@ namespace IslandsOfValheim
             LightBeam beam = root.AddComponent<LightBeam>();
             beam.born = Time.time;
             beam.life = seconds;
+            beam.fadeIn = beam.fadeOut = Mathf.Min(fade, seconds * 0.5f);
             beam.material = new Material(shader);
             // Two crossed tall quads look like a column from every side; two thinner ones inside, turned 45
             // degrees, make it brighter in the middle.
@@ -294,7 +301,7 @@ namespace IslandsOfValheim
         void Update()
         {
             float t = Time.time - born;
-            float k = t < FadeIn ? t / FadeIn : t > life - FadeOut ? Mathf.Clamp01((life - t) / FadeOut) : 1f;
+            float k = t < fadeIn ? t / fadeIn : t > life - fadeOut ? Mathf.Clamp01((life - t) / fadeOut) : 1f;
             Apply(k);
         }
 

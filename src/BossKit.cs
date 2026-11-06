@@ -247,6 +247,37 @@ namespace IslandsOfValheim
             }
         }
 
+        // A keeper falls (on the client that ran it): its own end, beside the game's own death.
+        [HarmonyPatch(typeof(Character), "OnDeath")]
+        static class FallPatch
+        {
+            static void Prefix(Character __instance)
+            {
+                BossFight fight = FightOf(__instance);
+                if (fight == null) return;
+                try { fight.Fallen(); }
+                catch (System.Exception e) { Plugin.Log.LogWarning(__instance.name + "'s end: " + e.Message); }
+            }
+        }
+
+        // A networked mark that shows a beam of light from the sky on every client, then goes.
+        internal static void RegisterBeam(string name, float seconds, float width, float fade)
+        {
+            if (PrefabManager.Instance.GetPrefab(name) != null) return;
+            GameObject go = PrefabManager.Instance.CreateEmptyPrefab(name, true);
+            Object.DestroyImmediate(go.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(go.GetComponent<MeshFilter>());
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            BeamHere beam = go.AddComponent<BeamHere>();
+            beam.seconds = seconds;
+            beam.width = width;
+            beam.fade = fade;
+            TimedDestruction timed = go.AddComponent<TimedDestruction>();
+            timed.m_timeout = seconds + 1f;
+            timed.m_triggerOnAwake = true;
+            PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(go, false));
+        }
+
         // A keeper's blow being dealt (on the client that runs it): its own touch (frost, a drain...).
         [HarmonyPatch(typeof(Character), "Damage")]
         static class DealPatch
@@ -257,6 +288,17 @@ namespace IslandsOfValheim
                 BossFight fight = FightOf(hit.GetAttacker());
                 if (fight != null) fight.Dealing(__instance, hit);
             }
+        }
+    }
+
+    // Shows a beam of light from the sky here, on this client, when it comes into the world (RegisterBeam).
+    class BeamHere : MonoBehaviour
+    {
+        internal float seconds = 6f, width = 0.8f, fade = 1.5f;
+
+        void Start()
+        {
+            LightBeam.Over(transform.position, seconds, width, fade);
         }
     }
 
@@ -325,6 +367,15 @@ namespace IslandsOfValheim
         internal virtual void AttackLanded() { }
         // On the client that runs it: one of its blows is being dealt to target.
         internal virtual void Dealing(Character target, HitData hit) { }
+        // On the client that ran it: it falls. Its own glow goes out slowly where it fell (LastLight),
+        // and whatever else it does.
+        protected virtual string LastLight { get { return null; } }
+        internal virtual void Fallen()
+        {
+            if (LastLight == null) return;
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(LastLight) : null;
+            if (prefab != null) Instantiate(prefab, glow != null ? glow.transform.position : transform.position + Vector3.up, Quaternion.identity);
+        }
 
         protected bool Owner
         {

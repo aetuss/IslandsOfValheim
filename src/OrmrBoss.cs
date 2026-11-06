@@ -16,6 +16,22 @@ namespace IslandsOfValheim
         internal static readonly Color Glow = new Color(0.62f, 0.32f, 1f);
 
         internal const string Shade = "IoV_OrmrShade";
+        internal const string LastLight = "IoV_OrmrLastLight";
+
+        // When he falls the voices stop: his shades go, one after the other.
+        internal static IEnumerator Silence(Vector3 where)
+        {
+            yield return new WaitForSeconds(0.8f);
+            foreach (Character c in new System.Collections.Generic.List<Character>(Character.GetAllCharacters()))
+            {
+                if (c == null || c.IsDead() || Utils.GetPrefabName(c.gameObject) != Shade || Vector3.Distance(c.transform.position, where) > 80f) continue;
+                HitData end = new HitData();
+                end.m_damage.m_damage = 1000000f;
+                end.m_point = c.transform.position;
+                c.Damage(end); // reaches whoever runs it; it dies its own way
+                yield return new WaitForSeconds(0.4f);
+            }
+        }
 
         internal static void Setup(GameObject go)
         {
@@ -26,6 +42,7 @@ namespace IslandsOfValheim
             BossKit.AddGlow(go, Glow, 3.5f, 1.3f, "Ormr");
             go.AddComponent<OrmrFight>();
             if (body != null) RegisterShade(body.m_faction);
+            BossKit.RegisterLight(LastLight, Glow, 6f, 3f, 6f);
         }
 
         // His crew's shades: wraiths on his side (a wraith of its own would go for him too), that don't
@@ -171,6 +188,16 @@ namespace IslandsOfValheim
                 if (ai != null) ai.Alert();
             }
             Plugin.Debug("Ormr: " + count + " shades of his crew");
+        }
+
+        // ---- his end: his violet light goes out, and so do his shades ----
+
+        protected override string LastLight { get { return OrmrBossFight.LastLight; } }
+
+        internal override void Fallen()
+        {
+            base.Fallen();
+            if (Plugin.Instance != null) Plugin.Instance.StartCoroutine(OrmrBossFight.Silence(transform.position)); // he's gone before it ends
         }
 
         // ---- fed by the curse: part of what he deals heals him ----

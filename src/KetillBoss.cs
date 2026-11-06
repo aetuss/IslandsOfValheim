@@ -294,7 +294,9 @@ namespace IslandsOfValheim
                 if (__instance == null || Utils.GetPrefabName(__instance.gameObject) != Story.Ketill) return;
                 Transform glow = Bone(__instance.transform, GlowChild);
                 GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(LastLight) : null;
-                if (prefab != null) Object.Instantiate(prefab, glow != null ? glow.position : __instance.transform.position + Vector3.up, Quaternion.identity);
+                Vector3 chest = glow != null ? glow.position : __instance.transform.position + Vector3.up;
+                if (prefab != null) Object.Instantiate(prefab, chest, Quaternion.identity);
+                Effect("vfx_ghost_death", chest); // what was left of him goes free
                 Player player = Player.m_localPlayer;
                 if (player != null && Vector3.Distance(player.transform.position, __instance.transform.position) < 60f)
                     player.Message(MessageHud.MessageType.Center, Texts.Get("iov_story_says", "$iov_ketill", "$iov_ketill_death"), 0, null, false);

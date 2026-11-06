@@ -16,6 +16,7 @@ namespace IslandsOfValheim
     {
         internal const string Nova = "IoV_GrimrNova";
         internal const string Chill = "IoV_SE_GrimrChill";
+        internal const string LastLight = "IoV_GrimrLastLight";
         internal const float Scale = 1.1f;
         internal static readonly Color Glow = new Color(0.6f, 0.85f, 1f);
         internal static SE_Stats chill;
@@ -28,6 +29,7 @@ namespace IslandsOfValheim
             BossKit.Tint(go, BossKit.Cast(new Color(0.55f, 0.72f, 0.9f), 0.4f, 1.05f), 0.35f, "Grímr");
             BossKit.AddGlow(go, Glow, 4f, 1.4f, "Grímr");
             go.AddComponent<GrimrFight>();
+            BossKit.RegisterLight(LastLight, Glow, 6f, 3f, 6f);
 
             // Grímr's frost: slower for a few seconds, the game's frost on you while it lasts. (The game's
             // own chill from frost damage is over in a moment.)
@@ -192,6 +194,18 @@ namespace IslandsOfValheim
             BossKit.Effect("fx_fenring_icenova", at);
             BossKit.Spawn(GrimrBoss.Nova, at, body);
             Plugin.Debug("Grímr: frost nova");
+        }
+
+        // ---- his end: the ice about him breaks apart, his cold light goes out ----
+
+        protected override string LastLight { get { return GrimrBoss.LastLight; } }
+
+        internal override void Fallen()
+        {
+            base.Fallen();
+            Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
+            BossKit.Effect("vfx_ice_destroyed", at);
+            BossKit.Effect("vfx_icecube_destroyed", transform.position + Vector3.up * 1.5f);
         }
 
         // ---- in his rage every blow is harder and stiffens you ----

@@ -24,7 +24,12 @@ namespace IslandsOfValheim
             BossKit.AddGlow(go, Glow, 6f, 2f, "Hafdís");
             go.AddComponent<HafdisFight>();
             BossKit.RegisterLight(Mark, Glow, 3.5f, 4f, 1.8f);
+            BossKit.RegisterLight(LastLight, Glow, 7f, 3.5f, 6f);
+            BossKit.RegisterBeam(Beam, 6f, 0.8f, 1.5f);
         }
+
+        internal const string LastLight = "IoV_HafdisLastLight";
+        internal const string Beam = "IoV_HafdisBeam"; // a thin beam from the sky where she fell: the light at the tale's end, foretold
     }
 
     class HafdisFight : BossFight
@@ -92,6 +97,16 @@ namespace IslandsOfValheim
                 ahead.y = target.transform.position.y;
                 StartCoroutine(Rain(ahead, stage >= StormStage ? FeathersStorm : Feathers));
             }
+        }
+
+        // ---- her end: a thin beam from the sky, and her gold light going out ----
+
+        protected override string LastLight { get { return HafdisBoss.LastLight; } }
+
+        internal override void Fallen()
+        {
+            base.Fallen();
+            BossKit.Effect(HafdisBoss.Beam, BossKit.Ground(transform.position) ?? transform.position);
         }
 
         // ---- feather rain ----
