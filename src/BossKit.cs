@@ -332,6 +332,27 @@ namespace IslandsOfValheim
             body.m_runSpeed = runSpeed * factor;
         }
 
+        // A storm over the fight, on this client. Only ever undoes its own, and leaves the weather alone
+        // while the restless sea has it (the player carries a fragment).
+        bool forcedStorm;
+
+        protected void Storm(bool want)
+        {
+            EnvMan env = EnvMan.instance;
+            Player player = Player.m_localPlayer;
+            if (env == null || want == forcedStorm) return;
+            if (want && player != null && Story.CarriesPiece(player)) return;
+            forcedStorm = want;
+            if (!want && player != null && Story.CarriesPiece(player)) return;
+            env.SetForceEnvironment(want ? "ThunderStorm" : "");
+            Plugin.Debug(name + "'s storm " + (want ? "comes" : "goes"));
+        }
+
+        protected virtual void OnDestroy()
+        {
+            Storm(false);
+        }
+
         // The glow: a slow pulse, or a quicker, brighter one.
         protected void Shine(bool fierce, float baseIntensity, float baseRange)
         {

@@ -145,8 +145,9 @@ namespace IslandsOfValheim
             }
         }
 
-        void OnDestroy()
+        protected override void OnDestroy()
         {
+            base.OnDestroy();
             if (aura != null) Destroy(aura);
         }
 
