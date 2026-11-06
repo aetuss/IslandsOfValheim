@@ -184,18 +184,21 @@ namespace IslandsOfValheim
                 shared.m_food = shared.m_foodStamina = shared.m_foodEitr = shared.m_foodRegen = 0f;
                 shared.m_consumeStatusEffect = null;
             }
+            SeafarerGear.Glow(BrimOil, new Color(1f, 0.62f, 0.28f), 1.4f, 0.7f, 2.6f); // the warmth of a beacon's fuel
             SE_Stats calm = SeafarerGear.Effect("IoV_SE_StormGlass", "iov_se_calm", false);
             calm.m_ttl = 600f;
             Consumable(StormGlass, new[] { "Crystal" }, "iov_stormglass", 0.3f, Recolor.ToHue(0.55f, 0.5f, 1.1f), calm);
+            SeafarerGear.Glow(StormGlass, new Color(0.6f, 0.82f, 1f), 1.6f, 0.9f, 1.2f); // a calm, slow light inside it
             calmEffect = calm.NameHash();
 
             // Sigrún's: the wind behind the sail, the way Moder's power does it.
             SE_Stats tailwind = SeafarerGear.Effect("IoV_SE_Tailwind", "iov_se_tailwind", false);
             tailwind.m_ttl = 300f;
             tailwind.m_attributes = StatusEffect.StatusAttribute.SailingPower;
-            Consumable(GullFeather, new[] { "Feathers" }, "iov_gullfeather", 0.1f, Recolor.Pale(0.2f, 1.25f), tailwind);
+            Consumable(GullFeather, new[] { "Feathers" }, "iov_gullfeather", 0.1f, SeafarerGear.GullWhite, tailwind);
             // Ormr's crew hunted serpents.
-            CustomItem harpoon = SeafarerGear.Clone(Harpoon, new[] { "SpearChitin" }, "iov_harpoon", Recolor.ToHue(0.08f, 0.45f, 0.85f));
+            // Long at sea: salt-greyed, the chitin gone pale (not a new weapon's colours).
+            CustomItem harpoon = SeafarerGear.Clone(Harpoon, new[] { "SpearChitin" }, "iov_harpoon", BossKit.Cast(new Color(0.62f, 0.66f, 0.68f), 0.4f, 0.95f));
             if (harpoon != null)
             {
                 ItemDrop.ItemData.SharedData shared = harpoon.ItemDrop.m_itemData.m_shared;
@@ -213,6 +216,7 @@ namespace IslandsOfValheim
             SE_Stats tar = SeafarerGear.Effect("IoV_SE_AshTar", "iov_se_ashtar", false);
             tar.m_ttl = 600f;
             Consumable(AshTar, new[] { "Tar" }, "iov_ashtar", 1f, Recolor.ToHue(0.04f, 0.7f, 0.55f), tar);
+            SeafarerGear.Glow(AshTar, new Color(1f, 0.32f, 0.1f), 1.3f, 0.8f, 1.7f); // embers of the burning sea still in it
             tarEffect = tar.NameHash();
 
             // The end of the tale: the fragments made one, clean. The sea knows whoever wears it.

@@ -98,6 +98,38 @@ namespace IslandsOfValheim
             return result;
         }
 
+        // A gull's white: the shading kept, the colour all but gone.
+        internal static Color GullWhite(Color c)
+        {
+            float light = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+            Color result = Color.Lerp(new Color(0.93f, 0.93f, 0.9f), new Color(0.58f, 0.6f, 0.62f), 1f - Mathf.Clamp01(light * 1.6f));
+            result.a = c.a;
+            return result;
+        }
+
+        // A small light of an item's own where it lies (a glass that calms the sea, oil for a beacon, tar
+        // from a burning sea), steady or slowly breathing.
+        internal static void Glow(string name, Color color, float range, float intensity, float breathe)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            if (prefab == null) return;
+            GameObject glow = new GameObject("IoV_ItemGlow");
+            glow.transform.SetParent(prefab.transform, false);
+            glow.transform.localPosition = Vector3.up * 0.15f;
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = range;
+            light.intensity = intensity;
+            light.shadows = LightShadows.None;
+            if (breathe > 0f)
+            {
+                ItemGlow pulse = glow.AddComponent<ItemGlow>();
+                pulse.speed = breathe;
+                pulse.strength = intensity;
+            }
+        }
+
         // The hat: navy, its lighter parts (the band) a captain's dull gold.
         static Color NavyAndGold(Color c)
         {
@@ -397,6 +429,25 @@ namespace IslandsOfValheim
             player.GetInventory().RemoveOneItem(kit);
             player.Message(MessageHud.MessageType.Center, "$iov_caulk_done", 0, null, false);
             Plugin.Debug("Caulking kit used on " + ship.name);
+        }
+    }
+
+    // An item's own light, breathing slowly (SeafarerGear.Glow).
+    class ItemGlow : MonoBehaviour
+    {
+        internal float speed = 1f, strength = 1f;
+        Light light;
+        float offset;
+
+        void Awake()
+        {
+            light = GetComponent<Light>();
+            offset = Random.Range(0f, 10f);
+        }
+
+        void Update()
+        {
+            if (light != null) light.intensity = strength * (0.55f + 0.45f * Mathf.Sin((Time.time + offset) * speed));
         }
     }
 
