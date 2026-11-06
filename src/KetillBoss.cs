@@ -200,8 +200,8 @@ namespace IslandsOfValheim
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = Glow;
-            light.range = 6f;
-            light.intensity = 2.5f;
+            light.range = 8f;
+            light.intensity = 4f;
             light.shadows = LightShadows.None;
             go.AddComponent<FadingLight>();
             TimedDestruction timed = go.AddComponent<TimedDestruction>();
@@ -285,6 +285,24 @@ namespace IslandsOfValheim
             }
         }
 
+        static readonly string[] crewNames = { "Draugr", "Draugr_Ranged", "Draugr_Elite" };
+
+        // With the fragment off him, the curse lets go of his crew too: the draugr about him fall, one
+        // after the other (whoever runs each one sees it die its own way).
+        static System.Collections.IEnumerator CrewLiesDown(Vector3 where)
+        {
+            yield return new WaitForSeconds(1.5f);
+            foreach (Character c in new List<Character>(Character.GetAllCharacters()))
+            {
+                if (c == null || c.IsDead() || System.Array.IndexOf(crewNames, Utils.GetPrefabName(c.gameObject)) < 0 || Vector3.Distance(c.transform.position, where) > 35f) continue;
+                HitData end = new HitData();
+                end.m_damage.m_damage = 1000000f;
+                end.m_point = c.transform.position;
+                c.Damage(end);
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
         // He falls: his last words, and the fragment's light going out where he lay.
         [HarmonyPatch(typeof(Character), "OnDeath")]
         static class DeathPatch
@@ -296,7 +314,12 @@ namespace IslandsOfValheim
                 GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(LastLight) : null;
                 Vector3 chest = glow != null ? glow.position : __instance.transform.position + Vector3.up;
                 if (prefab != null) Object.Instantiate(prefab, chest, Quaternion.identity);
-                Effect("vfx_ghost_death", chest); // what was left of him goes free
+                // What was left of him goes free: a spirit's whirl where the fragment hung, and his dead
+                // crew lie down with him, all over his islet.
+                Effect("fx_summon_spirit_spawn", chest);
+                Effect("vfx_ghost_death", chest);
+                Effect("sfx_ghost_death", chest);
+                if (Plugin.Instance != null) Plugin.Instance.StartCoroutine(CrewLiesDown(__instance.transform.position));
                 Player player = Player.m_localPlayer;
                 if (player != null && Vector3.Distance(player.transform.position, __instance.transform.position) < 60f)
                     player.Message(MessageHud.MessageType.Center, Texts.Get("iov_story_says", "$iov_ketill", "$iov_ketill_death"), 0, null, false);

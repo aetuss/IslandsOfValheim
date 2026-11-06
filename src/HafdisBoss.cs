@@ -106,7 +106,9 @@ namespace IslandsOfValheim
         internal override void Fallen()
         {
             base.Fallen();
-            BossKit.Effect(HafdisBoss.Beam, BossKit.Ground(transform.position) ?? transform.position);
+            Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
+            BossKit.Effect(HafdisBoss.Beam, at);
+            BossKit.Effect("vfx_odin_despawn", at); // the Allfather's own going, where she fell
         }
 
         // ---- feather rain ----

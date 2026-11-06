@@ -197,6 +197,9 @@ namespace IslandsOfValheim
         internal override void Fallen()
         {
             base.Fallen();
+            Vector3 chest = glow != null ? glow.transform.position : transform.position + Vector3.up;
+            BossKit.Effect("vfx_wraith_death", chest); // the curse's half of him goes first
+            BossKit.Effect("sfx_wraith_death", chest);
             if (Plugin.Instance != null) Plugin.Instance.StartCoroutine(OrmrBossFight.Silence(transform.position)); // he's gone before it ends
         }
 

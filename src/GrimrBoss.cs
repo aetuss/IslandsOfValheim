@@ -206,6 +206,7 @@ namespace IslandsOfValheim
             Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
             BossKit.Effect("vfx_ice_destroyed", at);
             BossKit.Effect("vfx_icecube_destroyed", transform.position + Vector3.up * 1.5f);
+            BossKit.Effect("fx_shield_start_frost", transform.position + Vector3.up); // a last flash of cold
         }
 
         // ---- in his rage every blow is harder and stiffens you ----
