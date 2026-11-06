@@ -26,8 +26,14 @@ namespace IslandsOfValheim
             BossKit.RegisterLight(Mark, Glow, 3.5f, 4f, 1.8f);
             BossKit.RegisterLight(LastLight, Glow, 7f, 3.5f, 6f);
             BossKit.RegisterBeam(Beam, 7f, 1.4f, 2.5f); // soft-edged, so a little wider to look as thin
+            // Armour takes dmg²/(4·armour) once it's more than half the blow.
+            HitData.DamageTypes claws = new HitData.DamageTypes();
+            claws.m_slash = ClawSlash;
+            BossKit.RegisterHurt(Claws, "troll_groundslam_aoe", claws, 1.8f, 8f);
         }
 
+        internal const string Claws = "IoV_HafdisClaws"; // her claws' hurt, reaching under her
+        internal const float ClawSlash = 110f;           // about 30 of 200 health through Ask armour (100)
         internal const string LastLight = "IoV_HafdisLastLight";
         internal const string Beam = "IoV_HafdisBeam"; // a thin beam from the sky where she fell: the light at the tale's end, foretold
     }
@@ -35,9 +41,11 @@ namespace IslandsOfValheim
     class HafdisFight : BossFight
     {
         const string PullsKey = "IoV_HafdisPulls", PullWhoKey = "IoV_HafdisPullWho";
-        const float RainEvery = 14f, RainEveryStorm = 9f, RainReach = 25f, RainWarning = 1.4f, RainHeight = 14f, RainSpread = 2.2f, RainLead = 0.6f;
+        // Feathers start lower (a roof over her hall can catch them from high up), closer together, and
+        // aimed a little further ahead of where you're going.
+        const float RainEvery = 14f, RainEveryStorm = 9f, RainReach = 25f, RainWarning = 1.4f, RainHeight = 8f, RainSpread = 1.6f, RainLead = 0.8f;
         const int Feathers = 5, FeathersStorm = 8;
-        const float FeatherPierce = 60f; // Deep North armour takes most of a small blow (38 hurt next to nothing, 110 too much)
+        const float FeatherPierce = 100f; // about 25 of 200 health through Ask armour (100)
         const float PullEvery = 16f, PullEveryStorm = 10f, PullReach = 18f, PullWarning = 1.2f, PullSpeed = 1.6f, PullMax = 15f, PullStormFactor = 1.25f;
         static readonly int wet = "Wet".GetStableHashCode();
         const int PullStage = 1, StormStage = 2;
@@ -111,18 +119,12 @@ namespace IslandsOfValheim
             BossKit.Effect("vfx_odin_despawn", at); // the Allfather's own going, where she fell
         }
 
-        // ---- her claws: she comes down to strike ----
-        // Kept up to 3 m over her hall (FinalStand), her claws passed over your head. While a claw attack
-        // is under way she may come down to the floor (on the client that runs her, where FinalStand
-        // keeps her in reach).
-        const float DiveFor = 1.8f;
-        float diveUntil;
-
-        internal static bool Diving(Character c)
-        {
-            HafdisFight fight = c != null ? c.GetComponent<HafdisFight>() : null;
-            return fight != null && Time.time < fight.diveUntil;
-        }
+        // ---- her claws reach you ----
+        // Kept up to 3 m over her hall (FinalStand), her claws passed over your head; brought down for
+        // them, her body only lifted you. So as her claws strike, they reach whoever stands under and
+        // about her (her own claw hurt, sent as hers).
+        const float ClawReach = 3f;
+        bool clawing;
 
         internal override void AttackStarted()
         {
@@ -130,9 +132,27 @@ namespace IslandsOfValheim
             ItemDrop.ItemData weapon = self != null ? self.GetCurrentWeapon() : null;
             string prefab = weapon != null && weapon.m_dropPrefab != null ? weapon.m_dropPrefab.name : "";
             Plugin.Debug("Hafdís attacks: " + prefab);
-            if (prefab.IndexOf("claw", System.StringComparison.OrdinalIgnoreCase) < 0 && prefab.IndexOf("swoop", System.StringComparison.OrdinalIgnoreCase) < 0) return;
-            diveUntil = Time.time + DiveFor;
-            Plugin.Debug("Hafdís comes down for " + prefab);
+            clawing = prefab.IndexOf("claw", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        internal override void AttackLanded()
+        {
+            if (!clawing || !Owner) return;
+            Character target = Target(RainReach);
+            if (target == null) return;
+            Vector3 flat = target.transform.position - transform.position;
+            flat.y = 0f;
+            if (flat.magnitude > ClawReach || target.transform.position.y > transform.position.y + 1f) return;
+            BossKit.Spawn(HafdisBoss.Claws, target.transform.position + Vector3.up * 0.5f, body);
+            Plugin.Debug("Hafdís's claws reach " + target.m_name);
+        }
+
+        // Her own blows land at half the vanilla body's: her spin took all of 200 health through Ask
+        // armour. (The feathers, ours, keep what they're given.)
+        internal override float HurtScale(HitData hit)
+        {
+            bool ours = Mathf.Approximately(hit.m_damage.m_pierce, FeatherPierce) || Mathf.Approximately(hit.m_damage.m_slash, HafdisBoss.ClawSlash);
+            return ours ? 1f : 0.5f;
         }
 
         // A feather finding its mark (logged, to see in tests that they hit).

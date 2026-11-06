@@ -75,7 +75,7 @@ namespace IslandsOfValheim
         const float DrainShare = 0.35f, DrainMax = 60f;
         const int ShadeStage = 1, FedStage = 2;
         static readonly float[] stages = { 2f / 3f, 1f / 3f };
-        const int Shades = 2, ShadeLevel = 3;
+        const int Shades = 2, ShadeLevel = 2; // one star: two were too much on top of him
 
         Renderer[] looks;
         bool shown = true, vanishing;

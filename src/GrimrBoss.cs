@@ -225,6 +225,10 @@ namespace IslandsOfValheim
             BossKit.Effect("vfx_frosttroll_hit", transform.position + Vector3.up * 1.5f); // a last burst of frost, his size
         }
 
+        // A starred Jotun warrior took 50-60 of 200 health through Ask armour in one blow and all of it in
+        // another: his blows land at six tenths of that (the rage adds a fifth back).
+        internal override float HurtScale(HitData hit) { return 0.6f; }
+
         // ---- in his rage every blow is harder and stiffens you ----
 
         internal override void Dealing(Character target, HitData hit)

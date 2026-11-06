@@ -310,7 +310,10 @@ namespace IslandsOfValheim
             {
                 if (hit == null) return;
                 BossFight fight = FightOf(hit.GetAttacker());
-                if (fight != null) fight.Dealing(__instance, hit);
+                if (fight == null) return;
+                float scale = fight.HurtScale(hit);
+                if (!Mathf.Approximately(scale, 1f)) hit.m_damage.Modify(scale);
+                fight.Dealing(__instance, hit);
             }
         }
     }
@@ -391,6 +394,9 @@ namespace IslandsOfValheim
         internal virtual void AttackLanded() { }
         // On the client that runs it: one of its blows is being dealt to target.
         internal virtual void Dealing(Character target, HitData hit) { }
+        // How hard its own blows land next to the vanilla body's (a keeper with stars can hit far harder
+        // than its tier's armour is made for).
+        internal virtual float HurtScale(HitData hit) { return 1f; }
         // On the client that ran it: it falls. Its own glow goes out slowly where it fell (LastLight),
         // and whatever else it does.
         protected virtual string LastLight { get { return null; } }
