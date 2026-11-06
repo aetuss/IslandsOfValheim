@@ -137,6 +137,17 @@ While you carry a fragment of what the Brim Folk found, the sea turns against yo
 | The Ashlands shore | Ash-sea Tar (10 minutes): the burning sea doesn't harm the ship you're on |
 | The end of the tale | (not sold) Heart of the Sea, a trinket: you swim 30% faster and use 30% less stamina swimming, serpents deal half damage to you and the restless sea sends none |
 
+### The tale's bosses
+
+Four of the tale's foes are bosses of their own, each with its own look, words and fight in stages as its health runs down, and its own end. They're made of the game's own creatures and effects.
+
+| Boss | Where | Fight |
+|---|---|---|
+| Ketill | Swamp waters | A drowned captain. Heavy blows that throw you back, cuts that poison; his dead crew rises around him, and at the end the sky darkens and lightning falls where you stand (a mist marks the spot first). |
+| Grímr | Deep North waters | The first keeper. Ice bursts from the ground at his feet and stiffens you; he raises a frost shield twice, and in his rage every blow chills. |
+| Ormr | Deep North waters | The second keeper. He goes into a mist and comes out behind you, his crew's shades fight for him, and at the end the curse feeds him: what he deals you heals him. |
+| Hafdís | Deep North waters | The last keeper. Her feathers rain down where you're heading (a gold light marks the spot), the sea drags you to her, her claws reach whoever stands under her, and at the end she calls the storm. |
+
 ## Dvergr outposts
 
 Some islets in the Mistlands ring aren't ruins: dvergr live there. Like the dvergr camps on land, they leave you alone as long as you leave them alone, so you can land, look around and sail on in peace. Or raid them: hitting a dvergr, breaking anything of theirs (walls, crates, barrels, furniture), taking the stein or lantern off their table or the black core from its stand, or opening their chest turns the whole outpost against you. Their chest is worth it, and so is the black core. You can't build on their islet, the same as in their camps on land.

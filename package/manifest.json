@@ -2,7 +2,7 @@
   "name": "IslandsOfValheim",
   "version_number": "1.8.0",
   "website_url": "https://github.com/aetuss/IslandsOfValheim",
-  "description": "Islands out at sea: small ones with ruins, guards and treasure, rare large ones with a dungeon or a stronghold, tougher the further you sail, and a sea trader with a tale to tell. Works in existing worlds.",
+  "description": "Islands out at sea: small ones with ruins, guards and treasure, rare large ones with a dungeon or a stronghold, tougher the further you sail, and a sea trader with a tale to tell and its bosses to face. Works in existing worlds.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2360",
     "ValheimModding-Jotunn-2.30.2"

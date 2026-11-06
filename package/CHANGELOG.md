@@ -3,6 +3,13 @@
 ## 1.8.0
 
 - Ketill is a boss of his own now: bigger, dark and wet as one who lay long in the sea, the fragment glowing on his chest. Now and then he strikes the ground with a heavy blow that throws back whoever stands near, and some of his cuts poison you; at two thirds of his health his dead crew rises around him, and at one third the fragment's curse wakes: he grows faster, the sky darkens and lightning falls where you stand (a mist marks the spot first). He has words for you, too. A world where he already walks gets the new Ketill as well.
+- The three keepers of the hidden islet are bosses of their own too, each in its own colours with a glow on its chest, words as its fight turns, and blows tuned to the armour you'd have by then:
+  - Grímr: ice bursts up at his feet and stiffens you for a few seconds ("Grímr's Frost"); at three quarters and at a quarter of his health he raises a frost shield that takes the hurt until it breaks; at half he rages: faster, harder, every blow chilling.
+  - Ormr: he goes into a mist and comes out of another one behind you; at two thirds his crew's shades fight for him; at one third the curse feeds him, and part of what he deals you heals him.
+  - Hafdís: once struck, her feathers rain down where you're heading, a gold light marking the spot, and leave you wet; at two thirds the sea drags you to her and she spins; at one third she calls the storm and it all comes oftener and harder. Her claws now reach whoever stands under her.
+- Each boss has its own end: its glow goes out slowly where it fell. Ketill's dead crew lie down with him, the ice about Grímr breaks apart, Ormr's shades go with him, and a soft beam of light comes down where Hafdís falls.
+- The bosses aren't knocked off their feet as easily as the creatures they're made from.
+- The names of the mod's status effects sit a little higher over their icons.
 
 ## 1.7.0
 
