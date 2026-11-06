@@ -242,6 +242,7 @@ namespace IslandsOfValheim
                 light.range = 1.8f;
                 light.intensity = 0.9f;
                 light.shadows = LightShadows.None;
+                light.renderMode = LightRenderMode.ForcePixel; // a small light: not dropped among brighter ones
                 heart.m_icon = trinket.ItemDrop.m_itemData.GetIcon();
             }
             heartEffect = heart.NameHash();

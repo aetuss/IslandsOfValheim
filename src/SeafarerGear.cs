@@ -151,6 +151,9 @@ namespace IslandsOfValheim
             light.range = range;
             light.intensity = intensity;
             light.shadows = LightShadows.None;
+            // The game draws only its few brightest lights near you in full; a small dim one like this was
+            // dropped among the others (the oil's and the tar's never showed), so this one always is.
+            light.renderMode = LightRenderMode.ForcePixel;
             if (breathe > 0f)
             {
                 ItemGlow pulse = glow.AddComponent<ItemGlow>();
