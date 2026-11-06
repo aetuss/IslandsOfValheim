@@ -102,6 +102,22 @@ namespace IslandsOfValheim
             shield.m_absorbDamage = 400f;
             shield.m_absorbDamagePerSkillLevel = 0f;
             shield.m_absorbDamageWorldLevel = 0f;
+            // The staff's casting flash is made for a player: on him it showed small, up behind his head.
+            // Only the shield itself stays (the dome round him); a cold sound marks it coming up.
+            if (shield.m_startEffects != null && shield.m_startEffects.m_effectPrefabs != null)
+            {
+                System.Collections.Generic.List<EffectList.EffectData> keep = new System.Collections.Generic.List<EffectList.EffectData>();
+                foreach (EffectList.EffectData e in shield.m_startEffects.m_effectPrefabs)
+                {
+                    string fx = e != null && e.m_prefab != null ? e.m_prefab.name : "";
+                    bool dome = fx.IndexOf("StaffShield", System.StringComparison.OrdinalIgnoreCase) >= 0 && fx.IndexOf("start", System.StringComparison.OrdinalIgnoreCase) < 0;
+                    Plugin.Debug("Grímr's shield start effect " + fx + (dome ? ": kept" : ": left out"));
+                    if (dome) keep.Add(e);
+                }
+                EffectList start = new EffectList();
+                start.m_effectPrefabs = keep.ToArray();
+                shield.m_startEffects = start;
+            }
             Plugin.Debug("Grímr's shield from " + vanilla.name);
             return shield;
         }
@@ -158,7 +174,7 @@ namespace IslandsOfValheim
             if (stage == RageStage)
             {
                 Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
-                BossKit.Effect("fx_shield_start_frost", transform.position + Vector3.up);
+                BossKit.Effect("vfx_frosttroll_hit", transform.position + Vector3.up * 1.5f); // a burst of frost, his size
                 BossKit.Effect("fx_fenring_icenova", at);
                 BossKit.Spawn(GrimrBoss.Nova, at, body);
                 nextNova = Time.time + NovaEveryRaging;
@@ -206,7 +222,7 @@ namespace IslandsOfValheim
             Vector3 at = BossKit.Ground(transform.position) ?? transform.position;
             BossKit.Effect("vfx_ice_destroyed", at);
             BossKit.Effect("vfx_icecube_destroyed", transform.position + Vector3.up * 1.5f);
-            BossKit.Effect("fx_shield_start_frost", transform.position + Vector3.up); // a last flash of cold
+            BossKit.Effect("vfx_frosttroll_hit", transform.position + Vector3.up * 1.5f); // a last burst of frost, his size
         }
 
         // ---- in his rage every blow is harder and stiffens you ----

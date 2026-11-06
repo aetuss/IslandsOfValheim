@@ -25,10 +25,7 @@ namespace IslandsOfValheim
             foreach (Character c in new System.Collections.Generic.List<Character>(Character.GetAllCharacters()))
             {
                 if (c == null || c.IsDead() || Utils.GetPrefabName(c.gameObject) != Shade || Vector3.Distance(c.transform.position, where) > 80f) continue;
-                HitData end = new HitData();
-                end.m_damage.m_damage = 1000000f;
-                end.m_point = c.transform.position;
-                c.Damage(end); // reaches whoever runs it; it dies its own way
+                BossKit.LetGo(c); // it dies its own way
                 yield return new WaitForSeconds(0.4f);
             }
         }

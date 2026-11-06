@@ -295,10 +295,8 @@ namespace IslandsOfValheim
             foreach (Character c in new List<Character>(Character.GetAllCharacters()))
             {
                 if (c == null || c.IsDead() || System.Array.IndexOf(crewNames, Utils.GetPrefabName(c.gameObject)) < 0 || Vector3.Distance(c.transform.position, where) > 35f) continue;
-                HitData end = new HitData();
-                end.m_damage.m_damage = 1000000f;
-                end.m_point = c.transform.position;
-                c.Damage(end);
+                Effect("vfx_ghost_death", c.transform.position + Vector3.up * 1.2f); // the curse leaving each of them
+                BossKit.LetGo(c);
                 yield return new WaitForSeconds(0.5f);
             }
         }
@@ -316,8 +314,10 @@ namespace IslandsOfValheim
                 if (prefab != null) Object.Instantiate(prefab, chest, Quaternion.identity);
                 // What was left of him goes free: a spirit's whirl where the fragment hung, and his dead
                 // crew lie down with him, all over his islet.
-                Effect("fx_summon_spirit_spawn", chest);
+                // (Swamp colours, his size: the spirit-caller's purple whirl didn't belong to him.)
+                Effect("vfx_blob_death", chest);
                 Effect("vfx_ghost_death", chest);
+                Effect("vfx_ghost_death", chest + Vector3.up * 0.8f);
                 Effect("sfx_ghost_death", chest);
                 if (Plugin.Instance != null) Plugin.Instance.StartCoroutine(CrewLiesDown(__instance.transform.position));
                 Player player = Player.m_localPlayer;

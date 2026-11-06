@@ -260,6 +260,20 @@ namespace IslandsOfValheim
             }
         }
 
+        // A creature let go by a fallen keeper's curse: it dies its own way. Where this client runs it, its
+        // health simply runs out (no damage number over it); elsewhere a blow just big enough, sent to
+        // whoever runs it.
+        internal static void LetGo(Character c)
+        {
+            if (c == null || c.IsDead()) return;
+            ZNetView view = c.GetComponent<ZNetView>();
+            if (view != null && view.IsValid() && view.IsOwner()) { c.SetHealth(0f); return; }
+            HitData end = new HitData();
+            end.m_damage.m_damage = c.GetHealth() + 1f;
+            end.m_point = c.transform.position;
+            c.Damage(end);
+        }
+
         // A networked mark that shows a beam of light from the sky on every client, then goes.
         internal static void RegisterBeam(string name, float seconds, float width, float fade)
         {
@@ -298,7 +312,7 @@ namespace IslandsOfValheim
 
         void Start()
         {
-            LightBeam.Over(transform.position, seconds, width, fade);
+            LightBeam.Over(transform.position, seconds, width, fade, true);
         }
     }
 

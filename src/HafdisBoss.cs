@@ -25,7 +25,7 @@ namespace IslandsOfValheim
             go.AddComponent<HafdisFight>();
             BossKit.RegisterLight(Mark, Glow, 3.5f, 4f, 1.8f);
             BossKit.RegisterLight(LastLight, Glow, 7f, 3.5f, 6f);
-            BossKit.RegisterBeam(Beam, 6f, 0.8f, 1.5f);
+            BossKit.RegisterBeam(Beam, 7f, 1.4f, 2.5f); // soft-edged, so a little wider to look as thin
         }
 
         internal const string LastLight = "IoV_HafdisLastLight";

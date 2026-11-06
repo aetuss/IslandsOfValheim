@@ -250,6 +250,7 @@ namespace IslandsOfValheim
         Material material;
         Light glow;
         Color color = new Color(1f, 0.93f, 0.72f, 0.38f);
+        float glowStrength = 3f;
 
         internal static void Over(Vector3 foot, float seconds)
         {
@@ -258,6 +259,38 @@ namespace IslandsOfValheim
 
         // width: of the column; fade: how long it takes to come and to go.
         internal static void Over(Vector3 foot, float seconds, float Width, float fade)
+        {
+            Over(foot, seconds, Width, fade, false);
+        }
+
+        static Texture2D softTexture;
+
+        // A soft column: bright down the middle, fading out to its sides, at its foot and up into the sky
+        // (no hard edges anywhere).
+        static Texture2D Soft()
+        {
+            if (softTexture != null) return softTexture;
+            const int w = 32, h = 128;
+            softTexture = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            softTexture.wrapMode = TextureWrapMode.Clamp;
+            Color[] pixels = new Color[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                float v = (y + 0.5f) / h;
+                float along = Mathf.Clamp01(v / 0.04f) * Mathf.Pow(1f - v, 1.6f); // in from the ground, gone up high
+                for (int x = 0; x < w; x++)
+                {
+                    float u = (x + 0.5f) / w;
+                    float across = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 2.5f);
+                    pixels[y * w + x] = new Color(1f, 1f, 1f, across * along);
+                }
+            }
+            softTexture.SetPixels(pixels);
+            softTexture.Apply(false, false);
+            return softTexture;
+        }
+
+        internal static void Over(Vector3 foot, float seconds, float Width, float fade, bool soft)
         {
             Shader shader = null;
             foreach (string name in new[] { "Sprites/Default", "Legacy Shaders/Particles/Additive", "Particles/Standard Unlit", "Unlit/Transparent" })
@@ -270,6 +303,12 @@ namespace IslandsOfValheim
             beam.life = seconds;
             beam.fadeIn = beam.fadeOut = Mathf.Min(fade, seconds * 0.5f);
             beam.material = new Material(shader);
+            if (soft)
+            {
+                beam.material.mainTexture = Soft();
+                beam.color = new Color(1f, 0.93f, 0.75f, 0.55f); // the texture's falloff takes the rest
+                beam.glowStrength = 1.8f;
+            }
             // Two crossed tall quads look like a column from every side; two thinner ones inside, turned 45
             // degrees, make it brighter in the middle.
             for (int i = 0; i < 4; i++)
@@ -308,7 +347,7 @@ namespace IslandsOfValheim
         void Apply(float k)
         {
             if (material != null) material.color = new Color(color.r, color.g, color.b, color.a * k);
-            if (glow != null) glow.intensity = 3f * k;
+            if (glow != null) glow.intensity = glowStrength * k;
         }
 
         void OnDestroy()
