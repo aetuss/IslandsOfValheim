@@ -154,12 +154,24 @@ namespace IslandsOfValheim
             // The game draws only its few brightest lights near you in full; a small dim one like this was
             // dropped among the others (the oil's and the tar's never showed), so this one always is.
             light.renderMode = LightRenderMode.ForcePixel;
-            if (breathe > 0f)
-            {
-                ItemGlow pulse = glow.AddComponent<ItemGlow>();
-                pulse.speed = breathe;
-                pulse.strength = intensity;
-            }
+            ItemGlow pulse = glow.AddComponent<ItemGlow>();
+            pulse.speed = breathe;
+            pulse.strength = intensity;
+            // And the thing itself gives off a little of that colour (seen even where the light isn't drawn).
+            int lit = 0;
+            if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
+                foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (renderer is ParticleSystemRenderer) continue;
+                    foreach (Material m in renderer.sharedMaterials)
+                    {
+                        if (m == null || !m.HasProperty("_EmissionColor")) continue;
+                        m.EnableKeyword("_EMISSION");
+                        m.SetColor("_EmissionColor", color * 0.35f);
+                        lit++;
+                    }
+                }
+            Plugin.Debug(name + ": a light of its own (" + range + " m), and " + lit + " of its materials glow");
         }
 
         // The hat: navy, its lighter parts (the band) a captain's dull gold.
@@ -467,9 +479,12 @@ namespace IslandsOfValheim
     // An item's own light, breathing slowly (SeafarerGear.Glow).
     class ItemGlow : MonoBehaviour
     {
-        internal float speed = 1f, strength = 1f;
+        // Serialized, so copies of the prefab keep them (Unity copies only serialized fields).
+        [SerializeField] internal float speed = 0f;
+        [SerializeField] internal float strength = 1f;
         Light light;
         float offset;
+        static int told;
 
         void Awake()
         {
@@ -477,9 +492,18 @@ namespace IslandsOfValheim
             offset = Random.Range(0f, 10f);
         }
 
+        void Start()
+        {
+            if (light == null || told >= 6) return;
+            told++;
+            Plugin.Debug("Item light on " + (transform.parent != null ? transform.parent.name : name) + ": " + (light.enabled && gameObject.activeInHierarchy ? "on" : "OFF") +
+                ", " + light.intensity + " at " + light.range + " m, " + light.renderMode + ", culling " + light.cullingMask);
+        }
+
         void Update()
         {
-            if (light != null) light.intensity = strength * (0.55f + 0.45f * Mathf.Sin((Time.time + offset) * speed));
+            if (light == null) return;
+            light.intensity = speed > 0f ? strength * (0.55f + 0.45f * Mathf.Sin((Time.time + offset) * speed)) : strength;
         }
     }
 
