@@ -216,7 +216,7 @@ namespace IslandsOfValheim
             SE_Stats tar = SeafarerGear.Effect("IoV_SE_AshTar", "iov_se_ashtar", false);
             tar.m_ttl = 600f;
             Consumable(AshTar, new[] { "Tar" }, "iov_ashtar", 1f, Recolor.ToHue(0.04f, 0.7f, 0.55f), tar);
-            SeafarerGear.Glow(AshTar, new Color(1f, 0.32f, 0.1f), 2f, 1.6f, 1.7f); // embers of the burning sea still in it
+            SeafarerGear.Glow(AshTar, new Color(1f, 0.32f, 0.1f), 3f, 2.4f, 1.7f, 0.45f); // embers of the burning sea still in it (a big dark lump: more light, and above it)
             tarEffect = tar.NameHash();
 
             // The end of the tale: the fragments made one, clean. The sea knows whoever wears it.

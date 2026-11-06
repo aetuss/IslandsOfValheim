@@ -90,7 +90,7 @@ namespace IslandsOfValheim
                 // Tar, oakum and a mallet: the game's hammer, stained with tar (it still works as the kit).
                 Reskin(caulk.ItemPrefab, caulk.ItemDrop.m_itemData.m_shared, "Hammer", BossKit.Cast(new Color(0.16f, 0.11f, 0.08f), 0.5f, 0.9f));
             }
-            Glow(Lure, new Color(1f, 0.72f, 0.3f), 1.2f, 0.8f, 1f); // old amber, carved: it catches the light
+            Glow(Lure, new Color(1f, 0.72f, 0.3f), 1.9f, 1.5f, 1f); // old amber, carved: it catches the light
 
             hatEffect = Hash(hat); vestEffect = Hash(vest); trousersEffect = Hash(trousers); capeEffect = Hash(cape);
             setEffect = Hash(set); stormEffect = Hash(storm); ranEffect = Hash(ran);
@@ -140,11 +140,16 @@ namespace IslandsOfValheim
         // from a burning sea), steady or slowly breathing.
         internal static void Glow(string name, Color color, float range, float intensity, float breathe)
         {
+            Glow(name, color, range, intensity, breathe, 0.15f);
+        }
+
+        internal static void Glow(string name, Color color, float range, float intensity, float breathe, float height)
+        {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             if (prefab == null) return;
             GameObject glow = new GameObject("IoV_ItemGlow");
             glow.transform.SetParent(prefab.transform, false);
-            glow.transform.localPosition = Vector3.up * 0.15f;
+            glow.transform.localPosition = Vector3.up * height;
             Light light = glow.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = color;
