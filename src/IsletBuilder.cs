@@ -87,9 +87,11 @@ namespace IslandsOfValheim
         internal static string SmallTestName(IsletTier islet, int design) { return "IoVTest_Small_" + islet.Name + "_" + design; }
         static string SmallDraftId(IsletTier islet, int design) { return "Small_" + islet.Name + "_" + design; }
 
-        // The new small islet for an old one (variant n becomes n + 4), or null if it isn't an old small islet.
+        // The new kind of islet for an old one: a small islet's variant n becomes n + 4, the old hidden islet
+        // the final arena; null for anything else.
         internal static string TemplatedName(string prefabName)
         {
+            if (prefabName == Story.HiddenIslet) return Story.Arena;
             foreach (IsletTier islet in IsletTier.All)
                 for (int v = 0; v < Variants; v++)
                     if (prefabName == islet.LocationName(v)) return islet.LocationName(v + Variants);
@@ -200,11 +202,17 @@ namespace IslandsOfValheim
         // Height of the ground above sea level at a local position.
         internal static float Height(float x, float z)
         {
+            if (heightOverride != null) return heightOverride(x, z);
             float h = NaturalHeight(x, z);
             return cuts.Count > 0 && !ignoreCuts ? ApplyCuts(x, z, h) : h;
         }
 
         static bool ignoreCuts; // while a design is laid out at the middle before being moved (Village)
+
+        // An islet with a shape of its own (the final arena): its height and its shore, by direction, while
+        // it's built; null for every other islet.
+        static System.Func<float, float, float> heightOverride;
+        static System.Func<float, float> shoreOverride;
 
         static float NaturalHeight(float x, float z)
         {
@@ -387,6 +395,7 @@ namespace IslandsOfValheim
 
         static float ShoreAt(float degrees)
         {
+            if (shoreOverride != null) return shoreOverride(degrees);
             return Shore(degrees * Mathf.Deg2Rad);
         }
 

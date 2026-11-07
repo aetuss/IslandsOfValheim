@@ -32,8 +32,12 @@ namespace IslandsOfValheim
         internal const string OrmrIslet = "IoV_Story_Ormr";
         internal const string DvergrHold = "IoV_Story_Dvergr";
         internal const string AshIslet = "IoV_Story_Ashes";
-        internal const string HiddenIslet = "IoV_Story_Hidden";
-        internal static readonly string[] Islets = { OldHarbour, KetillIslet, SigrunIslet, OrmrIslet, DvergrHold, AshIslet, HiddenIslet }; // iov_goto story1..7
+        internal const string HiddenIslet = "IoV_Story_Hidden"; // up to 1.9: kept for the worlds that have it built
+        internal const string Arena = "IoV_Story_Arena";        // the hidden islet from 2.0: the terraced climb
+        internal static readonly string[] Islets = { OldHarbour, KetillIslet, SigrunIslet, OrmrIslet, DvergrHold, AshIslet, Arena }; // iov_goto story1..7
+
+        // The tale's last islet, either kind.
+        internal static bool IsHidden(string prefabName) { return prefabName == HiddenIslet || prefabName == Arena; }
 
         internal const string Map1 = "IoV_StoryMap1";
         internal const string Map2 = "IoV_StoryMap2";
@@ -54,6 +58,7 @@ namespace IslandsOfValheim
         internal const string OrmrBoss = "IoV_Ormr";
         internal const string Hafdis = "IoV_Hafdis";
         internal const string FinalStand = "IoV_Story_FinalStand"; // runs the three fights on the hidden islet
+        internal const string ArenaStand = "IoV_Story_ArenaStand"; // and on the final arena
         internal const string BrimOil = "IoV_BrimOil";
         internal const string StormGlass = "IoV_StormGlass";
         internal const string GullFeather = "IoV_GullFeather";
@@ -110,7 +115,7 @@ namespace IslandsOfValheim
             new[] { Map4, OrmrIslet, "$iov_storypin4", "iov_storymap4" },
             new[] { Map5, DvergrHold, "$iov_storypin5", "iov_storymap5" },
             new[] { Map6, AshIslet, "$iov_storypin6", "iov_storymap6" },
-            new[] { Map7, HiddenIslet, "$iov_storypin7", "iov_storymap7" },
+            new[] { Map7, Arena, "$iov_storypin7", "iov_storymap7" }, // or the old hidden islet (OnRequest)
         };
 
         // Lore stones on the story islets: prefab, label, text.
@@ -254,6 +259,7 @@ namespace IslandsOfValheim
             RegisterStoryPickable(AshPiece, Piece5, 0f, "Pickable_DvergrLantern");
             foreach (Keeper keeper in Keepers) RegisterKeeper(keeper);
             RegisterMarker(FinalStand).AddComponent<FinalStand>();
+            RegisterMarker(ArenaStand).AddComponent<FinalArena>();
             RegisterMarker(SigrunWaters).AddComponent<SigrunWatersMarker>();
             foreach (string[] stone in Stones) RegisterStone(stone[0], stone[1], stone[2]);
         }
@@ -680,7 +686,9 @@ namespace IslandsOfValheim
             ZoneSystem.LocationInstance best = new ZoneSystem.LocationInstance();
             foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
             {
-                if (instance.m_location == null || instance.m_location.m_prefabName != map[1]) continue;
+                if (instance.m_location == null) continue;
+                string name = instance.m_location.m_prefabName;
+                if (name != map[1] && !(map[1] == Arena && name == HiddenIslet)) continue;
                 if (!found || (instance.m_placed && !best.m_placed) ||
                     (instance.m_placed == best.m_placed && Commands.Distance(instance, from) < Commands.Distance(best, from))) best = instance;
                 found = true;
@@ -888,7 +896,7 @@ namespace IslandsOfValheim
 
         // Hafdís struck: she's an enemy like any other from now on, and comes for whoever is near. Her side
         // is a plain field, so every client turns it; the owner of her AI sets it hunting.
-        static void Awaken(Story.Keeper keeper, Character hafdis)
+        internal static void Awaken(Story.Keeper keeper, Character hafdis)
         {
             if (hafdis.m_faction == keeper.Faction) return;
             BaseAI ai = hafdis.GetBaseAI();
@@ -953,7 +961,7 @@ namespace IslandsOfValheim
             if (view == null || !view.IsValid() || !view.IsOwner()) return;
             Story.Keeper keeper = Story.KeeperOf(current);
             if (keeper == null || keeper.Prefab != Story.Hafdis) return;
-            KeepInReach(current);
+            KeepInReach(current, transform.position);
             Player player = Player.m_localPlayer;
             if (player == null || current.m_faction == keeper.Faction) return; // struck: she fights as she will
             Vector3 to = player.transform.position - current.transform.position;
@@ -965,9 +973,9 @@ namespace IslandsOfValheim
             if (ai != null) ai.LookTowards(to.normalized);
         }
 
-        void KeepInReach(Character c)
+        // centre: her hall's floor.
+        internal static void KeepInReach(Character c, Vector3 centre)
         {
-            Vector3 centre = transform.position;
             Vector3 p = c.transform.position;
             Vector3 want = p;
             float top = centre.y + ReachHeight;
@@ -1004,7 +1012,7 @@ namespace IslandsOfValheim
             nextLine = Time.time + 8f;
         }
 
-        static bool Struck(Character c)
+        internal static bool Struck(Character c)
         {
             BaseAI ai = c.GetBaseAI();
             return ai != null && ai.IsAggravated();

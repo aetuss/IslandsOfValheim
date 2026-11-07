@@ -21,6 +21,7 @@ namespace IslandsOfValheim
             DvergrHold();
             HafdisShore();
             HiddenIslet();
+            FinalArena();
         }
 
         static void BeginStory(string name, IsletTier kind, int variant, float seedShift)
@@ -45,11 +46,17 @@ namespace IslandsOfValheim
         // ruined: vanilla's random damage to the pieces, for a place long abandoned.
         static void EndStory(float minDistance, float maxDistance, bool ruined)
         {
+            EndStory(minDistance, maxDistance, ruined, StorySpots);
+        }
+
+        // spots 0: known to the game (those already built come back as they are), but no longer placed.
+        static void EndStory(float minDistance, float maxDistance, bool ruined, int spots)
+        {
             Plugin.Debug(locationName + " built: " + built + " parts, " + missing + " prefabs not found");
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median;
-            config.Quantity = StorySpots;
+            config.Quantity = spots;
             config.Priotized = true;
             config.Unique = true;
             config.SnapToWater = true;
@@ -291,7 +298,8 @@ namespace IslandsOfValheim
             PlaceDock(cliffDeg + 140f);
             PlacePlants();
             PlacePickables();
-            EndStory(IsletTier.All[6].MinDistance + 600f, IsletTier.All[6].MaxDistance);
+            // From 2.0 the final arena takes its place; this one stays for the worlds that have it built.
+            EndStory(IsletTier.All[6].MinDistance + 600f, IsletTier.All[6].MaxDistance, true, 0);
         }
     }
 }

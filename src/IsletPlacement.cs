@@ -20,7 +20,7 @@ namespace IslandsOfValheim
             if (__result || maxGroup || group == null || !group.StartsWith("IoV_")) return;
             // The tale's two outer islets: each unique location is its own group.
             if (group == Story.AshIslet && p.z > 0f) { __result = true; return; }
-            if (group == Story.HiddenIslet && p.z <= 0f) { __result = true; return; }
+            if (Story.IsHidden(group) && p.z <= 0f) { __result = true; return; }
             if (group == IsletBuilder.Group || group == "IoV_Large")
             {
                 if (mappedFor != __instance) Map(__instance);

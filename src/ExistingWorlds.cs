@@ -147,7 +147,7 @@ namespace IslandsOfValheim
         static bool SideAllows(string prefabName, Vector3 p)
         {
             if (prefabName == Story.AshIslet) return p.z <= 0f;
-            if (prefabName == Story.HiddenIslet) return p.z > 0f;
+            if (Story.IsHidden(prefabName)) return p.z > 0f;
             foreach (IsletTier tier in IsletTier.All)
                 if (prefabName.StartsWith(tier.LocationPrefix) || IsletBuilder.IsLargeOf(prefabName, tier)) return tier.Allows(p);
             return true;
@@ -267,7 +267,8 @@ namespace IslandsOfValheim
             List<string> report = new List<string>();
             foreach (ZoneSystem.ZoneLocation location in new List<ZoneSystem.ZoneLocation>(zones.m_locations))
             {
-                if (!Ours(location)) continue;
+                // (Kinds no longer placed, kept for the worlds that have them built: quantity 0.)
+                if (!Ours(location) || location.m_quantity <= 0) continue;
                 int have;
                 counts.TryGetValue(location.m_prefabName, out have);
                 int missing = location.m_unique ? (have > 0 ? 0 : 1) : location.m_quantity - have;
