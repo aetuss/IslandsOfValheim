@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.9.27";
+        public const string Version = "1.9.28";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -93,7 +93,7 @@ namespace IslandsOfValheim
             }
             IsletBuilder.RegisterLargeIslets();
             TerrainIsletTest.Register(); // research prototype (branch iov-terrain-test)
-            IsletBuilder.MeasureVanilla(); // work in progress: the true sizes of vanilla structures, in the log
+            // IsletBuilder.MeasureVanilla(); // work in progress: the true sizes of vanilla structures, in the log (done for the arena)
         }
 
         internal static void Debug(string message)

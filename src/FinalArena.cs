@@ -42,8 +42,7 @@ namespace IslandsOfValheim
         Vector3 Spot(int i)
         {
             Vector2 s = IsletBuilder.ArenaSpots[i];
-            float above = i == 2 ? 10f : 0.4f;
-            return World(s.x, IsletBuilder.ArenaHollows[i + 1].w + above, s.y);
+            return World(s.x, IsletBuilder.ArenaHollows[i + 1].w + IsletBuilder.ArenaSpotsAbove[i], s.y);
         }
 
         void Tick()

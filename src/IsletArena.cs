@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -7,38 +8,45 @@ namespace IslandsOfValheim
 {
     // The hidden islet as the tale's last climb (from 2.0): a dark crag far out in the Deep North waters, of
     // the game's own terrain, with the fights in hollows cut down into it and narrow gorges between them, so
-    // no place can be seen from the one before. From a hidden cove a cleft leads into Grímr's hollow, where an
-    // old stone ship-setting lies; a gorge winds up to Ormr's, where his ship lies frozen into the rock; another
-    // up to the summit, open to the sky and the sea, where Hafdís keeps her hall. Ice closes each gorge until
-    // the keeper below it falls; each keeper comes out of the mist when it's their turn (FinalArena). The old
-    // hidden islet (IsletStory.HiddenIslet) stays known for the worlds that have it already built.
+    // no place can be seen from the one before. Each room is laid out like the game's own boss places (a focus
+    // in the middle, a frame of great stones round an open floor, nothing in the way), on the true sizes of the
+    // game's pieces (measured in the game):
+    // - a hidden cove, where the warning stone stands;
+    // - Grímr's hollow: a jötun gate in the far wall, which he comes out of, four great stones round the floor,
+    //   and the frozen remains of giants lying on the rim above;
+    // - Ormr's hollow: a mountain altar in the middle, which he stands up on, fire and his frozen crew round it;
+    // - the summit, open to the sky and the sea: a ring of great stones, her ship's dragon head over the cliff;
+    //   Hafdís comes down out of the sky into it.
+    // Ice closes each gorge until the keeper below it falls (FinalArena). The old hidden islet
+    // (IsletStory.HiddenIslet) stays known for the worlds that have it already built.
     static partial class IsletBuilder
     {
         // The crag: an oval, its rim this high over the sea; towards the summit it comes down to the summit's
         // own level, so the top is open.
-        const float CragAx = 30f, CragAz = 48f, CragCz = -4f, CragRim = 19f;
-        const float ArenaReach = 60f, ArenaLand = 50f;
+        const float CragAx = 30f, CragAz = 52f, CragCz = -4f, CragRim = 19f;
+        const float ArenaReach = 64f, ArenaLand = 54f;
         internal const float ArenaTop = CragRim + 2f; // over the rim, for iov_goto
 
         // The hollows: the cove, then each keeper's. Middle (x, z), radius, floor over the sea.
         internal static readonly Vector4[] ArenaHollows =
         {
-            new Vector4(0f, -42f, 7f, 1.2f),    // the cove
-            new Vector4(0f, -20f, 10f, 3f),     // Grímr's: the ship-setting
-            new Vector4(-2f, 6f, 9f, 7.5f),     // Ormr's: his cultists' circle
-            new Vector4(0f, 32f, 12.5f, 13f),   // Hafdís's: the summit
+            new Vector4(0f, -46f, 7f, 1.2f),     // the cove
+            new Vector4(0f, -21f, 12.5f, 3f),    // Grímr's
+            new Vector4(-2f, 6f, 9.5f, 7.5f),    // Ormr's
+            new Vector4(0f, 35f, 14f, 13f),      // Hafdís's: the summit
         };
 
-        // Where each keeper comes: Grímr out of the ice gate in the far wall of his hollow, Ormr in the middle
-        // of his circle, Hafdís down out of the sky over her summit (FinalArena brings her in high).
-        internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -13.5f), new Vector2(-3f, 9.5f), new Vector2(0f, 32f) };
+        // Where each keeper comes: Grímr out of the jötun gate, Ormr on top of his altar, Hafdís down out of the
+        // sky (FinalArena brings Ormr in on the altar and Hafdís in high).
+        internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -13.5f), new Vector2(-2f, 6f), new Vector2(0f, 35f) };
+        internal static readonly float[] ArenaSpotsAbove = { 0.4f, 2.7f, 10f };
 
         // The gorges: points along each (x, z, floor).
         static readonly Vector3[][] Gorges =
         {
-            new[] { new Vector3(0f, -37f, 1.4f), new Vector3(0f, -29f, 3f) },
-            new[] { new Vector3(9f, -16f, 3f), new Vector3(15f, -9f, 4.5f), new Vector3(13f, 0f, 6.5f), new Vector3(6f, 4f, 7.5f) },
-            new[] { new Vector3(-10f, 9f, 7.5f), new Vector3(-15f, 16f, 9.5f), new Vector3(-14f, 23f, 12f), new Vector3(-9f, 28f, 13f) },
+            new[] { new Vector3(0f, -41f, 1.4f), new Vector3(0f, -32.5f, 3f) },
+            new[] { new Vector3(11f, -17f, 3f), new Vector3(16f, -10f, 4.5f), new Vector3(14f, -1f, 6.5f), new Vector3(7f, 3f, 7.5f) },
+            new[] { new Vector3(-11f, 9f, 7.5f), new Vector3(-16f, 15f, 9.5f), new Vector3(-15f, 22f, 12f), new Vector3(-10f, 27f, 13f) },
         };
         static readonly float[] GorgeWidths = { 4.5f, 3.6f, 3.6f };
 
@@ -54,7 +62,7 @@ namespace IslandsOfValheim
             float angle = Mathf.Atan2(ez, ex);
             float e = Mathf.Sqrt(ex * ex + ez * ez) * (1f + 0.06f * Mathf.Sin(angle * 3f + 1.3f) + 0.04f * Mathf.Sin(angle * 7f + 0.4f));
             float top = CragRim + 2.5f * CragNoise(x, z, 0.09f, 31f);
-            top = Mathf.Lerp(top, ArenaHollows[3].w + 0.5f + 0.6f * CragNoise(x, z, 0.25f, 77f), Mathf.Clamp01((z - 25f) / 8f));
+            top = Mathf.Lerp(top, ArenaHollows[3].w + 0.5f + 0.6f * CragNoise(x, z, 0.25f, 77f), Mathf.Clamp01((z - 27f) / 8f));
             if (e <= 0.82f) return top;
             if (e <= 1f)
             {
@@ -181,64 +189,13 @@ namespace IslandsOfValheim
                     }
                 }
 
-            // The cove: a beach between the rocks, an old jetty, and the stone that warns, facing the sea.
-            PlaceDock(266f);
-            PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, new Vector2(3.2f, -39f), 0f, 0f); // its face to the sea, where you come from
-            Brazier(new Vector2(-3f, -36.5f));
-            Brazier(new Vector2(3f, -36.5f));
-            quietProps = true;
-            Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(-3.5f, -40f), 60f, 0.05f);
-            quietProps = false;
+            // The game's structures the rooms take pieces from, each copied once for this islet.
+            Dictionary<string, GameObject> sources = new Dictionary<string, GameObject>();
+            try { ArenaRooms(sources); }
+            finally { foreach (GameObject source in sources.Values) if (source != null) Object.DestroyImmediate(source); }
 
-            // Grímr's hollow: an old ship-setting of standing stones, the dead who came before, and in the far
-            // wall a gate of ice between two blue fires, where he comes out (ArenaSpots).
-            Vector4 grimr = ArenaHollows[1];
-            Vanilla(new[] { "ShipSetting01" }, new Vector2(grimr.x, grimr.y), 0f, 0f);
-            quietProps = true;
-            Prop(new[] { "FrozenSkeleton_Pose2" }, new Vector2(grimr.x - 5.5f, grimr.y - 4f), 30f, 0.05f);
-            Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(grimr.x + 6f, grimr.y + 2.5f), 200f, 0.05f);
-            Lying(new[] { "SwordSilver", "SwordIron" }, new Vector2(grimr.x - 4.4f, grimr.y - 5.2f), 70f, 1.4f);
-            quietProps = false;
-            Vector2 door = new Vector2(grimr.x, grimr.y + grimr.z); // the middle of the far wall
-            OnGround(tier.ShoreIce, door + new Vector2(0f, 0.6f), 10f, 5f, 0.15f);
-            OnGround(tier.ShoreIce, door + new Vector2(-2.8f, -1.2f), 120f, 3.4f, 0.15f);
-            OnGround(tier.ShoreIce, door + new Vector2(2.8f, -1.2f), 250f, 3.4f, 0.15f);
-            Brazier(door + new Vector2(-4.6f, -2.8f));
-            Brazier(door + new Vector2(4.6f, -2.8f));
-
-            // Ormr's hollow: his cultists' circle of stones, his crew knelt round it frozen, fire at the way in;
-            // he stands up in its middle (ArenaSpots). It's open towards the gorge he's come by.
-            Vector4 ormr = ArenaHollows[2];
-            Vector2 ring = ArenaSpots[1];
-            float[] stones = { 25f, 70f, 115f, 160f, 205f, 250f };
-            for (int i = 0; i < stones.Length; i++)
-                PropAtMost(new[] { i % 2 == 0 ? "marker01" : "marker02" }, ring + Polar(stones[i], 4f), 90f - stones[i], 0.1f, 1.6f);
-            quietProps = true;
-            Prop(new[] { "FrozenSkeleton_Pose1" }, ring + Polar(140f, 5.6f), 320f, 0.05f);
-            Prop(new[] { "FrozenSkeleton_Pose2" }, ring + Polar(220f, 5.6f), 40f, 0.05f);
-            Prop(new[] { "FrozenSkeleton_Pose1" }, ring + Polar(95f, 5.8f), 270f, 0.05f);
-            quietProps = false;
-            Brazier(ring + Polar(15f, 5.6f));
-            Brazier(ring + Polar(300f, 5.6f));
-            Ice(new Vector2(ormr.x + 7f, ormr.y + 6f), 250f, 2f);
-
-            // Hafdís's summit: a crown of tall pillars round a wide floor, open to the sea on the north, where
-            // her ship's dragon head looks out; ice grown up between the pillars, blue fire. She comes down out
-            // of the sky into its middle. All of it stone that doesn't break (the fight up here is in the air).
-            Vector4 top = ArenaHollows[3];
-            Vector2 h = new Vector2(top.x, top.y);
-            // (The way in from the west gorge, about 205 degrees, between the pillars at 175 and 235.)
-            float[] crown = { 0f, 35f, 145f, 175f, 235f, 280f, 320f };
-            foreach (float deg in crown) StonePillar(h + Polar(deg, 10f), 3);
-            float[] crystals = { 18f, 160f, 300f };
-            foreach (float deg in crystals) OnGround(tier.ShoreIce, h + Polar(deg, 11f), deg * 3f, 4.5f, 0.15f);
-            // (The summit's floor ends about 6 m north of its middle, where the crag falls to the sea.)
-            OnGround(new[] { "shipwreck_karve_dragonhead", "shipwreck_vikingship_front" }, h + new Vector2(0f, 5.8f), 0f, 5f, 0.1f);
-            float[] fires = { 30f, 150f, 210f, 270f, 330f };
-            foreach (float deg in fires) Brazier(h + Polar(deg, 6f));
-
-            // Snow pines up on the rim, seen from the sea.
-            Vector2[] trees = { new Vector2(-17f, -20f), new Vector2(17f, -24f), new Vector2(-18f, 0f), new Vector2(20f, 8f), new Vector2(-16f, 32f), new Vector2(15f, -38f) };
+            // Snow pines up on the rim, seen from the sea (clear of the giants).
+            Vector2[] trees = { new Vector2(-18f, 0f), new Vector2(20f, 8f), new Vector2(-20f, 10f), new Vector2(20f, 20f), new Vector2(-16f, 32f) };
             for (int i = 0; i < trees.Length; i++)
             {
                 if (ArenaHeight(trees[i].x, trees[i].y) < 12f) continue;
@@ -252,6 +209,93 @@ namespace IslandsOfValheim
 
             // What runs the fights, at the islet's middle.
             PlaceNetworked(Story.ArenaStand, Vector3.zero, 0f);
+        }
+
+        // The rooms, as planned (scratchpad plan "crag2"): every piece where it stands clear of the way through.
+        static void ArenaRooms(Dictionary<string, GameObject> sources)
+        {
+            // The cove: a beach between the rocks, an old jetty, and the stone that warns, its face to the sea.
+            PlaceDock(266f);
+            PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, new Vector2(3.2f, -43f), 0f, 0f);
+            Brazier(new Vector2(-3f, -40.5f));
+            Brazier(new Vector2(3f, -40.5f));
+
+            // Grímr's hollow: the jötun gate in the far wall, blue fire either side of it; four great stones on
+            // the diagonals framing an open floor; the frozen remains of giants on the rim either side, above.
+            Vector4 g = ArenaHollows[1];
+            Vector2 gc = new Vector2(g.x, g.y);
+            StaticPart(sources, "MorkBorg", "exterior/Morkhalla_jotun_gate", new Vector2(0f, -9.6f), 0f, 1f, false, -0.4f);
+            Brazier(new Vector2(-4.6f, -11.5f));
+            Brazier(new Vector2(4.6f, -11.5f));
+            foreach (float deg in new[] { 45f, 135f, 225f, 315f })
+                OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, gc + Polar(deg, 8.5f), deg * 2f + 30f, 5f, 0.1f);
+            StaticPart(sources, "DN_gammeltrollFrac01", "TrollFrost_Frac_legs", new Vector2(19f, -28f), 0f, 1f, true, 4.8f);
+            StaticPart(sources, "DN_gammeltrollFrac02", "TrollFrost_Frac_arm", new Vector2(-19f, -16f), 90f, 1f, true, 4.6f);
+
+            // Ormr's hollow: the mountain altar in the middle, its top 2 m up, where he stands up; blue fire on
+            // the diagonals round it; his frozen crew knelt facing it.
+            Vector4 o = ArenaHollows[2];
+            Vector2 oc = new Vector2(o.x, o.y);
+            StaticPart(sources, "Dragonqueen", "Dragonlocation", oc, 0f, 1f, true, 2.1f);
+            foreach (float deg in new[] { 45f, 135f, 225f, 315f }) Brazier(oc + Polar(deg, 7.8f));
+            quietProps = true;
+            foreach (float deg in new[] { 90f, 200f, 270f })
+                Prop(new[] { deg == 200f ? "FrozenSkeleton_Pose2" : "FrozenSkeleton_Pose1" }, oc + Polar(deg, 7.6f), 270f - deg, 0.05f);
+            quietProps = false;
+
+            // Hafdís's summit: a ring of great stones, open to the way in (from the west gorge, about 219 degrees)
+            // and to the sea on the north, where her ship's dragon head looks out over the cliff; blue fire before
+            // each stone. She comes down out of the sky into the middle.
+            Vector4 s = ArenaHollows[3];
+            Vector2 sc = new Vector2(s.x, s.y);
+            foreach (float deg in new[] { 0f, 30f, 150f, 180f, 255f, 290f, 325f })
+            {
+                OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, sc + Polar(deg, 11.5f), deg * 3f + 10f, 6.5f, 0.1f);
+                Brazier(sc + Polar(deg, 9f));
+            }
+            OnGround(new[] { "shipwreck_karve_dragonhead", "shipwreck_vikingship_front" }, sc + new Vector2(0f, 5.5f), 0f, 5f, 0.1f);
+        }
+
+        // A piece of one of the game's structures (path inside the location), copied without its scripts so it
+        // stands as it is and never breaks, turned yaw more than it was there and scaled; its bottom (or, byTop,
+        // its top) y metres over the ground at its middle. Logged with where it ended up, to check the layout.
+        static GameObject StaticPart(Dictionary<string, GameObject> sources, string location, string path, Vector2 at, float yaw, float scale, bool byTop, float y)
+        {
+            GameObject source;
+            if (!sources.TryGetValue(location, out source))
+            {
+                source = null;
+                if (FindLocation(new[] { location }) != null)
+                {
+                    CustomLocation clone = ZoneManager.Instance.CreateClonedLocation(locationName + "_Part" + (vanillaCount++), location);
+                    if (clone != null && clone.Prefab != null)
+                    {
+                        source = clone.Prefab;
+                        ZoneManager.Instance.DestroyCustomLocation(clone.Name);
+                    }
+                }
+                sources[location] = source;
+            }
+            Transform part = source != null ? source.transform.Find(path) : null;
+            if (part == null)
+            {
+                missing++;
+                Plugin.Log.LogWarning(locationName + ": no " + location + "/" + path);
+                return null;
+            }
+            GameObject go = Object.Instantiate(part.gameObject, parent, false);
+            go.name = part.name;
+            Strip(go);
+            go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * (Quaternion.Inverse(source.transform.rotation) * part.rotation);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale = part.lossyScale * scale;
+            Bounds b = LocalBounds(go);
+            Move(go, b, new Vector3(at.x, Height(at.x, at.y) + y, at.y), byTop);
+            Bounds placed = LocalBounds(go);
+            built++;
+            Plugin.Log.LogInfo(locationName + ": " + location + "/" + path + " placed at " + at.ToString("F1") + ", spans x " + placed.min.x.ToString("F1") + ".." + placed.max.x.ToString("F1") +
+                " z " + placed.min.z.ToString("F1") + ".." + placed.max.z.ToString("F1") + " y " + placed.min.y.ToString("F1") + ".." + placed.max.y.ToString("F1") + " (ground " + Height(at.x, at.y).ToString("F1") + ")");
+            return go;
         }
 
         static void Brazier(Vector2 at)
