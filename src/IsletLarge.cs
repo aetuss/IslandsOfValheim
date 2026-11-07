@@ -89,9 +89,25 @@ namespace IslandsOfValheim
             new LargeKind { Tier = IsletTier.All[2], Variant = 0, Height = 5f, Layout = Layout.FulingStronghold,
                 Guardian = new[] { "GoblinBrute" },
                 Life = new[] { L("Lox", 2, Where.Slope), L("Deathsquito", 2, Where.Air) } },
+            // The abandoned farm: peaceful, the lox graze on its fields.
+            new LargeKind { Tier = IsletTier.All[2], Design = 2, Variant = 1, Height = 4.5f, Scale = 3f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0],
+                Life = new[] { L("Lox", 3, Where.Slope) } },
+            // The tar lake: the tar's own creatures, and the fulings who come for it.
+            new LargeKind { Tier = IsletTier.All[2], Design = 3, Variant = 2, Height = 4f, Scale = 2.9f, Layout = Layout.Village,
+                Guardian = new[] { "GoblinShaman", "Goblin" },
+                Life = new[] { L("Deathsquito", 2, Where.Air), L("BlobTar", 2, Where.Plateau) } },
             new LargeKind { Tier = IsletTier.All[5], Variant = 0, Height = 6f, Layout = Layout.CharredFortress,
                 Guardian = new[] { "Morgen_NonSleeping", "Morgen", "Charred_Melee_Dyrnwyn" },
                 Life = new[] { L("Asksvin", 3, Where.Plateau), L("Volture", 2, Where.Air) } },
+            // The morgen pits.
+            new LargeKind { Tier = IsletTier.All[5], Design = 2, Variant = 3, Height = 5.5f, Scale = 2.8f, Layout = Layout.Village,
+                Guardian = new[] { "Morgen_NonSleeping", "Morgen" },
+                Life = new[] { L("Asksvin", 2, Where.Plateau), L("Volture", 1, Where.Air) } },
+            // The sulfur arch and the vultures' nest.
+            new LargeKind { Tier = IsletTier.All[5], Design = 3, Variant = 1, Height = 5f, Scale = 3f, Layout = Layout.Village,
+                Guardian = new[] { "Charred_Mage", "Charred_Melee" },
+                Life = new[] { L("Volture", 3, Where.Air), L("Asksvin", 2, Where.Slope) } },
             // The dungeons dug into the ground stand on tall islets, so their pits stay above the sea.
             new LargeKind { Tier = IsletTier.All[3], Variant = 0, Height = 16f, Scale = 4f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
                 Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
