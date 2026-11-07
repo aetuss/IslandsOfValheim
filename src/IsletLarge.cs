@@ -42,7 +42,11 @@ namespace IslandsOfValheim
             internal float Plateau, Shore;
             internal Vector3 KeeperOffset;
 
+            // The islet on our ground mesh, up to 1.9: kept for the ones already built in a world (players may
+            // have settled there), but no longer placed anew.
             internal string LocationName { get { return LargePrefix + Tier.Name; } }
+            // The islet on the game's own terrain (from 2.0): every new one.
+            internal string LandName { get { return LargePrefix + Tier.Name + "_Land"; } }
             internal string KeeperName { get { return "IoV_LargeKeeper_" + Tier.Name; } }
             internal string ChestName(int band) { return "IoV_LargeChest_" + Tier.Name + "_" + band; }
         }
@@ -82,8 +86,14 @@ namespace IslandsOfValheim
         internal static LargeKind LargeKindOf(string prefabName)
         {
             foreach (LargeKind kind in LargeKinds)
-                if (prefabName == kind.LocationName || prefabName == kind.KeeperName) return kind;
+                if (prefabName == kind.LocationName || prefabName == kind.LandName || prefabName == kind.KeeperName) return kind;
             return null;
+        }
+
+        // A large islet of this tier, either kind of ground.
+        internal static bool IsLargeOf(string prefabName, IsletTier tier)
+        {
+            return prefabName == LargePrefix + tier.Name || prefabName == LargePrefix + tier.Name + "_Land";
         }
 
         // ---- prefabs: the keeper of each kind, and its three chests ----
@@ -111,16 +121,12 @@ namespace IslandsOfValheim
         {
             if (Plugin.LargeIslets.Value <= 0) return;
             foreach (LargeKind kind in LargeKinds)
-                BuildLarge(kind, kind.LocationName, false, Plugin.LargeIslets.Value);
-            // Work in progress (branch large-terrain): every kind on real terrain, placed only by
-            // `iov_goto largeterrain <tier>`.
-            foreach (LargeKind kind in LargeKinds)
-                BuildLarge(kind, LargeTerrainTest(kind), true, 0);
-        }
-
-        internal static string LargeTerrainTest(LargeKind kind)
-        {
-            return "IoVTest_LargeTerrain_" + kind.Tier.Name;
+            {
+                // The old ones stay known to the game (quantity 0), so those already built keep coming back
+                // as they are; every new one is of the game's own terrain.
+                BuildLarge(kind, kind.LocationName, false, 0);
+                BuildLarge(kind, kind.LandName, true, Plugin.LargeIslets.Value);
+            }
         }
 
         static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity)

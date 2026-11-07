@@ -88,26 +88,6 @@ namespace IslandsOfValheim
                         TerrainIsletTest.Goto(args.Context); // research prototype
                         return;
                     }
-                    if (args.Length > 1 && string.Equals(args[1], "largeterrain", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        // work in progress: a large islet on real terrain (iov_goto largeterrain [tier]), in its tier's waters
-                        IsletBuilder.LargeKind kind = IsletBuilder.LargeKinds[0];
-                        if (args.Length > 2)
-                        {
-                            kind = null;
-                            foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds)
-                                if (string.Equals(k.Tier.Name, args[2], System.StringComparison.OrdinalIgnoreCase)) kind = k;
-                            if (kind == null)
-                            {
-                                List<string> tiers = new List<string>();
-                                foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds) tiers.Add(k.Tier.Name);
-                                args.Context.AddString("Unknown tier " + args[2] + ". Use one of: " + string.Join(", ", tiers.ToArray()) + ".");
-                                return;
-                            }
-                        }
-                        TerrainIsletTest.Goto(args.Context, IsletBuilder.LargeTerrainTest(kind), kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance));
-                        return;
-                    }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
@@ -159,7 +139,7 @@ namespace IslandsOfValheim
             for (int i = 1; i <= Story.Islets.Length; i++)
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
             foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
-                if (string.Equals(arg, "large_" + kind.Tier.Name, System.StringComparison.OrdinalIgnoreCase)) return kind.LocationName;
+                if (string.Equals(arg, "large_" + kind.Tier.Name, System.StringComparison.OrdinalIgnoreCase)) return kind.LandName;
             return null;
         }
 
@@ -195,9 +175,15 @@ namespace IslandsOfValheim
 
         static List<ZoneSystem.LocationInstance> Unique(string location)
         {
+            // A large islet: either kind of ground (old ones on our mesh, new ones of the game's terrain).
+            IsletBuilder.LargeKind large = IsletBuilder.LargeKindOf(location);
             List<ZoneSystem.LocationInstance> result = new List<ZoneSystem.LocationInstance>();
             foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
-                if (instance.m_location != null && instance.m_location.m_prefabName == location) result.Add(instance);
+            {
+                if (instance.m_location == null) continue;
+                string name = instance.m_location.m_prefabName;
+                if (name == location || (large != null && (name == large.LocationName || name == large.LandName))) result.Add(instance);
+            }
             return result;
         }
 

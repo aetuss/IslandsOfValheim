@@ -59,7 +59,7 @@ namespace IslandsOfValheim
             {
                 if (location == null || location.m_prefabName == null) continue;
                 foreach (IsletTier tier in IsletTier.All)
-                    if (tier.Side != IsletTier.Half.Any && (location.m_prefabName.StartsWith(tier.LocationPrefix) || location.m_prefabName == IsletBuilder.LargePrefix + tier.Name))
+                    if (tier.Side != IsletTier.Half.Any && (location.m_prefabName.StartsWith(tier.LocationPrefix) || IsletBuilder.IsLargeOf(location.m_prefabName, tier)))
                         sided[location.m_prefab.m_assetID] = tier;
             }
             Plugin.Debug("Islet kinds that keep to one half of the world: " + sided.Count + " locations");

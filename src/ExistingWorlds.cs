@@ -40,8 +40,14 @@ namespace IslandsOfValheim
             if (ZNet.instance == null)
             {
                 started = false; // back at the main menu: the next world gets its own check
+                converted = false;
                 readySince = -1f;
                 return;
+            }
+            if (!converted && ZNet.instance.IsServer() && ZoneSystem.instance != null && ZoneSystem.instance.LocationsGenerated)
+            {
+                converted = true; // as soon as the world's locations are there, before anyone sails near
+                LargeToLand(ZoneSystem.instance);
             }
             if (started || !Plugin.PlaceInExistingWorlds.Value) return;
             ZoneSystem zones = ZoneSystem.instance;
@@ -62,6 +68,38 @@ namespace IslandsOfValheim
             Plugin.Instance.StartCoroutine(Run(null));
         }
 
+        static bool converted;
+
+        // Large islets of the old kind (our ground mesh) that the world has room for but nobody has come near
+        // yet become islets of the game's own terrain, where they are: nothing is built there, so nothing is
+        // lost. Those already built stay as they are, with whatever players made on them. Every load (cheap).
+        static void LargeToLand(ZoneSystem zones)
+        {
+            Dictionary<string, ZoneSystem.ZoneLocation> land = new Dictionary<string, ZoneSystem.ZoneLocation>();
+            foreach (ZoneSystem.ZoneLocation location in zones.m_locations)
+                if (location != null && location.m_prefabName != null) land[location.m_prefabName] = location;
+            int changed = 0;
+            foreach (Vector2s zone in new List<Vector2s>(zones.m_locationInstances.Keys))
+            {
+                ZoneSystem.LocationInstance instance = zones.m_locationInstances[zone];
+                if (instance.m_placed || instance.m_location == null) continue;
+                IsletBuilder.LargeKind kind = IsletBuilder.LargeKindOf(instance.m_location.m_prefabName);
+                ZoneSystem.ZoneLocation to;
+                if (kind == null || instance.m_location.m_prefabName != kind.LocationName || !land.TryGetValue(kind.LandName, out to)) continue;
+                instance.m_location = to;
+                zones.m_locationInstances[zone] = instance;
+                changed++;
+            }
+            if (changed > 0) Plugin.Log.LogInfo("Large islets: " + changed + " not yet built will be of the game's own terrain");
+        }
+
+        // Old and new large islets of a kind count as one: a world that has its old ones gets no new ones on top.
+        static string Kind(string prefabName)
+        {
+            IsletBuilder.LargeKind kind = IsletBuilder.LargeKindOf(prefabName);
+            return kind != null && prefabName == kind.LocationName ? kind.LandName : prefabName;
+        }
+
         internal static void RunNow(Terminal context)
         {
             Plugin.Instance.StartCoroutine(Run(context));
@@ -80,7 +118,7 @@ namespace IslandsOfValheim
             if (prefabName == Story.AshIslet) return p.z <= 0f;
             if (prefabName == Story.HiddenIslet) return p.z > 0f;
             foreach (IsletTier tier in IsletTier.All)
-                if (prefabName.StartsWith(tier.LocationPrefix) || prefabName == IsletBuilder.LargePrefix + tier.Name) return tier.Allows(p);
+                if (prefabName.StartsWith(tier.LocationPrefix) || IsletBuilder.IsLargeOf(prefabName, tier)) return tier.Allows(p);
             return true;
         }
 
@@ -170,7 +208,7 @@ namespace IslandsOfValheim
             foreach (ZoneSystem.LocationInstance instance in zones.GetLocationList())
             {
                 if (!Ours(instance.m_location)) continue;
-                Add(counts, instance.m_location.m_prefabName);
+                Add(counts, Kind(instance.m_location.m_prefabName));
                 ours.Add(instance.m_position);
                 AddTo(byGroup, instance.m_location.m_group, instance.m_position);
             }
