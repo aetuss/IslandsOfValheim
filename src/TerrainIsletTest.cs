@@ -92,7 +92,8 @@ namespace IslandsOfValheim
                 bool built = generated != null && generated.Contains(zone);
                 registerLocation.Invoke(zones, new object[] { location, spot, built });
                 if (built)
-                    spawnLocation.Invoke(zones, new object[] { location, 1234, spot, Quaternion.identity, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+                    // Turned, as world generation turns locations, so the ground is seen to turn with it.
+                    spawnLocation.Invoke(zones, new object[] { location, 1234, spot, Quaternion.Euler(0f, 137f, 0f), ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
                 Plugin.Log.LogInfo("Test location " + name + " placed at " + spot.ToString("F0") + (built ? " (zone already there: built now)" : " (built when the zone is)"));
             }
             Vector3 target = new Vector3(spot.x, zones.m_waterLevel + top + 4f, spot.z);
@@ -106,7 +107,10 @@ namespace IslandsOfValheim
         static bool FindSpot(out Vector3 spot, float reach, float from)
         {
             float water = ZoneSystem.instance.m_waterLevel;
-            for (float r = from; r < 7000f; r += 64f)
+            // Well away from the other test locations already placed, and from any location at all.
+            List<Vector3> taken = new List<Vector3>();
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList()) taken.Add(instance.m_position);
+            for (float r = from; r < 10000f; r += 64f)
             {
                 int steps = Mathf.Max(16, Mathf.RoundToInt(r * 2f * Mathf.PI / 64f));
                 for (int i = 0; i < steps; i++)
@@ -114,6 +118,10 @@ namespace IslandsOfValheim
                     float a = i * Mathf.PI * 2f / steps;
                     Vector3 p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                     if (!DeepOcean(p, water, 10f)) continue;
+                    bool clear = true;
+                    foreach (Vector3 t in taken)
+                        if (Utils.DistanceXZ(t, p) < reach + 60f) { clear = false; break; }
+                    if (!clear) continue;
                     bool open = true;
                     for (int k = 0; k < 12 && open; k++)
                     {

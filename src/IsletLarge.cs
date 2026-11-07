@@ -112,12 +112,16 @@ namespace IslandsOfValheim
             if (Plugin.LargeIslets.Value <= 0) return;
             foreach (LargeKind kind in LargeKinds)
                 BuildLarge(kind, kind.LocationName, false, Plugin.LargeIslets.Value);
-            // Work in progress (branch large-terrain): the Meadows large islet on real terrain, placed only by
-            // `iov_goto largeterrain`.
-            BuildLarge(LargeKinds[0], LargeTerrainTest, true, 0);
+            // Work in progress (branch large-terrain): every kind on real terrain, placed only by
+            // `iov_goto largeterrain <tier>`.
+            foreach (LargeKind kind in LargeKinds)
+                BuildLarge(kind, LargeTerrainTest(kind), true, 0);
         }
 
-        internal const string LargeTerrainTest = "IoVTest_LargeTerrain_Meadows";
+        internal static string LargeTerrainTest(LargeKind kind)
+        {
+            return "IoVTest_LargeTerrain_" + kind.Tier.Name;
+        }
 
         static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity)
         {
@@ -196,6 +200,16 @@ namespace IslandsOfValheim
             PlaceWreck(cliffDeg + 194f);
             PlaceHints();
             PlaceOutsideGuard();
+
+            if (terrain)
+            {
+                // Nothing of ours may reshape the ground on top of the islet's own (on the mesh islets such
+                // things only ever touched the sea floor under them).
+                int stray = 0;
+                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(m.gameObject); stray++; }
+                foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); stray++; }
+                if (stray > 0) Plugin.Log.LogWarning(locationName + ": removed " + stray + " terrain modifiers from the islet's parts");
+            }
 
             Location location = root.AddComponent<Location>();
             location.m_applyRandomDamage = tier.Ruined;

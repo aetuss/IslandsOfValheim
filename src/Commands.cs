@@ -90,8 +90,22 @@ namespace IslandsOfValheim
                     }
                     if (args.Length > 1 && string.Equals(args[1], "largeterrain", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        // work in progress: the Meadows large islet on real terrain, away from the small test islet
-                        TerrainIsletTest.Goto(args.Context, IsletBuilder.LargeTerrainTest, IsletBuilder.LargeKinds[0].Height, 130f, 900f);
+                        // work in progress: a large islet on real terrain (iov_goto largeterrain [tier]), in its tier's waters
+                        IsletBuilder.LargeKind kind = IsletBuilder.LargeKinds[0];
+                        if (args.Length > 2)
+                        {
+                            kind = null;
+                            foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds)
+                                if (string.Equals(k.Tier.Name, args[2], System.StringComparison.OrdinalIgnoreCase)) kind = k;
+                            if (kind == null)
+                            {
+                                List<string> tiers = new List<string>();
+                                foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds) tiers.Add(k.Tier.Name);
+                                args.Context.AddString("Unknown tier " + args[2] + ". Use one of: " + string.Join(", ", tiers.ToArray()) + ".");
+                                return;
+                            }
+                        }
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.LargeTerrainTest(kind), kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance));
                         return;
                     }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
