@@ -68,6 +68,8 @@ $refs = @(
 
 # The translations go into the dll too (Texts.LoadOwn), so the texts are there however the mod is installed.
 $resources = Get-ChildItem $langRoot -Directory | ForEach-Object { "/resource:" + (Join-Path $_.FullName "IslandsOfValheim.json") + ",IoV.Translations." + $_.Name + ".json" }
+# The large islets' drafts (what stands on each design, laid out in the game with the dev tool).
+$resources += Get-ChildItem (Join-Path $root "drafts") -Filter *.json -ErrorAction SilentlyContinue | ForEach-Object { "/resource:" + $_.FullName + ",IoV.Drafts." + $_.Name }
 
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /nostdlib /noconfig /target:library /optimize+ `
     /codepage:65001 $refs $resources /out:"$tmp\IslandsOfValheim.dll" "$tmp\*.cs"

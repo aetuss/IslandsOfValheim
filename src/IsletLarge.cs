@@ -41,18 +41,26 @@ namespace IslandsOfValheim
             // Each land has several designs (1, 2, 3...), so the islets of a world don't repeat one another.
             // Design 1 is also the old islet of our ground mesh, which keeps its old layout (Inhabit).
             internal int Design = 1;
-            internal System.Action<LargeKind> Content; // what stands on it (null: the old village layout)
             internal bool Peaceful;         // no guardian and no guards: only its animals and what's to find
-            // Worked out while it's built: radii, and where the keeper stands from the middle.
+            // Where its dungeon's middle stands on a land islet (the old mesh islet has it in the middle), and
+            // how it's turned (NaN: its way in away from the cliff).
+            internal Vector2 DungeonAt;
+            internal float DungeonTurn = float.NaN;
+            // Worked out while it's built: radii, and where the keeper stands from the middle (on the old mesh
+            // islet and on the land one).
             internal float Plateau, Shore;
-            internal Vector3 KeeperOffset;
+            internal Vector3 KeeperOffset, LandKeeperOffset;
 
             // The islet on our ground mesh, up to 1.9: kept for the ones already built in a world (players may
             // have settled there), but no longer placed anew. Design 1 only.
             internal string LocationName { get { return LargePrefix + Tier.Name; } }
-            // The islet on the game's own terrain (from 2.0): every new one.
+            // The islet on the game's own terrain (from 2.0): every new one. What stands on it is its draft.
             internal string LandName { get { return LargePrefix + Tier.Name + "_Land" + (Design > 1 ? Design.ToString() : ""); } }
-            internal string KeeperName { get { return "IoV_LargeKeeper_" + Tier.Name + (Design > 1 ? "_" + Design : ""); } }
+            internal string KeeperName { get { return "IoV_LargeKeeper_" + Tier.Name; } }
+            internal string LandKeeperName { get { return "IoV_LargeKeeper_" + Tier.Name + "_Land" + Design; } }
+            internal string DraftId { get { return Tier.Name + "_" + Design; } }
+            // The land islet's bare ground (and dungeon), unturned, to draw its draft on: iov_goto draft_meadows_2.
+            internal string BaseName { get { return "IoVTest_Base_" + DraftId; } }
             internal string ChestName(int band) { return "IoV_LargeChest_" + Tier.Name + "_" + band; }
         }
 
@@ -61,22 +69,22 @@ namespace IslandsOfValheim
         internal static readonly List<LargeKind> LargeKinds = new List<LargeKind>
         {
             new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Scale = 3.2f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Layout = Layout.Village,
-                Guardian = new[] { "Greydwarf_Elite" }, Content = BarrowHill,
+                Guardian = new[] { "Greydwarf_Elite" }, DungeonAt = new Vector2(7.3f, 10.8f),
                 Life = new[] { L("Deer", 3, Where.Slope), L("Boar", 3, Where.Plateau), L("Neck", 2, Where.Shore) }, Extra = new[] { "Beehive" } },
             new LargeKind { Tier = IsletTier.All[0], Design = 2, Variant = 1, Height = 4f, Scale = 3f, Layout = Layout.Village,
-                Peaceful = true, Guardian = new string[0], Content = BeekeepersIslet,
+                Peaceful = true, Guardian = new string[0],
                 Life = new[] { L("Deer", 4, Where.Slope), L("Boar", 2, Where.Plateau) } },
             new LargeKind { Tier = IsletTier.All[0], Design = 3, Variant = 2, Height = 3.5f, Scale = 3.1f, Layout = Layout.Village,
-                Peaceful = true, Guardian = new string[0], Content = FishersVillage,
+                Peaceful = true, Guardian = new string[0],
                 Life = new[] { L("Neck", 4, Where.Shore), L("Deer", 2, Where.Slope) } },
             new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Scale = 2.8f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Layout = Layout.Village,
-                Guardian = new[] { "Abomination" }, Content = DrownedCrypt,
+                Guardian = new[] { "Abomination" }, DungeonAt = new Vector2(-11.3f, -4.1f),
                 Life = new[] { L("Leech", 4, Where.Water), L("Crow", 3, Where.Air) } },
             new LargeKind { Tier = IsletTier.All[1], Design = 2, Variant = 3, Height = 3.5f, Scale = 2.6f, Layout = Layout.Village,
-                Guardian = new[] { "Wraith" }, Content = WitchsHut,
+                Guardian = new[] { "Wraith" },
                 Life = new[] { L("Leech", 5, Where.Water), L("Crow", 2, Where.Air) } },
             new LargeKind { Tier = IsletTier.All[1], Design = 3, Variant = 0, Height = 4.5f, Scale = 2.9f, Layout = Layout.Village,
-                Guardian = new[] { "Draugr_Elite" }, Content = MistyGraveyard,
+                Guardian = new[] { "Draugr_Elite" },
                 Life = new[] { L("Leech", 3, Where.Water), L("Crow", 4, Where.Air) } },
             new LargeKind { Tier = IsletTier.All[2], Variant = 0, Height = 5f, Layout = Layout.FulingStronghold,
                 Guardian = new[] { "GoblinBrute" },
@@ -103,7 +111,7 @@ namespace IslandsOfValheim
         internal static LargeKind LargeKindOf(string prefabName)
         {
             foreach (LargeKind kind in LargeKinds)
-                if (prefabName == kind.LocationName || prefabName == kind.LandName || prefabName == kind.KeeperName) return kind;
+                if (prefabName == kind.LandName || prefabName == kind.LandKeeperName || (kind.Design == 1 && (prefabName == kind.LocationName || prefabName == kind.KeeperName))) return kind;
             return null;
         }
 
@@ -128,18 +136,25 @@ namespace IslandsOfValheim
         {
             foreach (LargeKind kind in LargeKinds)
             {
-                GameObject go = PrefabManager.Instance.CreateEmptyPrefab(kind.KeeperName, true);
-                Object.DestroyImmediate(go.GetComponent<MeshRenderer>());
-                Object.DestroyImmediate(go.GetComponent<MeshFilter>());
-                Object.DestroyImmediate(go.GetComponent<Collider>());
-                go.GetComponent<ZNetView>().m_persistent = true;
-                go.AddComponent<LargeIslet>();
-                PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
+                // The old mesh islet's keeper (design 1 only), and the land islet's.
+                if (kind.Design == 1) AddKeeper(kind.KeeperName);
+                AddKeeper(kind.LandKeeperName);
                 if (kind.Design == 1) // the chests are the land's, shared by its designs
                     for (int band = 0; band < 3; band++) IsletPrefabs.AddLargeChest(kind.Tier, kind.ChestName(band), band);
                 foreach (Life life in kind.Life)
                     if (PrefabManager.Instance.GetPrefab(life.Prefab) == null) Plugin.Log.LogWarning("Large " + kind.Tier.Name + " islets: " + life.Prefab + " not found, left out.");
             }
+        }
+
+        static void AddKeeper(string name)
+        {
+            GameObject go = PrefabManager.Instance.CreateEmptyPrefab(name, true);
+            Object.DestroyImmediate(go.GetComponent<MeshRenderer>());
+            Object.DestroyImmediate(go.GetComponent<MeshFilter>());
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.GetComponent<ZNetView>().m_persistent = true;
+            go.AddComponent<LargeIslet>();
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
         // ---- the location ----
@@ -153,30 +168,41 @@ namespace IslandsOfValheim
                 // as they are; every new one is of the game's own terrain.
                 if (kind.Design == 1) BuildLarge(kind, kind.LocationName, false, 0, false);
                 BuildLarge(kind, kind.LandName, true, QuantityOf(kind), false);
-                // Work in progress (branch large-terrain, not for release): each kind's islet with nothing on it
-                // but its ground and rocks, unturned, for designing what stands on it (iov_goto emptylarge <tier>).
-                if (kind.Design == 1) BuildLarge(kind, EmptyName(kind), true, 0, true);
+                // Work in progress (branch large-terrain, not for release): each design's islet with only its
+                // ground, rocks and dungeon, unturned, to draw its draft on (iov_goto draft_meadows_2).
+                BuildLarge(kind, kind.BaseName, true, 0, true);
             }
         }
 
-        static DungeonInterior designInterior; // the dungeon of the islet being designed, if it has one
+        static bool onLand; // the islet being built is of the game's terrain (its own keeper)
 
-        internal static string EmptyName(LargeKind kind)
+        // Where the islet's keeper stands (its animals, and on a dangerous islet its guardian and guards, and
+        // the chest, come from it), local to the islet.
+        static void SetKeeper(LargeKind kind, Vector3 at)
         {
-            return "IoVTest_EmptyLarge_" + kind.Tier.Name;
+            if (onLand) kind.LandKeeperOffset = at;
+            else kind.KeeperOffset = at;
+            PlaceNetworked(onLand ? kind.LandKeeperName : kind.KeeperName, at, 0f);
         }
 
-        static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity, bool empty)
+        static void Keeper(LargeKind kind, Vector2 at)
+        {
+            SetKeeper(kind, new Vector3(at.x, Height(at.x, at.y) + 0.3f, at.y));
+        }
+
+        static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity, bool bare)
         {
             buildingLarge = true;
-            try { LargeIsletOf(kind, name, terrain, quantity, empty); }
+            onLand = terrain;
+            try { LargeIsletOf(kind, name, terrain, quantity, bare); }
             catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
             finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
         }
 
         // terrain: the ground is the game's own terrain, raised to the islet's shape (BakedGround), instead
         // of our mesh.
-        static void LargeIsletOf(LargeKind kind, string name, bool terrain, int quantity, bool empty)
+        // bare: only the ground, rocks and dungeon, to draw a draft on.
+        static void LargeIsletOf(LargeKind kind, string name, bool terrain, int quantity, bool bare)
         {
             tier = kind.Tier;
             locationName = name;
@@ -193,11 +219,16 @@ namespace IslandsOfValheim
             parent = root.transform;
             built = 0;
             missing = 0;
-            // The dungeon in the middle, where there is one; a dug-in one shapes the ground first.
-            string source = kind.Dungeon != null && !empty ? FindLocation(kind.Dungeon) : null;
-            if (kind.Dungeon != null && !empty && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
-            float dungeonTurn = cliffDeg + 180f;
-            if (source != null && kind.Shaped) ReadCuts(source, Vector2.zero, dungeonTurn, locationName);
+            // The dungeon, where there is one: in the middle of the old mesh islet, where its design puts it on
+            // a land one. A dug-in one shapes the ground first; another, away from the middle, gets level
+            // ground the plateau's height under it, so its entrance doesn't hang over the slope.
+            string source = kind.Dungeon != null ? FindLocation(kind.Dungeon) : null;
+            if (kind.Dungeon != null && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
+            float dungeonTurn = terrain && !float.IsNaN(kind.DungeonTurn) ? kind.DungeonTurn : cliffDeg + 180f;
+            Vector2 dungeonAt = terrain ? kind.DungeonAt : Vector2.zero;
+            if (source != null && kind.Shaped) ReadCuts(source, dungeonAt, dungeonTurn, locationName);
+            else if (source != null && dungeonAt != Vector2.zero)
+                cuts.Add(new TerrainCut { X = dungeonAt.x, Z = dungeonAt.y, Y = PlateauHeight - 0.05f, Level = 12f, Smooth = 19f });
             if (terrain)
             {
                 GameObject ground = new GameObject("IoV_BakedGround");
@@ -209,14 +240,10 @@ namespace IslandsOfValheim
             }
             else BuildGround();
             PlaceRocks();
-            DungeonInterior interior = source != null ? AddDungeon(source, Vector2.zero, dungeonTurn, locationName, kind.Shaped) : null;
+            DungeonInterior interior = source != null ? AddDungeon(source, dungeonAt, dungeonTurn, locationName, kind.Shaped) : null;
             // The old mesh islet keeps its old layout (it's built anew each time from here, over what players
-            // left on it); a land one has its design's.
-            if (!empty)
-            {
-                if (terrain && kind.Content != null) { designInterior = interior; kind.Content(kind); }
-                else Inhabit(kind, interior);
-            }
+            // left on it); a land one has its design's draft, or the old layout while it has none.
+            if (!bare && !(terrain && BuildDraft(kind))) Inhabit(kind, interior);
 
             if (terrain)
             {
@@ -227,7 +254,7 @@ namespace IslandsOfValheim
                 foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); stray++; }
                 if (stray > 0) Plugin.Log.LogWarning(locationName + ": removed " + stray + " terrain modifiers from the islet's parts");
             }
-            Finish(kind, quantity, interior, empty);
+            Finish(kind, quantity, interior, bare);
         }
 
         // Everything that stands on a large islet: the village or stronghold, the keeper, nature, docks,
@@ -258,8 +285,7 @@ namespace IslandsOfValheim
             }
             RidgeDesign();
             RidgeGuard();
-            kind.KeeperOffset = new Vector3(keeper.x, PlateauHeight, keeper.y);
-            PlaceNetworked(kind.KeeperName, kind.KeeperOffset, 0f);
+            SetKeeper(kind, new Vector3(keeper.x, PlateauHeight, keeper.y));
             if (kind.Extra != null)
                 foreach (string extra in kind.Extra)
                     PlaceNetworked(new[] { extra }, Polar(cliffDeg + 300f, kind.Plateau + 3f), cliffDeg, 0f);
@@ -469,13 +495,17 @@ namespace IslandsOfValheim
         {
             nview = GetComponent<ZNetView>();
             if (nview == null || nview.GetZDO() == null) return;
-            kind = IsletBuilder.LargeKindOf(Utils.GetPrefabName(gameObject));
+            string name = Utils.GetPrefabName(gameObject);
+            kind = IsletBuilder.LargeKindOf(name);
             if (kind == null) return;
+            land = name == kind.LandKeeperName;
             InvokeRepeating("Tick", Random.Range(3f, 6f), 5f);
         }
 
-        // The islet's middle on its plateau (the keeper stands at the tower's foot, KeeperOffset from it).
-        Vector3 Centre { get { return transform.position - transform.rotation * kind.KeeperOffset + Vector3.up * kind.Height; } }
+        bool land; // the keeper of a land islet (its own place on it) or of an old mesh one
+
+        // The islet's middle on its plateau (the keeper stands where its design put it, this far from it).
+        Vector3 Centre { get { return transform.position - transform.rotation * (land ? kind.LandKeeperOffset : kind.KeeperOffset) + Vector3.up * kind.Height; } }
 
         // Which third of its ring the islet is in: 0 inner, 1 middle, 2 outer.
         int Band

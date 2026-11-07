@@ -88,22 +88,14 @@ namespace IslandsOfValheim
                         TerrainIsletTest.Goto(args.Context); // research prototype
                         return;
                     }
-                    if (args.Length > 1 && string.Equals(args[1], "emptylarge", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        // work in progress: an empty large islet to design on (iov_goto emptylarge <tier>)
-                        IsletBuilder.LargeKind kind = null;
-                        foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds)
-                            if (args.Length > 2 && string.Equals(k.Tier.Name, args[2], System.StringComparison.OrdinalIgnoreCase)) kind = k;
-                        if (kind == null)
+                    // Work in progress: a design's bare islet (ground, rocks, dungeon), unturned, to lay out its
+                    // draft on with the dev tool (iov_goto draft_meadows_2).
+                    foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
+                        if (args.Length > 1 && string.Equals(args[1], "draft_" + LargeArg(kind).Substring(6), System.StringComparison.OrdinalIgnoreCase))
                         {
-                            List<string> tiers = new List<string>();
-                            foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds) tiers.Add(k.Tier.Name.ToLowerInvariant());
-                            args.Context.AddString("Which one? iov_goto emptylarge " + string.Join(" | ", tiers.ToArray()));
+                            TerrainIsletTest.Goto(args.Context, kind.BaseName, kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance), 0f);
                             return;
                         }
-                        TerrainIsletTest.Goto(args.Context, IsletBuilder.EmptyName(kind), kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance), 0f);
-                        return;
-                    }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
@@ -144,6 +136,7 @@ namespace IslandsOfValheim
                     names.Add("trader");
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
+                    foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
                     return names;
                 });
         }
