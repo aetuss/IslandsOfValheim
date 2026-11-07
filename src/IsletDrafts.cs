@@ -24,8 +24,9 @@ namespace IslandsOfValheim
     {
         internal class DraftEntry
         {
-            internal string Kind = "", Prefab = "", Source = "";
-            internal float X, Z, Above;
+            internal string Kind = "", Prefab = "", Source = "", Group = "";
+            internal float X, Z, Above, Radius;
+            internal float Chance = 1f; // below 1: on some islets only (RandomSpawn)
             internal Quaternion Rot = Quaternion.identity;
             internal Vector3 Scale = Vector3.one;
 
@@ -59,6 +60,9 @@ namespace IslandsOfValheim
                     e.Above = Number(f, "aboveGround", 0f);
                     e.Rot = new Quaternion(Number(f, "qx", 0f), Number(f, "qy", 0f), Number(f, "qz", 0f), Number(f, "qw", 1f));
                     e.Scale = new Vector3(Number(f, "sx", 1f), Number(f, "sy", 1f), Number(f, "sz", 1f));
+                    e.Chance = Mathf.Clamp01(Number(f, "chance", 1f));
+                    e.Group = Field(f, "group");
+                    e.Radius = Number(f, "radius", 0f);
                     list.Add(e);
                 }
             }
@@ -83,41 +87,40 @@ namespace IslandsOfValheim
         {
             List<DraftEntry> draft = ReadDraft(kind.DraftId);
             if (draft == null) return false;
-            bool keeper = false;
-            int left = 0;
+            draftKeeper = false;
+            draftLeft = 0;
             Dictionary<string, GameObject> sources = new Dictionary<string, GameObject>();
+            // Things with the same group: one of them on each islet (RandomObject); a chance below 1: on some
+            // islets only (RandomSpawn). So no two islets of a design are quite the same.
+            Dictionary<string, List<DraftEntry>> groups = new Dictionary<string, List<DraftEntry>>();
             foreach (DraftEntry e in draft)
             {
-                Vector2 at = new Vector2(e.X, e.Z);
-                switch (e.Kind)
+                if (e.Group.Length == 0) continue;
+                List<DraftEntry> members;
+                if (!groups.TryGetValue(e.Group, out members)) { members = new List<DraftEntry>(); groups[e.Group] = members; }
+                members.Add(e);
+            }
+            foreach (DraftEntry e in draft)
+            {
+                if (e.Group.Length > 0)
                 {
-                    case "vanilla":
-                        Vanilla(new[] { e.Prefab }, at, e.Yaw, e.Above);
-                        break;
-                    case "marker":
-                        float deg = Mathf.Atan2(e.Z, e.X) * Mathf.Rad2Deg;
-                        switch (e.Prefab)
-                        {
-                            case "KEEPER": Keeper(kind, at); keeper = true; break;
-                            case "DOCK": PlaceDock(deg); break;
-                            case "WRECK": PlaceWreck(deg); break;
-                            case "FISHING": PlaceFishingGround(); break;
-                            default: left++; Plugin.Log.LogWarning(locationName + ": unknown mark " + e.Prefab); break;
-                        }
-                        break;
-                    case "locpart":
-                        if (!DraftPart(e, sources)) left++;
-                        break;
-                    case "creature":
-                    case "level":
-                        left++; // creatures come from the keeper; the ground is the islet's own
-                        break;
-                    default:
-                        DraftObject(e);
-                        break;
+                    if (groups[e.Group][0] != e) continue; // built with the first of its group
+                    string group = e.Group;
+                    System.Action build = () =>
+                    {
+                        List<DraftEntry> members = groups[group];
+                        System.Action[] each = new System.Action[members.Count];
+                        for (int i = 0; i < members.Count; i++) { DraftEntry m = members[i]; each[i] = () => BuildEntry(kind, m, sources); }
+                        OneOf(each);
+                    };
+                    if (e.Chance < 1f) Optional(e.Chance, build); else build();
                 }
+                else if (e.Chance < 1f && e.Kind != "marker") Optional(e.Chance, () => BuildEntry(kind, e, sources));
+                else BuildEntry(kind, e, sources);
             }
             foreach (GameObject source in sources.Values) if (source != null) Object.DestroyImmediate(source);
+            bool keeper = draftKeeper;
+            int left = draftLeft;
             // Every islet has its keeper: the animals come from it, and on a dangerous one the guardian and chest.
             if (!keeper) { Keeper(kind, Vector2.zero); Plugin.Log.LogWarning(locationName + ": its draft has no KEEPER mark; the keeper stands in the middle"); }
             PlaceHints();
@@ -144,8 +147,9 @@ namespace IslandsOfValheim
             List<Transform> parts = new List<Transform>();
             foreach (Transform child in clone.Prefab.transform) parts.Add(child);
             foreach (Transform part in parts) part.SetParent(group.transform, false);
+            // Its own levelling and paint stay, as in the game's world: the ground under it is flattened and
+            // worn the way its makers meant (the islet's terrain is the game's own, so they work the same).
             int removed = 0;
-            foreach (TerrainModifier m in group.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(m.gameObject); removed++; }
             foreach (TerrainOp op in group.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); removed++; }
             foreach (Vegvisir v in group.GetComponentsInChildren<Vegvisir>(true)) { Object.DestroyImmediate(v.gameObject); removed++; }
             foreach (OfferingBowl o in group.GetComponentsInChildren<OfferingBowl>(true)) { Object.DestroyImmediate(o.gameObject); removed++; }
@@ -162,6 +166,73 @@ namespace IslandsOfValheim
             built++;
             Plugin.Debug(locationName + ": " + source + " at " + at.ToString("F0") + ", " + parts.Count + " parts, " + removed + " left out");
             return group;
+        }
+
+        // A terrain modifier a draft put there on purpose: a structure's own, or a worn path.
+        static bool DraftGround(Transform t)
+        {
+            for (; t != null; t = t.parent)
+                if (t.name == "IoV_Paint" || t.name.StartsWith("IoV_Vanilla_")) return true;
+            return false;
+        }
+
+        static bool draftKeeper;
+        static int draftLeft;
+
+        static void BuildEntry(LargeKind kind, DraftEntry e, Dictionary<string, GameObject> sources)
+        {
+            Vector2 at = new Vector2(e.X, e.Z);
+            switch (e.Kind)
+            {
+                case "vanilla":
+                    Vanilla(new[] { e.Prefab }, at, e.Yaw, e.Above);
+                    break;
+                case "marker":
+                    float deg = Mathf.Atan2(e.Z, e.X) * Mathf.Rad2Deg;
+                    switch (e.Prefab)
+                    {
+                        case "KEEPER":
+                            if (draftKeeper) { draftLeft++; Plugin.Log.LogWarning(locationName + ": a second KEEPER mark, left out"); break; }
+                            Keeper(kind, at);
+                            draftKeeper = true;
+                            break;
+                        case "DOCK": PlaceDock(deg); break;
+                        case "WRECK": PlaceWreck(deg); break;
+                        case "FISHING": PlaceFishingGround(); break;
+                        default: draftLeft++; Plugin.Log.LogWarning(locationName + ": unknown mark " + e.Prefab); break;
+                    }
+                    break;
+                case "paint":
+                    Paint(e);
+                    break;
+                case "locpart":
+                    if (!DraftPart(e, sources)) draftLeft++;
+                    break;
+                case "creature":
+                case "level":
+                    draftLeft++; // creatures come from the keeper; the ground is the islet's own
+                    break;
+                default:
+                    DraftObject(e);
+                    break;
+            }
+        }
+
+        // A worn patch of ground (a path, a yard): the game's own terrain paint, as its locations use it,
+        // without reshaping the ground. prefab: dirt, paved or cultivate.
+        static void Paint(DraftEntry e)
+        {
+            GameObject go = new GameObject("IoV_Paint");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(e.X, Height(e.X, e.Z), e.Z);
+            TerrainModifier modifier = go.AddComponent<TerrainModifier>();
+            modifier.m_level = false;
+            modifier.m_smooth = false;
+            modifier.m_paintCleared = true;
+            modifier.m_paintHeightCheck = false;
+            modifier.m_paintType = e.Prefab == "paved" ? TerrainModifier.PaintType.Paved : e.Prefab == "cultivate" ? TerrainModifier.PaintType.Cultivate : TerrainModifier.PaintType.Dirt;
+            modifier.m_paintRadius = e.Radius > 0f ? e.Radius : 1.5f;
+            built++;
         }
 
         // One of the game's objects where the draft put it. A building piece standing on the ground is sunk a

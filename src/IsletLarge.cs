@@ -249,8 +249,10 @@ namespace IslandsOfValheim
             {
                 // Nothing of ours may reshape the ground on top of the islet's own (on the mesh islets such
                 // things only ever touched the sea floor under them).
+                // (A draft's structures keep their own levelling, and its worn paths are paint: those stay.)
                 int stray = 0;
-                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(m.gameObject); stray++; }
+                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true))
+                    if (!DraftGround(m.transform)) { Object.DestroyImmediate(m.gameObject); stray++; }
                 foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); stray++; }
                 if (stray > 0) Plugin.Log.LogWarning(locationName + ": removed " + stray + " terrain modifiers from the islet's parts");
             }
