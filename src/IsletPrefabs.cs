@@ -113,9 +113,9 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
-        // A large islet's chest, for the inner (0), middle (1) or outer (2) third of its ring: more things
-        // and bigger stacks than a hoard, the further out the more, and in the outer third the tier's rarest
-        // things come up more often.
+        // A large islet's chest, for the inner (0), middle (1) or outer (2) third of its ring: a hoard, with
+        // one more thing and a little bigger stacks the further out it is, and in the outer third the tier's
+        // rarest things come up a little more often.
         internal static void AddLargeChest(IsletTier tier, string name, int band)
         {
             AddChest(tier, name, true);
@@ -123,9 +123,9 @@ namespace IslandsOfValheim
             Container container = go != null ? go.GetComponent<Container>() : null;
             if (container == null) return;
             DropTable table = container.m_defaultItems;
-            table.m_dropMin += 1 + band * 2;
-            table.m_dropMax += 1 + band * 2;
-            float stacks = 1f + 0.35f * band;
+            table.m_dropMin += band;
+            table.m_dropMax += band;
+            float stacks = 1f + 0.15f * band;
             float rarest = float.MaxValue;
             foreach (DropTable.DropData drop in table.m_drops) rarest = Mathf.Min(rarest, drop.m_weight);
             for (int i = 0; i < table.m_drops.Count; i++)
@@ -133,7 +133,7 @@ namespace IslandsOfValheim
                 DropTable.DropData drop = table.m_drops[i];
                 drop.m_stackMin = Mathf.Max(1, Mathf.RoundToInt(drop.m_stackMin * stacks));
                 drop.m_stackMax = Mathf.Max(drop.m_stackMin, Mathf.RoundToInt(drop.m_stackMax * stacks));
-                if (band == 2 && drop.m_weight <= rarest + 0.01f) drop.m_weight *= 2.5f;
+                if (band == 2 && drop.m_weight <= rarest + 0.01f) drop.m_weight *= 1.5f;
                 table.m_drops[i] = drop;
             }
             container.m_defaultItems = table;
@@ -142,8 +142,9 @@ namespace IslandsOfValheim
         static DropTable LootTable(IsletTier tier, bool hoard)
         {
             DropTable table = new DropTable();
-            table.m_dropMin = tier.DropMin + (hoard ? 2 : 0);
-            table.m_dropMax = tier.DropMax + (hoard ? 3 : 0);
+            // About what the game's own chests of that land give; the hoard one thing more, in bigger stacks.
+            table.m_dropMin = tier.DropMin + (hoard ? 1 : 0);
+            table.m_dropMax = tier.DropMax + (hoard ? 1 : 0);
             table.m_dropChance = 1f;
             table.m_oneOfEach = true;
             table.m_drops = new List<DropTable.DropData>();
@@ -157,9 +158,9 @@ namespace IslandsOfValheim
                 }
                 DropTable.DropData drop = new DropTable.DropData();
                 drop.m_item = prefab;
-                int scale = hoard ? 2 : 1;
-                drop.m_stackMin = loot.Min * scale;
-                drop.m_stackMax = loot.Max * scale;
+                float scale = hoard ? 1.5f : 1f;
+                drop.m_stackMin = Mathf.Max(1, Mathf.RoundToInt(loot.Min * scale));
+                drop.m_stackMax = Mathf.Max(drop.m_stackMin, Mathf.RoundToInt(loot.Max * scale));
                 drop.m_weight = loot.Weight;
                 table.m_drops.Add(drop);
             }

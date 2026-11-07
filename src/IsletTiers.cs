@@ -31,7 +31,7 @@ namespace IslandsOfValheim
         internal float LevelUpChance = 15f;
 
         internal string[] ChestBases;
-        internal int DropMin = 3, DropMax = 5;
+        internal int DropMin = 2, DropMax = 3;
         internal List<Loot> Loot = new List<Loot>();
 
         internal IsletBuilder.RuinStyle Style;
@@ -122,8 +122,8 @@ namespace IslandsOfValheim
                 Bushes = new[] { "Bush01", "Bush02_en", "shrub_2" },
                 Berries = new[] { "RaspberryBush" },
                 Mushrooms = new[] { "Pickable_Mushroom" },
-            }.Drop("Coins", 20, 45, 3f).Drop("Amber", 1, 3, 2f).Drop("AmberPearl", 1, 2, 1.5f).Drop("Ruby", 1, 2, 0.8f)
-             .Drop("ArrowFire", 10, 20, 1f).Drop("Resin", 5, 10, 1f).Drop("Feathers", 4, 8, 1f)
+            }.Drop("Coins", 10, 25, 3f).Drop("Amber", 1, 2, 2f).Drop("AmberPearl", 1, 1, 1.5f).Drop("Ruby", 1, 1, 0.8f)
+             .Drop("ArrowFire", 5, 10, 1f).Drop("Resin", 3, 6, 1f).Drop("Feathers", 2, 4, 1f)
              .Fuel("Wood", 10, "Resin", 5).Wave("Neck", 4, false)
              .AddFish("Fish1", 3f).AddFish("Fish2", 1f).FishLevels(1, 2));
 
@@ -139,8 +139,8 @@ namespace IslandsOfValheim
                 Bushes = new[] { "Bush02_en", "shrub_2", "Bush01" },
                 Berries = new[] { "BlueberryBush", "RaspberryBush" },
                 Mushrooms = new[] { "Pickable_Mushroom" },
-            }.Drop("Coins", 30, 60, 3f).Drop("IronScrap", 3, 6, 2f).Drop("AmberPearl", 1, 3, 1.5f).Drop("Ruby", 1, 2, 1f)
-             .Drop("Chain", 1, 1, 0.8f).Drop("ArrowIron", 10, 20, 1f).Drop("WitheredBone", 1, 2, 1f)
+            }.Drop("Coins", 15, 35, 3f).Drop("IronScrap", 2, 4, 2f).Drop("AmberPearl", 1, 2, 1.5f).Drop("Ruby", 1, 1, 1f)
+             .Drop("Chain", 1, 1, 0.8f).Drop("ArrowIron", 5, 10, 1f).Drop("WitheredBone", 1, 1, 1f)
              .Fuel("SurtlingCore", 1, "Coal", 5).Wave("Draugr", 3, false).Wave("Draugr_Ranged", 1, false)
              .AddFish("Fish6", 3f).AddFish("Fish5", 1.5f).AddFish("Fish2", 1f).FishLevels(1, 2));
 
@@ -156,8 +156,8 @@ namespace IslandsOfValheim
                 Bushes = new[] { "Bush01_heath", "shrub_2", "Bush01" },
                 Berries = new[] { "CloudberryBush", "RaspberryBush" },
                 Mushrooms = new[] { "Pickable_Barley_Wild", "Pickable_Flax_Wild", "Pickable_Mushroom" },
-            }.Drop("Coins", 60, 120, 3f).Drop("BlackMetalScrap", 3, 6, 2f).Drop("SilverNecklace", 1, 1, 1.2f).Drop("Ruby", 1, 3, 1.2f)
-             .Drop("AmberPearl", 2, 3, 1f).Drop("ArrowNeedle", 10, 20, 1f).Drop("ArrowObsidian", 10, 20, 1f)
+            }.Drop("Coins", 25, 50, 3f).Drop("BlackMetalScrap", 2, 4, 2f).Drop("SilverNecklace", 1, 1, 1.2f).Drop("Ruby", 1, 2, 1.2f)
+             .Drop("AmberPearl", 1, 2, 1f).Drop("ArrowNeedle", 5, 10, 1f).Drop("ArrowObsidian", 5, 10, 1f)
              .Fuel("SurtlingCore", 2, "Coal", 10).Wave("Deathsquito", 2, true).Wave("Goblin", 2, false)
              .AddFish("Fish7", 3f).AddFish("Fish3", 1.5f).AddFish("Fish5", 1f).FishLevels(1, 3));
 
@@ -174,8 +174,8 @@ namespace IslandsOfValheim
                 Bushes = new[] { "shrub_2", "Bush02_en", "Bush01" },
                 Berries = new[] { "Pickable_Mushroom_JotunPuffs", "Pickable_Mushroom_Magecap" },
                 Mushrooms = new[] { "Pickable_Mushroom_Magecap", "Pickable_Mushroom" },
-            }.Drop("Coins", 100, 180, 3f).Drop("Softtissue", 3, 6, 2f).Drop("BlackMarble", 4, 8, 1.5f).Drop("BlackCore", 1, 1, 0.6f)
-             .Drop("SilverNecklace", 1, 1, 1f).Drop("Ruby", 2, 3, 1f).Drop("ArrowCarapace", 10, 20, 1f)
+            }.Drop("Coins", 35, 70, 3f).Drop("Softtissue", 2, 4, 2f).Drop("BlackMarble", 2, 5, 1.5f).Drop("BlackCore", 1, 1, 0.6f)
+             .Drop("SilverNecklace", 1, 1, 1f).Drop("Ruby", 1, 2, 1f).Drop("ArrowCarapace", 5, 10, 1f)
              .Fuel("BlackCore", 1).Fuel("SurtlingCore", 3).Wave("Tick", 2, true).Wave("Seeker", 2, false)
              .AddFish("Fish9", 3f).AddFish("Fish12", 1.5f).AddFish("Fish8", 1f).FishLevels(1, 3));
 
@@ -188,15 +188,15 @@ namespace IslandsOfValheim
                 Style = IsletBuilder.RuinStyle.DvergrCamp, Wreck = LongshipWreck, RuneStone = "RuneStone_Mistlands",
                 Ruined = false, DvergrOutpost = true, Raiders = new[] { "Seeker", "Seeker", "SeekerBrute" },
                 Guards = new[] { "Dverger", "DvergerMageFire", "DvergerMageSupport", "Dverger", "DvergerMageIce" },
-                MaxLevel = 2, LevelUpChance = 10f, DropMin = 4, DropMax = 6,
+                MaxLevel = 2, LevelUpChance = 10f, DropMin = 2, DropMax = 4,
                 ChestBases = new[] { "TreasureChest_dvergrtower", "TreasureChest_meadows" },
                 Trees = new[] { "YggaShoot1", "YggaShoot2", "YggaShoot3", "FirTree_small_dead" },
                 SmallTrees = new[] { "YggaShoot_small1", "YggaShoot2", "Bush01" },
                 Bushes = new[] { "shrub_2", "Bush02_en", "Bush01" },
                 Berries = new[] { "Pickable_Mushroom_JotunPuffs", "Pickable_Mushroom_Magecap" },
                 Mushrooms = new[] { "Pickable_Mushroom_Magecap", "Pickable_Mushroom" },
-            }.Drop("Coins", 150, 250, 3f).Drop("BlackCore", 1, 2, 1.2f).Drop("DvergrNeedle", 1, 1, 0.8f).Drop("Lantern", 1, 1, 0.5f)
-             .Drop("Softtissue", 4, 8, 1.5f).Drop("Iron", 4, 8, 1.2f).Drop("Copper", 6, 10, 1f).Drop("YggdrasilWood", 6, 10, 1f).Drop("Ruby", 2, 3, 1f)
+            }.Drop("Coins", 50, 90, 3f).Drop("BlackCore", 1, 1, 1.2f).Drop("DvergrNeedle", 1, 1, 0.8f).Drop("Lantern", 1, 1, 0.5f)
+             .Drop("Softtissue", 2, 4, 1.5f).Drop("Iron", 2, 4, 1.2f).Drop("Copper", 3, 6, 1f).Drop("YggdrasilWood", 3, 6, 1f).Drop("Ruby", 1, 2, 1f)
              .Fuel("Lantern", 1).Fuel("BlackCore", 2).Wave("Seeker", 3, false).Wave("SeekerBrute", 1, false)
              .AddFish("Fish9", 3f).AddFish("Fish12", 1.5f).AddFish("Fish8", 1f).FishLevels(1, 3));
 
@@ -216,9 +216,9 @@ namespace IslandsOfValheim
                 Bushes = new[] { "AshlandsBush1", "AshlandsBush2", "shrub_2" },
                 Berries = new[] { "Pickable_SmokePuff", "Pickable_Fiddlehead" },
                 Mushrooms = new[] { "Pickable_Fiddlehead", "Pickable_SmokePuff" },
-            }.Drop("Coins", 150, 260, 3f).Drop("FlametalOreNew", 2, 4, 1.5f).Drop("Grausten", 6, 12, 1.5f).Drop("MoltenCore", 1, 1, 0.6f)
+            }.Drop("Coins", 50, 90, 3f).Drop("FlametalOreNew", 1, 2, 1.5f).Drop("Grausten", 3, 6, 1.5f).Drop("MoltenCore", 1, 1, 0.6f)
              .Drop("GemstoneRed", 1, 1, 0.5f).Drop("GemstoneGreen", 1, 1, 0.5f).Drop("GemstoneBlue", 1, 1, 0.5f)
-             .Drop("ArrowCharred", 10, 20, 1f).Drop("CharredBone", 3, 6, 1f)
+             .Drop("ArrowCharred", 5, 10, 1f).Drop("CharredBone", 2, 3, 1f)
              .Fuel("MoltenCore", 1).Fuel("SurtlingCore", 5).Wave("Volture", 2, true).Wave("Charred_Melee", 2, false)
              .AddFish("Fish11", 3f).AddFish("Fish12", 1f).AddFish("Fish8", 1f).FishLevels(2, 4));
 
@@ -239,9 +239,9 @@ namespace IslandsOfValheim
                 Bushes = new[] { "Bush01_deepnorth", "shrub_2", "Bush01" },
                 Berries = new[] { "LingonberryBush", "BlueberryBush" },
                 Mushrooms = new[] { "Pickable_Branch_Snow", "Pickable_Stone" },
-            }.Drop("Coins", 180, 300, 3f).Drop("Frostwood", 6, 12, 1.5f).Drop("Ice", 4, 8, 1.5f).Drop("FrostCore", 1, 1, 0.6f)
-             .Drop("Crystal", 2, 4, 1f).Drop("Silver", 3, 6, 1f).Drop("FreezeGland", 2, 4, 1f).Drop("SpiceDeepNorth", 1, 2, 0.8f)
-             .Drop("ArrowFrost", 10, 20, 1f)
+            }.Drop("Coins", 60, 100, 3f).Drop("Frostwood", 3, 6, 1.5f).Drop("Ice", 2, 4, 1.5f).Drop("FrostCore", 1, 1, 0.6f)
+             .Drop("Crystal", 1, 2, 1f).Drop("Silver", 2, 3, 1f).Drop("FreezeGland", 1, 2, 1f).Drop("SpiceDeepNorth", 1, 1, 0.8f)
+             .Drop("ArrowFrost", 5, 10, 1f)
              .Fuel("Frostwood", 10, "SurtlingCore", 2).Wave("Ulv", 3, false).Wave("Fenring_Cultist", 1, false)
              .AddFish("Fish10", 3f).AddFish("Fish12", 1f).AddFish("Fish8", 1f).FishLevels(2, 4));
         }
