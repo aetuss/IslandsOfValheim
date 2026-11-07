@@ -93,6 +93,7 @@ namespace IslandsOfValheim
             }
             IsletBuilder.RegisterLargeIslets();
             TerrainIsletTest.Register(); // research prototype (branch iov-terrain-test)
+            IsletBuilder.MeasureVanilla(); // work in progress: the true sizes of vanilla structures, in the log
         }
 
         internal static void Debug(string message)
