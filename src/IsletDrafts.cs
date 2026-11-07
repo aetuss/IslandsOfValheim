@@ -156,6 +156,12 @@ namespace IslandsOfValheim
             foreach (OfferingBowl o in group.GetComponentsInChildren<OfferingBowl>(true)) { Object.DestroyImmediate(o.gameObject); removed++; }
             foreach (Trader t in group.GetComponentsInChildren<Trader>(true)) { Object.DestroyImmediate(t.gameObject); removed++; }
             foreach (DungeonGenerator g in group.GetComponentsInChildren<DungeonGenerator>(true)) { Object.DestroyImmediate(g.gameObject); removed++; }
+            // The Mistlands' mist comes with their structures: out at sea it shows as pink clouds over the islet.
+            int mist = 0;
+            foreach (MistEmitter m in group.GetComponentsInChildren<MistEmitter>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
+            foreach (Mister m in group.GetComponentsInChildren<Mister>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
+            if (mist > 0) Plugin.Log.LogInfo(locationName + ": " + source + ": " + mist + " mist makers left out");
+            removed += mist;
             foreach (CreatureSpawner spawner in group.GetComponentsInChildren<CreatureSpawner>(true))
             {
                 Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
