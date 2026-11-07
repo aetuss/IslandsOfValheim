@@ -132,11 +132,6 @@ namespace IslandsOfValheim
 
         static int vanillaCount;
 
-        // The game's settlements that lay their houses out themselves (DungeonGenerator, outdoors), and the
-        // islet's one while it's built (the location runs it when it spawns, as the game's own does).
-        static readonly string[] OwnLayout = { "NorthVillage" };
-        internal static DungeonGenerator draftGenerator;
-
         // A whole vanilla structure (a house, a hut, dolmens, a ruin) copied onto the islet with its middle at
         // at, turned rotY, above metres over the ground there. Whatever belongs to the game's own world is left
         // out: its terrain changes, its way-pointing stones, altars and traders, a dungeon generator.
@@ -160,14 +155,7 @@ namespace IslandsOfValheim
             foreach (Vegvisir v in group.GetComponentsInChildren<Vegvisir>(true)) { Object.DestroyImmediate(v.gameObject); removed++; }
             foreach (OfferingBowl o in group.GetComponentsInChildren<OfferingBowl>(true)) { Object.DestroyImmediate(o.gameObject); removed++; }
             foreach (Trader t in group.GetComponentsInChildren<Trader>(true)) { Object.DestroyImmediate(t.gameObject); removed++; }
-            // An outdoor settlement whose houses the game lays out anew each time (the ghost town's) keeps its
-            // generator: it becomes the islet's, so each islet gets its own village. Any other goes.
-            foreach (DungeonGenerator g in group.GetComponentsInChildren<DungeonGenerator>(true))
-            {
-                if (draftGenerator == null && System.Array.IndexOf(OwnLayout, source) >= 0) { draftGenerator = g; continue; }
-                Object.DestroyImmediate(g.gameObject);
-                removed++;
-            }
+            foreach (DungeonGenerator g in group.GetComponentsInChildren<DungeonGenerator>(true)) { Object.DestroyImmediate(g.gameObject); removed++; }
             // The Mistlands' mist comes with their structures: out at sea it shows as pink clouds over the islet.
             int mist = 0;
             foreach (MistEmitter m in group.GetComponentsInChildren<MistEmitter>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
