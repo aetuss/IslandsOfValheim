@@ -211,6 +211,20 @@ namespace IslandsOfValheim
             int mist = 0;
             foreach (MistEmitter m in group.GetComponentsInChildren<MistEmitter>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
             foreach (Mister m in group.GetComponentsInChildren<Mister>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
+            // Some bring their mist as a plain cloud of particles: out at sea it hides the islet.
+            foreach (ParticleSystem p in group.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (p == null) continue;
+                string n = p.gameObject.name.ToLowerInvariant();
+                // (On a small islet also by its size: a fire's or a torch's particles come from a small spot, a
+                // cloud's from a wide one. The large islets' structures were seen and kept as they are.)
+                ParticleSystem.ShapeModule shape = p.shape;
+                bool wide = !buildingLarge && shape.enabled && (shape.radius > 3f || Mathf.Max(shape.scale.x, shape.scale.z) > 6f);
+                if (!n.Contains("mist") && !n.Contains("fog") && !n.Contains("cloud") && !wide) continue;
+                Plugin.Debug(locationName + ": " + source + ": cloud " + p.gameObject.name + " left out");
+                Object.DestroyImmediate(p.gameObject);
+                mist++;
+            }
             if (mist > 0) Plugin.Log.LogInfo(locationName + ": " + source + ": " + mist + " mist makers left out");
             removed += mist;
             if (!buildingLarge)
