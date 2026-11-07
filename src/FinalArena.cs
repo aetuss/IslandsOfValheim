@@ -37,10 +37,13 @@ namespace IslandsOfValheim
             return Utils.DistanceXZ(middle, p) < o.z + 1f && Mathf.Abs(p.y - middle.y) < 4f;
         }
 
+        // Hafdís comes down out of the sky: brought in high over her summit, and kept within reach of it she
+        // sinks down to the fight (KeepInReach).
         Vector3 Spot(int i)
         {
             Vector2 s = IsletBuilder.ArenaSpots[i];
-            return World(s.x, IsletBuilder.ArenaHollows[i + 1].w + 0.4f, s.y);
+            float above = i == 2 ? 10f : 0.4f;
+            return World(s.x, IsletBuilder.ArenaHollows[i + 1].w + above, s.y);
         }
 
         void Tick()

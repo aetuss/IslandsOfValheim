@@ -25,19 +25,20 @@ namespace IslandsOfValheim
         {
             new Vector4(0f, -42f, 7f, 1.2f),    // the cove
             new Vector4(0f, -20f, 10f, 3f),     // Grímr's: the ship-setting
-            new Vector4(-2f, 6f, 9f, 7.5f),     // Ormr's: his frozen ship
-            new Vector4(1f, 31f, 8.5f, 13f),    // Hafdís's: the summit
+            new Vector4(-2f, 6f, 9f, 7.5f),     // Ormr's: his cultists' circle
+            new Vector4(0f, 32f, 12.5f, 13f),   // Hafdís's: the summit
         };
 
-        // Where each keeper comes out of the mist (at the far side of its hollow from the way in).
-        internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -15f), new Vector2(-3f, 12f), new Vector2(4f, 33f) };
+        // Where each keeper comes: Grímr out of the ice gate in the far wall of his hollow, Ormr in the middle
+        // of his circle, Hafdís down out of the sky over her summit (FinalArena brings her in high).
+        internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -13.5f), new Vector2(-3f, 9.5f), new Vector2(0f, 32f) };
 
         // The gorges: points along each (x, z, floor).
         static readonly Vector3[][] Gorges =
         {
             new[] { new Vector3(0f, -37f, 1.4f), new Vector3(0f, -29f, 3f) },
             new[] { new Vector3(9f, -16f, 3f), new Vector3(15f, -9f, 4.5f), new Vector3(13f, 0f, 6.5f), new Vector3(6f, 4f, 7.5f) },
-            new[] { new Vector3(-10f, 9f, 7.5f), new Vector3(-15f, 16f, 9.5f), new Vector3(-11f, 25f, 12f), new Vector3(-5f, 30f, 13f) },
+            new[] { new Vector3(-10f, 9f, 7.5f), new Vector3(-15f, 16f, 9.5f), new Vector3(-14f, 23f, 12f), new Vector3(-9f, 28f, 13f) },
         };
         static readonly float[] GorgeWidths = { 4.5f, 3.6f, 3.6f };
 
@@ -180,11 +181,8 @@ namespace IslandsOfValheim
                     }
                 }
 
-            // The cove: a beach between the rocks, an old jetty, a wreck, and the stone that warns, facing the sea.
-            // (The cove is narrow: the wreck's parts are laid in it by hand.)
+            // The cove: a beach between the rocks, an old jetty, and the stone that warns, facing the sea.
             PlaceDock(266f);
-            OnGround(new[] { tier.Wreck[0] }, new Vector2(4.6f, -45.5f), 30f, 0f, 0.25f);
-            OnGround(new[] { tier.Wreck[2] }, new Vector2(-4.2f, -46f), 100f, 0f, 0.2f);
             PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, new Vector2(3.2f, -39f), 0f, 0f); // its face to the sea, where you come from
             Brazier(new Vector2(-3f, -36.5f));
             Brazier(new Vector2(3f, -36.5f));
@@ -192,7 +190,8 @@ namespace IslandsOfValheim
             Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(-3.5f, -40f), 60f, 0.05f);
             quietProps = false;
 
-            // Grímr's hollow: an old ship-setting of standing stones, the dead who came before, blue fire.
+            // Grímr's hollow: an old ship-setting of standing stones, the dead who came before, and in the far
+            // wall a gate of ice between two blue fires, where he comes out (ArenaSpots).
             Vector4 grimr = ArenaHollows[1];
             Vanilla(new[] { "ShipSetting01" }, new Vector2(grimr.x, grimr.y), 0f, 0f);
             quietProps = true;
@@ -200,33 +199,43 @@ namespace IslandsOfValheim
             Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(grimr.x + 6f, grimr.y + 2.5f), 200f, 0.05f);
             Lying(new[] { "SwordSilver", "SwordIron" }, new Vector2(grimr.x - 4.4f, grimr.y - 5.2f), 70f, 1.4f);
             quietProps = false;
-            Brazier(new Vector2(grimr.x - 6.5f, grimr.y + 5f));
-            Brazier(new Vector2(grimr.x + 6.5f, grimr.y + 5f));
-            Ice(new Vector2(grimr.x - 8f, grimr.y - 2f), 40f, 2.4f);
+            Vector2 door = new Vector2(grimr.x, grimr.y + grimr.z); // the middle of the far wall
+            OnGround(tier.ShoreIce, door + new Vector2(0f, 0.6f), 10f, 5f, 0.15f);
+            OnGround(tier.ShoreIce, door + new Vector2(-2.8f, -1.2f), 120f, 3.4f, 0.15f);
+            OnGround(tier.ShoreIce, door + new Vector2(2.8f, -1.2f), 250f, 3.4f, 0.15f);
+            Brazier(door + new Vector2(-4.6f, -2.8f));
+            Brazier(door + new Vector2(4.6f, -2.8f));
 
-            // Ormr's hollow: his ship, frozen into the rock of the far wall, and his cultists' fire.
+            // Ormr's hollow: his cultists' circle of stones, his crew knelt round it frozen, fire at the way in;
+            // he stands up in its middle (ArenaSpots). It's open towards the gorge he's come by.
             Vector4 ormr = ArenaHollows[2];
-            // (Along the south-west wall, its ends in the rock: clear of the way from the east gorge to the west one.)
-            Vanilla(new[] { "FrozenShip01_DN", "FrozenShip02_DN" }, new Vector2(ormr.x - 5f, ormr.y - 7f), 315f, -0.6f);
-            float[] markers = { 20f, 70f, 120f, 160f };
-            for (int i = 0; i < markers.Length; i++)
-                Prop(new[] { i % 2 == 0 ? "marker01" : "marker02" }, new Vector2(ormr.x, ormr.y) + Polar(markers[i], 5f), 90f - markers[i], 0.15f);
-            Brazier(new Vector2(ormr.x + 5f, ormr.y - 4.5f));
-            Brazier(new Vector2(ormr.x + 5.5f, ormr.y + 4f));
+            Vector2 ring = ArenaSpots[1];
+            float[] stones = { 25f, 70f, 115f, 160f, 205f, 250f };
+            for (int i = 0; i < stones.Length; i++)
+                PropAtMost(new[] { i % 2 == 0 ? "marker01" : "marker02" }, ring + Polar(stones[i], 4f), 90f - stones[i], 0.1f, 1.6f);
+            quietProps = true;
+            Prop(new[] { "FrozenSkeleton_Pose1" }, ring + Polar(140f, 5.6f), 320f, 0.05f);
+            Prop(new[] { "FrozenSkeleton_Pose2" }, ring + Polar(220f, 5.6f), 40f, 0.05f);
+            Prop(new[] { "FrozenSkeleton_Pose1" }, ring + Polar(95f, 5.8f), 270f, 0.05f);
+            quietProps = false;
+            Brazier(ring + Polar(15f, 5.6f));
+            Brazier(ring + Polar(300f, 5.6f));
             Ice(new Vector2(ormr.x + 7f, ormr.y + 6f), 250f, 2f);
 
-            // Hafdís's summit: her hall, open to the sea, a high wall behind her and pillars like a crown,
-            // all of stone that doesn't break (the fight up here is in the air).
+            // Hafdís's summit: a crown of tall pillars round a wide floor, open to the sea on the north, where
+            // her ship's dragon head looks out; ice grown up between the pillars, blue fire. She comes down out
+            // of the sky into its middle. All of it stone that doesn't break (the fight up here is in the air).
             Vector4 top = ArenaHollows[3];
             Vector2 h = new Vector2(top.x, top.y);
-            Prop(new[] { "MountainKit_int_wall_4x4" }, h + new Vector2(-2f, 5.2f), 0f, 0.05f);
-            Prop(new[] { "MountainKit_int_wall_4x4" }, h + new Vector2(2f, 5.2f), 0f, 0.05f);
-            float[] crown = { 20f, 60f, 100f, 140f, 220f, 320f };
-            foreach (float deg in crown) StonePillar(h + Polar(deg, 6.5f), deg == 220f ? 1 : 2);
-            Brazier(h + new Vector2(-3.5f, -2.5f));
-            Brazier(h + new Vector2(3.5f, -2.5f));
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(-3.2f, 3.6f), 0f, 0.05f);
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(3.2f, 3.6f), 0f, 0.05f);
+            // (The way in from the west gorge, about 205 degrees, between the pillars at 175 and 235.)
+            float[] crown = { 0f, 35f, 145f, 175f, 235f, 280f, 320f };
+            foreach (float deg in crown) StonePillar(h + Polar(deg, 10f), 3);
+            float[] crystals = { 18f, 160f, 300f };
+            foreach (float deg in crystals) OnGround(tier.ShoreIce, h + Polar(deg, 11f), deg * 3f, 4.5f, 0.15f);
+            // (The summit's floor ends about 6 m north of its middle, where the crag falls to the sea.)
+            OnGround(new[] { "shipwreck_karve_dragonhead", "shipwreck_vikingship_front" }, h + new Vector2(0f, 5.8f), 0f, 5f, 0.1f);
+            float[] fires = { 30f, 150f, 210f, 270f, 330f };
+            foreach (float deg in fires) Brazier(h + Polar(deg, 6f));
 
             // Snow pines up on the rim, seen from the sea.
             Vector2[] trees = { new Vector2(-17f, -20f), new Vector2(17f, -24f), new Vector2(-18f, 0f), new Vector2(20f, 8f), new Vector2(-16f, 32f), new Vector2(15f, -38f) };
