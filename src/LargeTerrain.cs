@@ -20,14 +20,16 @@ namespace IslandsOfValheim
         [SerializeField] internal float half;       // how far the grid reaches from the middle
         [SerializeField] internal float step = 1f;  // metres between points
         [SerializeField] internal float land;       // how far out the islet is land (plants grow within it)
+        [SerializeField] internal int biome;        // the land it belongs to (Heightmap.Biome), for the ground's colours
 
         internal static readonly List<BakedGround> Loaded = new List<BakedGround>();
         static readonly List<Heightmap> near = new List<Heightmap>();
 
         // Built while the location is registered, from the builder's height function.
-        internal static void Bake(GameObject on, float reach, float landRadius, System.Func<float, float, float> height)
+        internal static void Bake(GameObject on, float reach, float landRadius, Heightmap.Biome biome, System.Func<float, float, float> height)
         {
             BakedGround ground = on.AddComponent<BakedGround>();
+            ground.biome = (int)biome;
             ground.step = 1f;
             ground.half = Mathf.Ceil(reach);
             ground.size = Mathf.RoundToInt(ground.half * 2f / ground.step) + 1;
@@ -117,6 +119,47 @@ namespace IslandsOfValheim
                 if (Loaded.Count == 0) return;
                 foreach (BakedGround ground in Loaded)
                     if (ground != null) ground.Apply(__instance);
+            }
+        }
+
+        // The islet's ground is painted as its own land (ash, snow, swamp mud...), not as the sea it stands in:
+        // the terrain shader picks its textures by these colours. Faded out towards the sea.
+        static readonly System.Reflection.FieldInfo renderMesh = AccessTools.Field(typeof(Heightmap), "m_renderMesh");
+
+        [HarmonyPatch(typeof(Heightmap), "RebuildRenderMesh")]
+        static class ColourPatch
+        {
+            static void Postfix(Heightmap __instance)
+            {
+                if (Loaded.Count == 0 || renderMesh == null) return;
+                Vector3 origin = __instance.transform.position;
+                float mapHalf = __instance.m_width * __instance.m_scale * 0.5f;
+                bool any = false;
+                foreach (BakedGround g in Loaded)
+                    if (g != null && g.biome != 0 && Mathf.Abs(g.transform.position.x - origin.x) < mapHalf + g.land &&
+                        Mathf.Abs(g.transform.position.z - origin.z) < mapHalf + g.land) { any = true; break; }
+                if (!any) return;
+                Mesh mesh = renderMesh.GetValue(__instance) as Mesh;
+                if (mesh == null) return;
+                Vector3[] verts = mesh.vertices;
+                Color32[] colours = mesh.colors32;
+                if (colours == null || colours.Length != verts.Length) return;
+                bool changed = false;
+                for (int i = 0; i < verts.Length; i++)
+                {
+                    Vector3 p = __instance.transform.TransformPoint(verts[i]);
+                    foreach (BakedGround g in Loaded)
+                    {
+                        if (g == null || g.biome == 0) continue;
+                        float d = Utils.DistanceXZ(g.transform.position, p);
+                        if (d > g.land) continue;
+                        float w = Mathf.Clamp01((g.land - d) / 12f);
+                        colours[i] = Color32.Lerp(colours[i], Heightmap.GetBiomeColor((Heightmap.Biome)g.biome), w);
+                        changed = true;
+                        break;
+                    }
+                }
+                if (changed) mesh.colors32 = colours;
             }
         }
 

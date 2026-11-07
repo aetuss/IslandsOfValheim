@@ -159,7 +159,10 @@ namespace IslandsOfValheim
             {
                 GameObject ground = new GameObject("IoV_BakedGround");
                 ground.transform.SetParent(root.transform, false);
-                BakedGround.Bake(ground, maxRadius, shoreRadius * Mathf.Max(stretchX, stretchZ) * 1.1f, Height);
+                // Painted as its own land, except the Ashlands: on real terrain that colour with the default
+                // paint mask is lava, which burns (the mesh islets could clear the mask; terrain keeps its own).
+                Heightmap.Biome paint = tier.Biome == Heightmap.Biome.AshLands ? Heightmap.Biome.None : tier.Biome;
+                BakedGround.Bake(ground, maxRadius, shoreRadius * Mathf.Max(stretchX, stretchZ) * 1.1f, paint, Height);
             }
             else BuildGround();
             PlaceRocks();
