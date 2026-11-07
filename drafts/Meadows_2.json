@@ -1,9 +1,9 @@
 {
   "name": "Meadows_2",
   "islet": "Meadows_2",
-  "rev": 3,
+  "rev": 4,
   "tool": "draft generator 2",
-  "count": 251,
+  "count": 250,
   "objects": [
     {"kind": "other", "prefab": "prop_wood_stack", "x": -9.51, "y": 0, "z": 4.98, "yaw": 40, "qx": 0, "qy": 0.34202, "qz": 0, "qw": 0.93969, "aboveGround": 0},
     {"kind": "other", "prefab": "prop_wood_stack", "x": -10.33, "y": 0, "z": 2.82, "yaw": 30, "qx": 0, "qy": 0.25882, "qz": 0, "qw": 0.96593, "aboveGround": 0},
@@ -11,7 +11,6 @@
     {"kind": "other", "prefab": "barrell", "x": -7.19, "y": 0, "z": 6.23, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0.5},
     {"kind": "marker", "prefab": "KEEPER", "x": 4.51, "y": 0, "z": -26.53, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
     {"kind": "marker", "prefab": "WRECK", "x": -29.35, "y": 0, "z": -47.98, "yaw": 136.11, "qx": 0, "qy": 0.92754, "qz": 0, "qw": 0.37372, "aboveGround": 0},
-    {"kind": "marker", "prefab": "KEEPER", "x": 9.61, "y": 0, "z": 11.39, "yaw": 126.02, "qx": 0, "qy": 0.89109, "qz": 0, "qw": 0.45383, "aboveGround": 0},
     {"kind": "vanilla", "prefab": "WoodHouse8", "x": -19.07, "y": 0, "z": 7.46, "yaw": 111.365, "qx": 0, "qy": 0.82593, "qz": 0, "qw": 0.56378, "aboveGround": 0},
     {"kind": "vanilla", "prefab": "Dolmen01", "x": 6.95, "y": 0, "z": 22.1, "yaw": 197.457, "qx": 0, "qy": 0.98842, "qz": 0, "qw": -0.15176, "aboveGround": 0},
     {"kind": "vanilla", "prefab": "Dolmen02", "x": 22.42, "y": 0, "z": 6.16, "yaw": 254.637, "qx": 0, "qy": 0.79528, "qz": 0, "qw": -0.60624, "aboveGround": 0},

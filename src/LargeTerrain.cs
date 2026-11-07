@@ -121,8 +121,11 @@ namespace IslandsOfValheim
                     if (ground != null) ground.Apply(__instance);
             }
 
-            // An Ashlands islet: its ground's paint mask cleared of the lava channel (alpha), so its colour
-            // shows as ash and cinders rather than glowing lava. Paths and other paint stay.
+            // The lands whose ground the game draws partly from the paint mask's alpha (WorldGenerator's
+            // GetAshlandsHeight, GetMistlandsHeight and GetDeepNorthHeight write it; the sea leaves it at 1):
+            // the Ashlands' lava, the Mistlands' grass instead of their moss, the Deep North's bare ground
+            // instead of snow. On their islets it's cleared, so the ground shows as the land's own. Paths and
+            // other paint stay.
             static void Postfix(Heightmap __instance)
             {
                 if (Loaded.Count == 0 || paintMask == null) return;
@@ -134,7 +137,7 @@ namespace IslandsOfValheim
                 Color[] pixels = null;
                 foreach (BakedGround g in Loaded)
                 {
-                    if (g == null || g.biome != (int)Heightmap.Biome.AshLands) continue;
+                    if (g == null || !MaskedLand((Heightmap.Biome)g.biome)) continue;
                     Vector3 c = g.transform.position;
                     if (Mathf.Abs(c.x - origin.x) > mapHalf + g.land || Mathf.Abs(c.z - origin.z) > mapHalf + g.land) continue;
                     if (pixels == null) pixels = mask.GetPixels();
@@ -158,6 +161,11 @@ namespace IslandsOfValheim
         }
 
         static readonly System.Reflection.FieldInfo paintMask = AccessTools.Field(typeof(Heightmap), "m_paintMask");
+
+        static bool MaskedLand(Heightmap.Biome biome)
+        {
+            return biome == Heightmap.Biome.AshLands || biome == Heightmap.Biome.Mistlands || biome == Heightmap.Biome.DeepNorth;
+        }
 
         // The islet's ground is painted as its own land (ash, snow, swamp mud...), not as the sea it stands in:
         // the terrain shader picks its textures by these colours. Faded out towards the sea.
