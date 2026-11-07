@@ -132,8 +132,16 @@ namespace IslandsOfValheim
                 Guardian = new[] { "Seeker" },
                 Life = new[] { L("Hare", 2, Where.Plateau) } },
             new LargeKind { Tier = IsletTier.All[6], Variant = 0, Height = 15f, Scale = 4f, Dungeon = new[] { "MorkBorg", "TheDarkestHole" },
-                Shaped = true, Layout = Layout.Village, Guardian = new[] { "JotunWarrior", "Fenring" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "JotunWarrior", "Fenring" }, DungeonAt = new Vector2(-6f, -6f),
                 Life = new[] { L("Moose", 2, Where.Slope), L("Seal", 3, Where.Shore), L("Bjorn", 1, Where.Slope) } },
+            // The frozen ships: peaceful, seals on the ice-bound wrecks.
+            new LargeKind { Tier = IsletTier.All[6], Design = 2, Variant = 2, Height = 5f, Scale = 3.2f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0],
+                Life = new[] { L("Seal", 4, Where.Shore), L("Moose", 2, Where.Slope) } },
+            // The ghost town: a village whose people never left (the game's own, laid out anew on each islet).
+            new LargeKind { Tier = IsletTier.All[6], Design = 3, Variant = 0, Height = 5f, Scale = 3.4f, Layout = Layout.Village,
+                Guardian = new[] { "Fenring_Cultist", "Fenring" },
+                Life = new[] { L("Seal", 2, Where.Shore), L("Moose", 1, Where.Slope) } },
         };
 
         // What stands in the middle of a large islet: a vanilla dungeon with the people's village around it,
@@ -228,7 +236,7 @@ namespace IslandsOfValheim
             onLand = terrain;
             try { LargeIsletOf(kind, name, terrain, quantity, bare); }
             catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-            finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
+            finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; draftGenerator = null; }
         }
 
         // terrain: the ground is the game's own terrain, raised to the islet's shape (BakedGround), instead
@@ -338,6 +346,7 @@ namespace IslandsOfValheim
             location.m_applyRandomDamage = tier.Ruined;
             location.m_exteriorRadius = 60f;
             if (interior != null) interior.CopyTo(location);
+            else if (draftGenerator != null) location.m_generator = draftGenerator; // a settlement laying itself out
             location.m_noBuild = false; // players may settle here
 
             LocationConfig config = new LocationConfig();
