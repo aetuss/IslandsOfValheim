@@ -10,11 +10,12 @@ namespace IslandsOfValheim
     // design can be laid out on their true sizes instead of guesses ("IoV measure" lines).
     static partial class IsletBuilder
     {
+        // (Round 1, logged 2026-11-08: the boss altars, the stone henges, ShipSetting01, the statues. Round 2: the
+        // Deep North's own, with the parts of their big parts.)
         static readonly string[] measured =
         {
-            "Eikthyrnir", "GDKing", "Bonemass", "Dragonqueen", "GoblinKing", "Mistlands_DvergrBossEntrance1", "FaderLocation",
-            "ShipSetting01", "StoneHenge1", "StoneHenge2", "StoneHenge3", "StoneHenge4", "StoneHenge5", "StoneHenge6",
-            "NorthMemorialPlace", "Mistlands_StatueGroup1", "Mistlands_Statue1", "Mistlands_Statue2", "DrakeNest01", "MountainGrave01", "MountainShrine01",
+            "DN_Bossroom", "DN_gammeltrollFrac01", "DN_gammeltrollFrac02", "ShipSetting02", "ShipSetting03", "IcePond1", "MorkBorg",
+            "TheHole01", "HotSpring3", "Runestone_DeepNorth", "MountainWell1", "AncientUpgradeStation", "LumberCamp",
         };
 
         internal static void MeasureVanilla()
@@ -52,6 +53,18 @@ namespace IslandsOfValheim
                         Plugin.Log.LogInfo("IoV measure:   " + child.name + " at (" + p.x.ToString("F1") + ", " + p.y.ToString("F1") + ", " + p.z.ToString("F1") + ") turned " + child.localEulerAngles.y.ToString("0") +
                             (mesh ? ", spans x " + b.min.x.ToString("F1") + ".." + b.max.x.ToString("F1") + " z " + b.min.z.ToString("F1") + ".." + b.max.z.ToString("F1") + " up to y " + b.max.y.ToString("F1") : ", no mesh") +
                             Kinds(child.gameObject));
+                        // A big part made of many: its own parts too, one level down.
+                        if (!mesh || Mathf.Max(b.size.x, b.size.z) < 12f || child.childCount < 2) continue;
+                        int inner = 0;
+                        foreach (Transform part in child)
+                        {
+                            if (inner++ >= 45) { Plugin.Log.LogInfo("IoV measure:       ..."); break; }
+                            Bounds pb = LocalBounds(part.gameObject);
+                            Vector3 q = root.transform.InverseTransformPoint(part.position);
+                            Plugin.Log.LogInfo("IoV measure:       " + part.name + " at (" + q.x.ToString("F1") + ", " + q.y.ToString("F1") + ", " + q.z.ToString("F1") + ")" +
+                                (pb.size.sqrMagnitude > 0.0001f ? " spans x " + pb.min.x.ToString("F1") + ".." + pb.max.x.ToString("F1") + " z " + pb.min.z.ToString("F1") + ".." + pb.max.z.ToString("F1") + " up to y " + pb.max.y.ToString("F1") : " no mesh") +
+                                Kinds(part.gameObject));
+                        }
                     }
                 }
                 catch (System.Exception e) { Plugin.Log.LogWarning("IoV measure: " + name + " failed: " + e.Message); }
