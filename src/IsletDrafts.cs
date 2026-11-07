@@ -163,9 +163,39 @@ namespace IslandsOfValheim
             }
             ZoneManager.Instance.DestroyCustomLocation(clone.Name);
             if (clone.Prefab != null) Object.DestroyImmediate(clone.Prefab);
+            FixShaders(group, source);
             built++;
             Plugin.Debug(locationName + ": " + source + " at " + at.ToString("F0") + ", " + parts.Count + " parts, " + removed + " left out");
             return group;
+        }
+
+        // Some of the game's structures come with materials whose shader the game can't draw outside the
+        // structure's own asset bundle (they show bright pink): each is pointed at the game's loaded shader of
+        // the same name. One that still can't be drawn is switched off and logged.
+        static readonly HashSet<Material> fixedMaterials = new HashSet<Material>();
+
+        static void FixShaders(GameObject group, string source)
+        {
+            int swapped = 0, off = 0;
+            foreach (Renderer r in group.GetComponentsInChildren<Renderer>(true))
+            {
+                bool bad = false;
+                foreach (Material m in r.sharedMaterials)
+                {
+                    if (m == null || m.shader == null) continue;
+                    if (fixedMaterials.Contains(m)) continue;
+                    Shader loaded = Shader.Find(m.shader.name);
+                    if (loaded != null && loaded != m.shader) { m.shader = loaded; swapped++; }
+                    if (!m.shader.isSupported || m.shader.name == "Hidden/InternalErrorShader")
+                    {
+                        bad = true;
+                        Plugin.Log.LogWarning(locationName + ": " + source + "'s " + r.name + " has a shader the game can't draw (" + m.shader.name + "); left out");
+                    }
+                    else fixedMaterials.Add(m);
+                }
+                if (bad) { r.enabled = false; off++; }
+            }
+            if (swapped + off > 0) Plugin.Log.LogInfo(locationName + ": " + source + ": " + swapped + " materials pointed at the game's shaders, " + off + " parts switched off");
         }
 
         // A terrain modifier a draft put there on purpose: a structure's own, or a worn path.

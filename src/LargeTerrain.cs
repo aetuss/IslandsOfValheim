@@ -120,7 +120,44 @@ namespace IslandsOfValheim
                 foreach (BakedGround ground in Loaded)
                     if (ground != null) ground.Apply(__instance);
             }
+
+            // An Ashlands islet: its ground's paint mask cleared of the lava channel (alpha), so its colour
+            // shows as ash and cinders rather than glowing lava. Paths and other paint stay.
+            static void Postfix(Heightmap __instance)
+            {
+                if (Loaded.Count == 0 || paintMask == null) return;
+                Texture2D mask = paintMask.GetValue(__instance) as Texture2D;
+                if (mask == null) return;
+                Vector3 origin = __instance.transform.position;
+                float scale = __instance.m_scale, mapHalf = __instance.m_width * scale * 0.5f;
+                bool changed = false;
+                Color[] pixels = null;
+                foreach (BakedGround g in Loaded)
+                {
+                    if (g == null || g.biome != (int)Heightmap.Biome.AshLands) continue;
+                    Vector3 c = g.transform.position;
+                    if (Mathf.Abs(c.x - origin.x) > mapHalf + g.land || Mathf.Abs(c.z - origin.z) > mapHalf + g.land) continue;
+                    if (pixels == null) pixels = mask.GetPixels();
+                    int w = mask.width, h = mask.height;
+                    for (int y = 0; y < h; y++)
+                        for (int x = 0; x < w; x++)
+                        {
+                            float wx = origin.x - mapHalf + x * (mapHalf * 2f) / Mathf.Max(1, w - 1);
+                            float wz = origin.z - mapHalf + y * (mapHalf * 2f) / Mathf.Max(1, h - 1);
+                            if (Utils.DistanceXZ(c, new Vector3(wx, 0f, wz)) > g.land) continue;
+                            int i = y * w + x;
+                            if (pixels[i].a == 0f) continue;
+                            pixels[i].a = 0f;
+                            changed = true;
+                        }
+                }
+                if (!changed) return;
+                mask.SetPixels(pixels);
+                mask.Apply(false);
+            }
         }
+
+        static readonly System.Reflection.FieldInfo paintMask = AccessTools.Field(typeof(Heightmap), "m_paintMask");
 
         // The islet's ground is painted as its own land (ash, snow, swamp mud...), not as the sea it stands in:
         // the terrain shader picks its textures by these colours. Faded out towards the sea.
