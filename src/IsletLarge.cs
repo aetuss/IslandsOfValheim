@@ -110,11 +110,27 @@ namespace IslandsOfValheim
                 Life = new[] { L("Volture", 3, Where.Air), L("Asksvin", 2, Where.Slope) } },
             // The dungeons dug into the ground stand on tall islets, so their pits stay above the sea.
             new LargeKind { Tier = IsletTier.All[3], Variant = 0, Height = 16f, Scale = 4f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1", "Mistlands_DvergrTownEntrance2" },
-                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" }, DungeonAt = new Vector2(7f, -4f),
                 Life = new[] { L("Hare", 3, Where.Plateau) } },
+            // The giants' graveyard: peaceful, only hares among the bones.
+            new LargeKind { Tier = IsletTier.All[3], Design = 2, Variant = 2, Height = 6f, Scale = 3.2f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0],
+                Life = new[] { L("Hare", 4, Where.Plateau) } },
+            // The fallen watchtower, where the Seekers nest.
+            new LargeKind { Tier = IsletTier.All[3], Design = 3, Variant = 1, Height = 7f, Scale = 3f, Layout = Layout.Village,
+                Guardian = new[] { "Seeker" },
+                Life = new[] { L("Hare", 2, Where.Plateau), L("Tick", 2, Where.Slope) } },
             new LargeKind { Tier = IsletTier.All[4], Variant = 0, Height = 16f, Scale = 4f, Dungeon = new[] { "Mistlands_DvergrTownEntrance1" },
-                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" },
+                Shaped = true, Layout = Layout.Village, Guardian = new[] { "SeekerBrute" }, DungeonAt = new Vector2(-7f, 4f),
                 Life = new[] { L("Hare", 3, Where.Plateau) } },
+            // The dvergr harbour in the islet's bay: peaceful while the player is.
+            new LargeKind { Tier = IsletTier.All[4], Design = 2, Variant = 2, Height = 5f, Scale = 3.2f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0],
+                Life = new[] { L("Hare", 3, Where.Plateau) } },
+            // The dvergr watchtower on its hill, and the Seekers who come for it.
+            new LargeKind { Tier = IsletTier.All[4], Design = 3, Variant = 3, Height = 6f, Scale = 3f, Layout = Layout.Village,
+                Guardian = new[] { "Seeker" },
+                Life = new[] { L("Hare", 2, Where.Plateau) } },
             new LargeKind { Tier = IsletTier.All[6], Variant = 0, Height = 15f, Scale = 4f, Dungeon = new[] { "MorkBorg", "TheDarkestHole" },
                 Shaped = true, Layout = Layout.Village, Guardian = new[] { "JotunWarrior", "Fenring" },
                 Life = new[] { L("Moose", 2, Where.Slope), L("Seal", 3, Where.Shore), L("Bjorn", 1, Where.Slope) } },

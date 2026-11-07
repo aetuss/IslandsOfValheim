@@ -125,6 +125,7 @@ namespace IslandsOfValheim
             if (!keeper) { Keeper(kind, Vector2.zero); Plugin.Log.LogWarning(locationName + ": its draft has no KEEPER mark; the keeper stands in the middle"); }
             PlaceHints();
             if (!kind.Peaceful) PlaceOutsideGuard();
+            if (tier.DvergrOutpost) PlaceDvergrWard(); // the islet is theirs
             Plugin.Debug(locationName + ": draft " + kind.DraftId + ", " + draft.Count + " lines, " + left + " left out");
             return true;
         }
