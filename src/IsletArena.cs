@@ -36,10 +36,10 @@ namespace IslandsOfValheim
             new Vector4(0f, 35f, 14f, 13f),      // Hafdís's: the summit
         };
 
-        // Where each keeper comes: Grímr out of the jötun gate, Ormr on top of his altar, Hafdís down out of the
-        // sky (FinalArena brings Ormr in on the altar and Hafdís in high).
+        // Where each keeper comes: Grímr out of the jötun gate, Ormr in the middle of his ring of stone, Hafdís
+        // down out of the sky (FinalArena brings Ormr in on the ring and Hafdís in high).
         internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -13.5f), new Vector2(-2f, 6f), new Vector2(0f, 35f) };
-        internal static readonly float[] ArenaSpotsAbove = { 0.4f, 2.7f, 10f };
+        internal static readonly float[] ArenaSpotsAbove = { 0.4f, 0.9f, 10f };
 
         // The gorges: points along each (x, z, floor).
         static readonly Vector3[][] Gorges =
@@ -232,11 +232,14 @@ namespace IslandsOfValheim
             StaticPart(sources, "DN_gammeltrollFrac01", "TrollFrost_Frac_legs", new Vector2(19f, -28f), 0f, 1f, true, 4.8f);
             StaticPart(sources, "DN_gammeltrollFrac02", "TrollFrost_Frac_arm", new Vector2(-19f, -16f), 90f, 1f, true, 4.6f);
 
-            // Ormr's hollow: the mountain altar in the middle, its top 2 m up, where he stands up; blue fire on
-            // the diagonals round it; his frozen crew knelt facing it.
+            // Ormr's hollow: a carved ring of dark stone filling the floor (the Fader's arena's middle, 15 m across,
+            // half a metre high), a glowing stone altar at its far side; he stands up in the middle of the ring.
+            // Blue fire on the diagonals round it; his frozen crew knelt facing it. (Moder's altar was tried: only
+            // the top of a mountain, it sank into the floor.)
             Vector4 o = ArenaHollows[2];
             Vector2 oc = new Vector2(o.x, o.y);
-            StaticPart(sources, "Dragonqueen", "Dragonlocation", oc, 0f, 1f, true, 2.1f);
+            StaticPart(sources, "FaderLocation", "center", oc, 0f, 0.88f, true, 0.45f);
+            StaticPart(sources, "GDKing", "offeraltar_gdking", oc + new Vector2(0f, 5.6f), 180f, 1.2f, false, 0.3f);
             foreach (float deg in new[] { 45f, 135f, 225f, 315f }) Brazier(oc + Polar(deg, 7.8f));
             quietProps = true;
             foreach (float deg in new[] { 90f, 200f, 270f })
@@ -244,8 +247,8 @@ namespace IslandsOfValheim
             quietProps = false;
 
             // Hafdís's summit: a ring of great stones, open to the way in (from the west gorge, about 219 degrees)
-            // and to the sea on the north, where her ship's dragon head looks out over the cliff; blue fire before
-            // each stone. She comes down out of the sky into the middle.
+            // and to the sea on the north; blue fire before each stone. She comes down out of the sky into the
+            // middle. (A dragon head on the cliff was tried: from inside it read as a black spike.)
             Vector4 s = ArenaHollows[3];
             Vector2 sc = new Vector2(s.x, s.y);
             foreach (float deg in new[] { 0f, 30f, 150f, 180f, 255f, 290f, 325f })
@@ -253,7 +256,6 @@ namespace IslandsOfValheim
                 OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, sc + Polar(deg, 11.5f), deg * 3f + 10f, 6.5f, 0.1f);
                 Brazier(sc + Polar(deg, 9f));
             }
-            OnGround(new[] { "shipwreck_karve_dragonhead", "shipwreck_vikingship_front" }, sc + new Vector2(0f, 5.5f), 0f, 5f, 0.1f);
         }
 
         // A piece of one of the game's structures (path inside the location), copied without its scripts so it
