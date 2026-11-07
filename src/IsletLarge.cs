@@ -111,18 +111,28 @@ namespace IslandsOfValheim
         {
             if (Plugin.LargeIslets.Value <= 0) return;
             foreach (LargeKind kind in LargeKinds)
-            {
-                buildingLarge = true;
-                try { LargeIsletOf(kind); }
-                catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
-                finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
-            }
+                BuildLarge(kind, kind.LocationName, false, Plugin.LargeIslets.Value);
+            // Work in progress (branch large-terrain): the Meadows large islet on real terrain, placed only by
+            // `iov_goto largeterrain`.
+            BuildLarge(LargeKinds[0], LargeTerrainTest, true, 0);
         }
 
-        static void LargeIsletOf(LargeKind kind)
+        internal const string LargeTerrainTest = "IoVTest_LargeTerrain_Meadows";
+
+        static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity)
+        {
+            buildingLarge = true;
+            try { LargeIsletOf(kind, name, terrain, quantity); }
+            catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
+            finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
+        }
+
+        // terrain: the ground is the game's own terrain, raised to the islet's shape (BakedGround), instead
+        // of our mesh.
+        static void LargeIsletOf(LargeKind kind, string name, bool terrain, int quantity)
         {
             tier = kind.Tier;
-            locationName = kind.LocationName;
+            locationName = name;
             SetVariant(kind.Variant);
             plateauRadius *= kind.Scale;
             shoreRadius *= kind.Scale;
@@ -141,7 +151,13 @@ namespace IslandsOfValheim
             if (kind.Dungeon != null && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
             float dungeonTurn = cliffDeg + 180f;
             if (source != null && kind.Shaped) ReadCuts(source, Vector2.zero, dungeonTurn, locationName);
-            BuildGround();
+            if (terrain)
+            {
+                GameObject ground = new GameObject("IoV_BakedGround");
+                ground.transform.SetParent(root.transform, false);
+                BakedGround.Bake(ground, maxRadius, shoreRadius * Mathf.Max(stretchX, stretchZ) * 1.1f, Height);
+            }
+            else BuildGround();
             PlaceRocks();
             DungeonInterior interior = source != null ? AddDungeon(source, Vector2.zero, dungeonTurn, locationName, kind.Shaped) : null;
             Vector2 keeper;
@@ -190,7 +206,7 @@ namespace IslandsOfValheim
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median;
-            config.Quantity = Plugin.LargeIslets.Value;
+            config.Quantity = quantity;
             config.Priotized = true;
             config.SnapToWater = true;
             config.RandomRotation = true;
@@ -511,10 +527,11 @@ namespace IslandsOfValheim
         // it (a chest set down on those hangs in the air and breaks).
         static Vector3 Ground(Vector3 q)
         {
-            int mask = LayerMask.GetMask("static_solid");
+            int mask = LayerMask.GetMask("static_solid", "terrain");
             Vector3 from = new Vector3(q.x, ZoneSystem.instance.m_waterLevel + 60f, q.z);
             foreach (RaycastHit hit in Physics.RaycastAll(from, Vector3.down, 90f, mask, QueryTriggerInteraction.Ignore))
-                if (hit.collider != null && hit.collider.name == "IoV_Ground") return hit.point + Vector3.up * 0.3f;
+                if (hit.collider != null && (hit.collider.name == "IoV_Ground" || hit.collider.GetComponentInParent<Heightmap>() != null))
+                    return hit.point + Vector3.up * 0.3f; // our mesh, or a large islet of real terrain
             return new Vector3(q.x, ZoneSystem.instance.m_waterLevel - 5f, q.z);
         }
     }

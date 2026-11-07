@@ -65,20 +65,27 @@ namespace IslandsOfValheim
         // Takes you to the test islet, placing it first if the world has none.
         internal static void Goto(Terminal context)
         {
+            Goto(context, Name, Top, 70f, 300f);
+        }
+
+        // The same for any test location: placed in open water (clear for reach metres round) at least
+        // from metres out from the world's centre, the first time.
+        internal static void Goto(Terminal context, string name, float top, float reach, float from)
+        {
             ZoneSystem zones = ZoneSystem.instance;
             Player player = Player.m_localPlayer;
             if (zones == null || player == null || WorldGenerator.instance == null) return;
             Vector3 spot = Vector3.zero;
             bool have = false;
             foreach (ZoneSystem.LocationInstance instance in zones.GetLocationList())
-                if (instance.m_location != null && instance.m_location.m_prefabName == Name) { spot = instance.m_position; have = true; break; }
+                if (instance.m_location != null && instance.m_location.m_prefabName == name) { spot = instance.m_position; have = true; break; }
             if (!have)
             {
                 ZoneSystem.ZoneLocation location = null;
                 foreach (ZoneSystem.ZoneLocation l in zones.m_locations)
-                    if (l != null && l.m_prefabName == Name) { location = l; break; }
-                if (location == null || registerLocation == null || spawnLocation == null) { context.AddString("The terrain islet test isn't registered."); return; }
-                if (!FindSpot(out spot)) { context.AddString("No open, deep water found near the centre of the world."); return; }
+                    if (l != null && l.m_prefabName == name) { location = l; break; }
+                if (location == null || registerLocation == null || spawnLocation == null) { context.AddString("The test location " + name + " isn't registered."); return; }
+                if (!FindSpot(out spot, reach, from)) { context.AddString("No open, deep water found near the centre of the world."); return; }
                 spot.y = zones.m_waterLevel;
                 Vector2s zone = ZoneSystem.GetZone(spot);
                 HashSet<Vector2s> generated = generatedZones != null ? generatedZones.GetValue(zones) as HashSet<Vector2s> : null;
@@ -86,20 +93,20 @@ namespace IslandsOfValheim
                 registerLocation.Invoke(zones, new object[] { location, spot, built });
                 if (built)
                     spawnLocation.Invoke(zones, new object[] { location, 1234, spot, Quaternion.identity, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
-                Plugin.Log.LogInfo("Terrain islet test placed at " + spot.ToString("F0") + (built ? " (zone already there: built now)" : " (built when the zone is)"));
+                Plugin.Log.LogInfo("Test location " + name + " placed at " + spot.ToString("F0") + (built ? " (zone already there: built now)" : " (built when the zone is)"));
             }
-            Vector3 target = new Vector3(spot.x, zones.m_waterLevel + Top + 4f, spot.z);
+            Vector3 target = new Vector3(spot.x, zones.m_waterLevel + top + 4f, spot.z);
             player.TeleportTo(target, player.transform.rotation, true);
-            context.AddString("Teleporting to the terrain islet test at " + spot.x.ToString("0", CultureInfo.InvariantCulture) + ", " + spot.z.ToString("0", CultureInfo.InvariantCulture) + ".");
+            context.AddString("Teleporting to the test location " + name + " at " + spot.x.ToString("0", CultureInfo.InvariantCulture) + ", " + spot.z.ToString("0", CultureInfo.InvariantCulture) + ".");
         }
 
         // The open sea closest to the world's centre: a spot in the Ocean biome at least 10 m deep, with deep
         // ocean all round it for the islet's whole spread, searched outward ring by ring. (A world that
         // already had the round-1 test keeps that spot: the location's new ground replaces the old.)
-        static bool FindSpot(out Vector3 spot)
+        static bool FindSpot(out Vector3 spot, float reach, float from)
         {
             float water = ZoneSystem.instance.m_waterLevel;
-            for (float r = 300f; r < 6000f; r += 64f)
+            for (float r = from; r < 7000f; r += 64f)
             {
                 int steps = Mathf.Max(16, Mathf.RoundToInt(r * 2f * Mathf.PI / 64f));
                 for (int i = 0; i < steps; i++)
@@ -111,7 +118,7 @@ namespace IslandsOfValheim
                     for (int k = 0; k < 12 && open; k++)
                     {
                         float b = k * Mathf.PI * 2f / 12f;
-                        open = DeepOcean(p + new Vector3(Mathf.Cos(b), 0f, Mathf.Sin(b)) * 70f, water, 4f);
+                        open = DeepOcean(p + new Vector3(Mathf.Cos(b), 0f, Mathf.Sin(b)) * reach, water, 4f);
                     }
                     if (!open) continue;
                     spot = p;

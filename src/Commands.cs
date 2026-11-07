@@ -88,6 +88,12 @@ namespace IslandsOfValheim
                         TerrainIsletTest.Goto(args.Context); // research prototype
                         return;
                     }
+                    if (args.Length > 1 && string.Equals(args[1], "largeterrain", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        // work in progress: the Meadows large islet on real terrain, away from the small test islet
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.LargeTerrainTest, IsletBuilder.LargeKinds[0].Height, 130f, 900f);
+                        return;
+                    }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
