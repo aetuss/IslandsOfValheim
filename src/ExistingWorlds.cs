@@ -78,16 +78,32 @@ namespace IslandsOfValheim
             Dictionary<string, ZoneSystem.ZoneLocation> land = new Dictionary<string, ZoneSystem.ZoneLocation>();
             foreach (ZoneSystem.ZoneLocation location in zones.m_locations)
                 if (location != null && location.m_prefabName != null) land[location.m_prefabName] = location;
+            // How many of each design the world has already, so the converted ones go to the designs it has
+            // fewest of (a world gets to see them all, not three of the first).
+            Dictionary<string, int> have = new Dictionary<string, int>();
+            foreach (ZoneSystem.LocationInstance instance in zones.m_locationInstances.Values)
+                if (instance.m_location != null && instance.m_location.m_prefabName != null) Add(have, instance.m_location.m_prefabName);
             int changed = 0;
             foreach (Vector2s zone in new List<Vector2s>(zones.m_locationInstances.Keys))
             {
                 ZoneSystem.LocationInstance instance = zones.m_locationInstances[zone];
                 if (instance.m_placed || instance.m_location == null) continue;
-                IsletBuilder.LargeKind kind = IsletBuilder.LargeKindOf(instance.m_location.m_prefabName);
-                ZoneSystem.ZoneLocation to;
-                if (kind == null || instance.m_location.m_prefabName != kind.LocationName || !land.TryGetValue(kind.LandName, out to)) continue;
+                IsletBuilder.LargeKind old = IsletBuilder.LargeKindOf(instance.m_location.m_prefabName);
+                if (old == null || instance.m_location.m_prefabName != old.LocationName) continue;
+                ZoneSystem.ZoneLocation to = null;
+                int fewest = int.MaxValue;
+                foreach (IsletBuilder.LargeKind design in IsletBuilder.LargeKinds)
+                {
+                    ZoneSystem.ZoneLocation candidate;
+                    if (design.Tier != old.Tier || !land.TryGetValue(design.LandName, out candidate)) continue;
+                    int n;
+                    have.TryGetValue(design.LandName, out n);
+                    if (n < fewest) { fewest = n; to = candidate; }
+                }
+                if (to == null) continue;
                 instance.m_location = to;
                 zones.m_locationInstances[zone] = instance;
+                Add(have, to.m_prefabName);
                 changed++;
             }
             if (changed > 0) Plugin.Log.LogInfo("Large islets: " + changed + " not yet built will be of the game's own terrain");

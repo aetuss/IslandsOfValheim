@@ -143,7 +143,7 @@ namespace IslandsOfValheim
                     foreach (IsletTier tier in IsletTier.All) names.Add(tier.Name);
                     names.Add("trader");
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
-                    foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("large_" + kind.Tier.Name.ToLowerInvariant());
+                    foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
                     return names;
                 });
         }
@@ -155,8 +155,14 @@ namespace IslandsOfValheim
             for (int i = 1; i <= Story.Islets.Length; i++)
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
             foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
-                if (string.Equals(arg, "large_" + kind.Tier.Name, System.StringComparison.OrdinalIgnoreCase)) return kind.LandName;
+                if (string.Equals(arg, LargeArg(kind), System.StringComparison.OrdinalIgnoreCase)) return kind.LandName;
             return null;
+        }
+
+        // large_meadows for a land's first design, large_meadows_2 for its second...
+        static string LargeArg(IsletBuilder.LargeKind kind)
+        {
+            return "large_" + kind.Tier.Name.ToLowerInvariant() + (kind.Design > 1 ? "_" + kind.Design : "");
         }
 
         static void GotoHarbour(Terminal context)
@@ -198,7 +204,7 @@ namespace IslandsOfValheim
             {
                 if (instance.m_location == null) continue;
                 string name = instance.m_location.m_prefabName;
-                if (name == location || (large != null && (name == large.LocationName || name == large.LandName))) result.Add(instance);
+                if (name == location || (large != null && name == large.LocationName && large.Design == 1 && location == large.LandName)) result.Add(instance);
             }
             return result;
         }

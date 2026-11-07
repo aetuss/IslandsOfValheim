@@ -38,16 +38,21 @@ namespace IslandsOfValheim
             internal string[] Guardian;     // the first that exists
             internal Life[] Life;
             internal string[] Extra;        // more vanilla things to place (a wild beehive...)
+            // Each land has several designs (1, 2, 3...), so the islets of a world don't repeat one another.
+            // Design 1 is also the old islet of our ground mesh, which keeps its old layout (Inhabit).
+            internal int Design = 1;
+            internal System.Action<LargeKind> Content; // what stands on it (null: the old village layout)
+            internal bool Peaceful;         // no guardian and no guards: only its animals and what's to find
             // Worked out while it's built: radii, and where the keeper stands from the middle.
             internal float Plateau, Shore;
             internal Vector3 KeeperOffset;
 
             // The islet on our ground mesh, up to 1.9: kept for the ones already built in a world (players may
-            // have settled there), but no longer placed anew.
+            // have settled there), but no longer placed anew. Design 1 only.
             internal string LocationName { get { return LargePrefix + Tier.Name; } }
             // The islet on the game's own terrain (from 2.0): every new one.
-            internal string LandName { get { return LargePrefix + Tier.Name + "_Land"; } }
-            internal string KeeperName { get { return "IoV_LargeKeeper_" + Tier.Name; } }
+            internal string LandName { get { return LargePrefix + Tier.Name + "_Land" + (Design > 1 ? Design.ToString() : ""); } }
+            internal string KeeperName { get { return "IoV_LargeKeeper_" + Tier.Name + (Design > 1 ? "_" + Design : ""); } }
             internal string ChestName(int band) { return "IoV_LargeChest_" + Tier.Name + "_" + band; }
         }
 
@@ -56,11 +61,23 @@ namespace IslandsOfValheim
         internal static readonly List<LargeKind> LargeKinds = new List<LargeKind>
         {
             new LargeKind { Tier = IsletTier.All[0], Variant = 0, Height = 5f, Scale = 3.2f, Dungeon = new[] { "Crypt4", "Crypt3", "Crypt2" }, Layout = Layout.Village,
-                Guardian = new[] { "Greydwarf_Elite" },
+                Guardian = new[] { "Greydwarf_Elite" }, Content = BarrowHill,
                 Life = new[] { L("Deer", 3, Where.Slope), L("Boar", 3, Where.Plateau), L("Neck", 2, Where.Shore) }, Extra = new[] { "Beehive" } },
+            new LargeKind { Tier = IsletTier.All[0], Design = 2, Variant = 1, Height = 4f, Scale = 3f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0], Content = BeekeepersIslet,
+                Life = new[] { L("Deer", 4, Where.Slope), L("Boar", 2, Where.Plateau) } },
+            new LargeKind { Tier = IsletTier.All[0], Design = 3, Variant = 2, Height = 3.5f, Scale = 3.1f, Layout = Layout.Village,
+                Peaceful = true, Guardian = new string[0], Content = FishersVillage,
+                Life = new[] { L("Neck", 4, Where.Shore), L("Deer", 2, Where.Slope) } },
             new LargeKind { Tier = IsletTier.All[1], Variant = 2, Height = 4f, Scale = 2.8f, Dungeon = new[] { "SunkenCrypt4", "SunkenCrypt3", "SunkenCrypt2", "SunkenCrypt1" }, Layout = Layout.Village,
-                Guardian = new[] { "Abomination" },
+                Guardian = new[] { "Abomination" }, Content = DrownedCrypt,
                 Life = new[] { L("Leech", 4, Where.Water), L("Crow", 3, Where.Air) } },
+            new LargeKind { Tier = IsletTier.All[1], Design = 2, Variant = 3, Height = 3.5f, Scale = 2.6f, Layout = Layout.Village,
+                Guardian = new[] { "Wraith" }, Content = WitchsHut,
+                Life = new[] { L("Leech", 5, Where.Water), L("Crow", 2, Where.Air) } },
+            new LargeKind { Tier = IsletTier.All[1], Design = 3, Variant = 0, Height = 4.5f, Scale = 2.9f, Layout = Layout.Village,
+                Guardian = new[] { "Draugr_Elite" }, Content = MistyGraveyard,
+                Life = new[] { L("Leech", 3, Where.Water), L("Crow", 4, Where.Air) } },
             new LargeKind { Tier = IsletTier.All[2], Variant = 0, Height = 5f, Layout = Layout.FulingStronghold,
                 Guardian = new[] { "GoblinBrute" },
                 Life = new[] { L("Lox", 2, Where.Slope), L("Deathsquito", 2, Where.Air) } },
@@ -93,7 +110,16 @@ namespace IslandsOfValheim
         // A large islet of this tier, either kind of ground.
         internal static bool IsLargeOf(string prefabName, IsletTier tier)
         {
-            return prefabName == LargePrefix + tier.Name || prefabName == LargePrefix + tier.Name + "_Land";
+            return prefabName == LargePrefix + tier.Name || prefabName.StartsWith(LargePrefix + tier.Name + "_Land");
+        }
+
+        // How many of a land's islets a world gets of this design: the setting shared out between its designs.
+        static int QuantityOf(LargeKind kind)
+        {
+            int designs = 0;
+            foreach (LargeKind k in LargeKinds) if (k.Tier == kind.Tier) designs++;
+            int total = Plugin.LargeIslets.Value;
+            return total / designs + (kind.Design - 1 < total % designs ? 1 : 0);
         }
 
         // ---- prefabs: the keeper of each kind, and its three chests ----
@@ -109,7 +135,8 @@ namespace IslandsOfValheim
                 go.GetComponent<ZNetView>().m_persistent = true;
                 go.AddComponent<LargeIslet>();
                 PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
-                for (int band = 0; band < 3; band++) IsletPrefabs.AddLargeChest(kind.Tier, kind.ChestName(band), band);
+                if (kind.Design == 1) // the chests are the land's, shared by its designs
+                    for (int band = 0; band < 3; band++) IsletPrefabs.AddLargeChest(kind.Tier, kind.ChestName(band), band);
                 foreach (Life life in kind.Life)
                     if (PrefabManager.Instance.GetPrefab(life.Prefab) == null) Plugin.Log.LogWarning("Large " + kind.Tier.Name + " islets: " + life.Prefab + " not found, left out.");
             }
@@ -124,13 +151,15 @@ namespace IslandsOfValheim
             {
                 // The old ones stay known to the game (quantity 0), so those already built keep coming back
                 // as they are; every new one is of the game's own terrain.
-                BuildLarge(kind, kind.LocationName, false, 0, false);
-                BuildLarge(kind, kind.LandName, true, Plugin.LargeIslets.Value, false);
+                if (kind.Design == 1) BuildLarge(kind, kind.LocationName, false, 0, false);
+                BuildLarge(kind, kind.LandName, true, QuantityOf(kind), false);
                 // Work in progress (branch large-terrain, not for release): each kind's islet with nothing on it
                 // but its ground and rocks, unturned, for designing what stands on it (iov_goto emptylarge <tier>).
-                BuildLarge(kind, EmptyName(kind), true, 0, true);
+                if (kind.Design == 1) BuildLarge(kind, EmptyName(kind), true, 0, true);
             }
         }
+
+        static DungeonInterior designInterior; // the dungeon of the islet being designed, if it has one
 
         internal static string EmptyName(LargeKind kind)
         {
@@ -181,7 +210,13 @@ namespace IslandsOfValheim
             else BuildGround();
             PlaceRocks();
             DungeonInterior interior = source != null ? AddDungeon(source, Vector2.zero, dungeonTurn, locationName, kind.Shaped) : null;
-            if (!empty) Inhabit(kind, interior);
+            // The old mesh islet keeps its old layout (it's built anew each time from here, over what players
+            // left on it); a land one has its design's.
+            if (!empty)
+            {
+                if (terrain && kind.Content != null) { designInterior = interior; kind.Content(kind); }
+                else Inhabit(kind, interior);
+            }
 
             if (terrain)
             {
@@ -486,7 +521,7 @@ namespace IslandsOfValheim
             foreach (string g in kind.Guardian) if (guardian == null && ZNetScene.instance.GetPrefab(g) != null) guardian = g;
             if (guardian != null && Point(IsletBuilder.Where.Plateau, out p)) Spawn(guardian, p, Level(band, true));
             string[] guards = kind.Tier.Guards;
-            int extra = kind.Tier.Band >= 3 ? 2 : 4; // the strong lands' islets have plenty to fight already
+            int extra = kind.Peaceful ? 0 : kind.Tier.Band >= 3 ? 2 : 4; // the strong lands' islets have plenty to fight already
             for (int i = 0; i < extra; i++)
                 if (Point(IsletBuilder.Where.Plateau, out p)) Spawn(guards[i % guards.Length], p, Level(band, false));
             GameObject chest = ZNetScene.instance.GetPrefab(kind.ChestName(band));
