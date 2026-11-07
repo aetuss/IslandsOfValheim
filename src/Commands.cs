@@ -194,9 +194,9 @@ namespace IslandsOfValheim
             IsletBuilder.LargeKind large = IsletBuilder.LargeKindOf(location);
             float plateau = large != null ? large.Height : IsletBuilder.SmallPlateau;
             Vector3 target = new Vector3(best.m_position.x, ZoneSystem.instance.m_waterLevel + plateau + 3f, best.m_position.z);
-            // The final arena's middle is on Ormr's terrace, higher than any small islet.
+            // The final arena's middle is up on its crag's rim.
             if (best.m_location != null && best.m_location.m_prefabName == Story.Arena)
-                target.y = ZoneSystem.instance.m_waterLevel + IsletBuilder.ArenaT2 + 4f;
+                target.y = ZoneSystem.instance.m_waterLevel + IsletBuilder.ArenaTop + 3f;
             Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);
             context.AddString("Teleporting " + Distance(best, from).ToString("0", CultureInfo.InvariantCulture) + " m to " + what + " (" + location + ").");
         }

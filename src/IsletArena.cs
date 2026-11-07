@@ -5,70 +5,102 @@ using UnityEngine;
 
 namespace IslandsOfValheim
 {
-    // The hidden islet as the tale's last climb (from 2.0): an islet of the game's own terrain, far out in the
-    // Deep North waters, rising from a beach in three terraces joined by ramps. Grímr keeps the lowest, Ormr
-    // the middle one, Hafdís her frost-bound hall at the top. All three stand there from the start, still, until
-    // the tale has come this far (Hafdís's shore done) and it's their turn (FinalArena); ice closes each ramp
-    // until the keeper below it falls. The old hidden islet (IsletStory.HiddenIslet) stays known for the
-    // worlds that have it already built.
+    // The hidden islet as the tale's last climb (from 2.0): a dark crag far out in the Deep North waters, of
+    // the game's own terrain, with the fights in hollows cut down into it and narrow gorges between them, so
+    // no place can be seen from the one before. From a hidden cove a cleft leads into Grímr's hollow, where an
+    // old stone ship-setting lies; a gorge winds up to Ormr's, where his ship lies frozen into the rock; another
+    // up to the summit, open to the sky and the sea, where Hafdís keeps her hall. Ice closes each gorge until
+    // the keeper below it falls; each keeper comes out of the mist when it's their turn (FinalArena). The old
+    // hidden islet (IsletStory.HiddenIslet) stays known for the worlds that have it already built.
     static partial class IsletBuilder
     {
-        // Heights over the sea: the landing, then the terraces.
-        internal const float ArenaLanding = 1.5f, ArenaT1 = 4.5f, ArenaT2 = 8.5f, ArenaT3 = 12.5f;
-        // The land, an oval longer from the landing (-z) to the top (+z), and where its terraces rise.
-        const float ArenaAx = 27f, ArenaAz = 37f, ArenaCz = -3f;
-        const float RiseT1 = -21f, RiseT2 = -2f, RiseT3 = 15f;
-        const float ArenaReach = 50f, ArenaLand = 40f;
+        // The crag: an oval, its rim this high over the sea; towards the summit it comes down to the summit's
+        // own level, so the top is open.
+        const float CragAx = 30f, CragAz = 48f, CragCz = -4f, CragRim = 19f;
+        const float ArenaReach = 60f, ArenaLand = 50f;
+        internal const float ArenaTop = CragRim + 2f; // over the rim, for iov_goto
 
-        // Where each keeper stands (islet space, the terrace's height), and how far its terrace reaches round it.
-        internal static readonly Vector3[] ArenaSpots = { new Vector3(0f, ArenaT1, -11f), new Vector3(1f, ArenaT2, 4f), new Vector3(0f, ArenaT3, 20f) };
-        internal static readonly float[] ArenaRooms = { 11f, 10f, 9f };
+        // The hollows: the cove, then each keeper's. Middle (x, z), radius, floor over the sea.
+        internal static readonly Vector4[] ArenaHollows =
+        {
+            new Vector4(0f, -42f, 7f, 1.2f),    // the cove
+            new Vector4(0f, -20f, 10f, 3f),     // Grímr's: the ship-setting
+            new Vector4(-2f, 6f, 9f, 7.5f),     // Ormr's: his frozen ship
+            new Vector4(1f, 31f, 8.5f, 13f),    // Hafdís's: the summit
+        };
+
+        // Where each keeper comes out of the mist (at the far side of its hollow from the way in).
+        internal static readonly Vector2[] ArenaSpots = { new Vector2(0f, -15f), new Vector2(-3f, 12f), new Vector2(4f, 33f) };
+
+        // The gorges: points along each (x, z, floor).
+        static readonly Vector3[][] Gorges =
+        {
+            new[] { new Vector3(0f, -37f, 1.4f), new Vector3(0f, -29f, 3f) },
+            new[] { new Vector3(9f, -16f, 3f), new Vector3(15f, -9f, 4.5f), new Vector3(13f, 0f, 6.5f), new Vector3(6f, 4f, 7.5f) },
+            new[] { new Vector3(-10f, 9f, 7.5f), new Vector3(-15f, 16f, 9.5f), new Vector3(-11f, 25f, 12f), new Vector3(-5f, 30f, 13f) },
+        };
+        static readonly float[] GorgeWidths = { 4.5f, 3.6f, 3.6f };
+
+        static float CragNoise(float x, float z, float scale, float shift)
+        {
+            return (Mathf.PerlinNoise(x * scale + shift, z * scale + shift * 0.7f) - 0.5f) * 2f;
+        }
+
+        // The crag before anything is cut into it.
+        static float CragHeight(float x, float z)
+        {
+            float ex = x / CragAx, ez = (z - CragCz) / CragAz;
+            float angle = Mathf.Atan2(ez, ex);
+            float e = Mathf.Sqrt(ex * ex + ez * ez) * (1f + 0.06f * Mathf.Sin(angle * 3f + 1.3f) + 0.04f * Mathf.Sin(angle * 7f + 0.4f));
+            float top = CragRim + 2.5f * CragNoise(x, z, 0.09f, 31f);
+            top = Mathf.Lerp(top, ArenaHollows[3].w + 0.5f + 0.6f * CragNoise(x, z, 0.25f, 77f), Mathf.Clamp01((z - 25f) / 8f));
+            if (e <= 0.82f) return top;
+            if (e <= 1f)
+            {
+                float t = (e - 0.82f) / 0.18f;
+                return Mathf.Lerp(top, -1.5f, t * t * (3f - 2f * t)) + 1.5f * CragNoise(x, z, 0.3f, 13f) * Mathf.Sin(Mathf.PI * t);
+            }
+            float d = (e - 1f) * CragAx; // metres past the shore, about
+            return d <= 6f ? -1.5f - d * 0.8f : Mathf.Max(-30f, -6f - (d - 6f) * 4f);
+        }
 
         internal static float ArenaHeight(float x, float z)
         {
-            float ex = x / ArenaAx, ez = (z - ArenaCz) / ArenaAz;
-            float angle = Mathf.Atan2(ez, ex);
-            float e = Mathf.Sqrt(ex * ex + ez * ez) * (1f + 0.05f * Mathf.Sin(angle * 3f + 1.3f) + 0.03f * Mathf.Sin(angle * 7f + 0.4f));
-            float rough = Mathf.PerlinNoise(x * 0.11f + 613f, z * 0.11f + 71f) - 0.5f;
-            float inner = ArenaTerraces(x, z) + rough * 0.3f;
-            if (e <= 0.8f) return inner;
-            if (e <= 1f)
+            float h = CragHeight(x, z);
+            float cut = float.MaxValue;
+            for (int i = 0; i < ArenaHollows.Length; i++)
             {
-                float t = (e - 0.8f) / 0.2f;
-                return Mathf.Lerp(inner, -1.2f, t * t * (3f - 2f * t)) + rough * 1.2f * Mathf.Sin(Mathf.PI * t);
+                Vector4 o = ArenaHollows[i];
+                float d = Mathf.Sqrt((x - o.x) * (x - o.x) + (z - o.y) * (z - o.y));
+                float r = o.z * (1f + 0.08f * CragNoise(x, z, 0.3f, 5f + i * 17f));
+                cut = Mathf.Min(cut, o.w + Mathf.Max(0f, d - r) * 3.5f); // walls nobody climbs
             }
-            float d = (e - 1f) * ArenaAx; // metres past the shore, about
-            if (d <= 6f) return -1.2f - d * 0.8f;
-            return Mathf.Max(-30f, -6f - (d - 6f) * 4f);
-        }
-
-        // The landing and the three terraces, each rising steeply from the one below, and the ramps up.
-        static float ArenaTerraces(float x, float z)
-        {
-            float h = ArenaLanding + Rise(z, RiseT1, ArenaT1 - ArenaLanding) + Rise(z, RiseT2, ArenaT2 - ArenaT1) + Rise(z, RiseT3, ArenaT3 - ArenaT2);
-            h = Mathf.Max(h, Ramp(x, z, 0f, -28.5f, RiseT1 + 0.8f, ArenaLanding, ArenaT1));  // up from the landing
-            h = Mathf.Max(h, Ramp(x, z, 6.5f, -9.5f, RiseT2 + 0.8f, ArenaT1, ArenaT2));       // Grímr's terrace to Ormr's
-            h = Mathf.Max(h, Ramp(x, z, -6.5f, 7.5f, RiseT3 + 0.8f, ArenaT2, ArenaT3));       // Ormr's to Hafdís's
+            for (int g = 0; g < Gorges.Length; g++)
+            {
+                Vector3[] p = Gorges[g];
+                float best = float.MaxValue, floor = 0f;
+                for (int i = 0; i + 1 < p.Length; i++)
+                {
+                    float t;
+                    float d = SegmentDistance(x, z, p[i], p[i + 1], out t);
+                    if (d < best) { best = d; floor = Mathf.Lerp(p[i].z, p[i + 1].z, t); }
+                }
+                cut = Mathf.Min(cut, floor + Mathf.Max(0f, best - GorgeWidths[g] * 0.5f) * 4f);
+            }
+            if (cut < h) h = cut + 0.2f * CragNoise(x, z, 0.8f, 3f);
             return h;
         }
 
-        // A 4 m rise over 2 m around z = at.
-        static float Rise(float z, float at, float height)
+        // How far (x, z) is from the segment a-b (their x and y), and where along it (t, 0..1) is nearest.
+        static float SegmentDistance(float x, float z, Vector3 a, Vector3 b, out float t)
         {
-            float t = Mathf.Clamp01((z - at + 1f) / 2f);
-            return height * t * t * (3f - 2f * t);
+            float dx = b.x - a.x, dz = b.y - a.y, l = dx * dx + dz * dz;
+            t = l > 0f ? Mathf.Clamp01(((x - a.x) * dx + (z - a.y) * dz) / l) : 0f;
+            float px = a.x + dx * t - x, pz = a.y + dz * t - z;
+            return Mathf.Sqrt(px * px + pz * pz);
         }
 
-        // A ramp 4.5 m wide along z, centred on x = cx, from h0 at z0 to h1 at z1; its sides fall away.
-        static float Ramp(float x, float z, float cx, float z0, float z1, float h0, float h1)
-        {
-            if (z < z0 || z > z1 + 0.5f) return float.MinValue;
-            float h = Mathf.Lerp(h0, h1, Mathf.Clamp01((z - z0) / (z1 - z0)));
-            float side = Mathf.Abs(x - cx) - 2.25f;
-            return side <= 0f ? h : h - side * 4f;
-        }
-
-        // How far out the land ends in a direction (degrees, as Polar), for the jetty and the wreck.
+        // How far out the land ends in a direction (degrees, as Polar): for the jetty and the wreck in the cove.
         static float ArenaShore(float degrees)
         {
             Vector2 u = Polar(degrees, 1f);
@@ -102,7 +134,7 @@ namespace IslandsOfValheim
             config.SnapToWater = true;
             config.RandomRotation = true;
             config.ClearArea = false;
-            config.ExteriorRadius = 50f;
+            config.ExteriorRadius = ArenaReach;
             config.MinAltitude = -1000f;
             config.MaxAltitude = -8f;
             config.MinTerrainDelta = 0f;
@@ -112,8 +144,8 @@ namespace IslandsOfValheim
             config.Group = locationName;
             config.MinDistanceFromSimilar = 600f;
             Location location = root.AddComponent<Location>();
-            location.m_applyRandomDamage = true;
-            location.m_exteriorRadius = 50f;
+            location.m_applyRandomDamage = false;
+            location.m_exteriorRadius = ArenaReach;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (" + StorySpots + " possible spots, one is kept)");
         }
@@ -124,95 +156,90 @@ namespace IslandsOfValheim
             ground.transform.SetParent(root.transform, false);
             BakedGround.Bake(ground, ArenaReach, ArenaLand, tier.Biome, ArenaHeight);
 
-            // Rocks round the cliffs that ring it (not on the landing), and at the foot of each rise.
-            for (float deg = 0f; deg < 360f; deg += 24f)
+            // Dark stone underfoot in the hollows and the gorges (the snow stays up on the rim), so the
+            // keepers' frost and light show against it.
+            for (int i = 1; i < ArenaHollows.Length; i++)
             {
-                if (deg > 228f && deg < 312f) continue;
-                float s = ArenaShore(deg);
-                OnGround(tier.BigRocks, Polar(deg, s - 1.5f), deg * 3f, 5f + (deg % 48f == 0f ? 2.5f : 0f), 0.45f);
+                Vector4 o = ArenaHollows[i];
+                Paved(o.x, o.y, o.z * 0.55f);
+                for (int k = 0; k < 6; k++)
+                {
+                    Vector2 p = new Vector2(o.x, o.y) + Polar(k * 60f + 15f, o.z * 0.62f);
+                    Paved(p.x, p.y, o.z * 0.45f);
+                }
             }
-            float[,] foot = { { -10f, RiseT1 - 1.5f }, { 9f, RiseT1 - 1.8f }, { -5f, RiseT2 - 1.6f }, { -14f, RiseT2 - 1.4f }, { 14f, RiseT2 - 1.5f }, { 3f, RiseT3 - 1.5f }, { 11f, RiseT3 - 1.6f } };
-            for (int i = 0; i < foot.GetLength(0); i++)
-                OnGround(tier.BigRocks, new Vector2(foot[i, 0], foot[i, 1]), i * 53f, 3f + (i % 2) * 0.8f, 0.45f);
+            for (int g = 0; g < Gorges.Length; g++)
+                for (int i = 0; i + 1 < Gorges[g].Length; i++)
+                {
+                    Vector3 a = Gorges[g][i], b = Gorges[g][i + 1];
+                    float length = Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
+                    for (float s = 0f; s <= length; s += 2.5f)
+                    {
+                        float t = length > 0f ? s / length : 0f;
+                        Paved(Mathf.Lerp(a.x, b.x, t), Mathf.Lerp(a.y, b.y, t), GorgeWidths[g] * 0.75f);
+                    }
+                }
 
-            // Snow pines on the edges, and what grows in the cold.
-            Vector2[] trees = { new Vector2(-15f, -14f), new Vector2(16f, -9f), new Vector2(-16f, 3f), new Vector2(16f, 7f), new Vector2(-12f, -27f), new Vector2(13f, -26f), new Vector2(11f, 19f), new Vector2(-11f, 21f) };
+            // The cove: a beach between the rocks, an old jetty, a wreck, and the stone that warns, facing the sea.
+            // (The cove is narrow: the wreck's parts are laid in it by hand.)
+            PlaceDock(266f);
+            OnGround(new[] { tier.Wreck[0] }, new Vector2(4.6f, -45.5f), 30f, 0f, 0.25f);
+            OnGround(new[] { tier.Wreck[2] }, new Vector2(-4.2f, -46f), 100f, 0f, 0.2f);
+            PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, new Vector2(3.2f, -39f), 0f, 0f); // its face to the sea, where you come from
+            Brazier(new Vector2(-3f, -36.5f));
+            Brazier(new Vector2(3f, -36.5f));
+            quietProps = true;
+            Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(-3.5f, -40f), 60f, 0.05f);
+            quietProps = false;
+
+            // Grímr's hollow: an old ship-setting of standing stones, the dead who came before, blue fire.
+            Vector4 grimr = ArenaHollows[1];
+            Vanilla(new[] { "ShipSetting01" }, new Vector2(grimr.x, grimr.y), 0f, 0f);
+            quietProps = true;
+            Prop(new[] { "FrozenSkeleton_Pose2" }, new Vector2(grimr.x - 5.5f, grimr.y - 4f), 30f, 0.05f);
+            Prop(new[] { "FrozenSkeleton_Pose1" }, new Vector2(grimr.x + 6f, grimr.y + 2.5f), 200f, 0.05f);
+            Lying(new[] { "SwordSilver", "SwordIron" }, new Vector2(grimr.x - 4.4f, grimr.y - 5.2f), 70f, 1.4f);
+            quietProps = false;
+            Brazier(new Vector2(grimr.x - 6.5f, grimr.y + 5f));
+            Brazier(new Vector2(grimr.x + 6.5f, grimr.y + 5f));
+            Ice(new Vector2(grimr.x - 8f, grimr.y - 2f), 40f, 2.4f);
+
+            // Ormr's hollow: his ship, frozen into the rock of the far wall, and his cultists' fire.
+            Vector4 ormr = ArenaHollows[2];
+            // (Along the south-west wall, its ends in the rock: clear of the way from the east gorge to the west one.)
+            Vanilla(new[] { "FrozenShip01_DN", "FrozenShip02_DN" }, new Vector2(ormr.x - 5f, ormr.y - 7f), 315f, -0.6f);
+            float[] markers = { 20f, 70f, 120f, 160f };
+            for (int i = 0; i < markers.Length; i++)
+                Prop(new[] { i % 2 == 0 ? "marker01" : "marker02" }, new Vector2(ormr.x, ormr.y) + Polar(markers[i], 5f), 90f - markers[i], 0.15f);
+            Brazier(new Vector2(ormr.x + 5f, ormr.y - 4.5f));
+            Brazier(new Vector2(ormr.x + 5.5f, ormr.y + 4f));
+            Ice(new Vector2(ormr.x + 7f, ormr.y + 6f), 250f, 2f);
+
+            // Hafdís's summit: her hall, open to the sea, a high wall behind her and pillars like a crown,
+            // all of stone that doesn't break (the fight up here is in the air).
+            Vector4 top = ArenaHollows[3];
+            Vector2 h = new Vector2(top.x, top.y);
+            Prop(new[] { "MountainKit_int_wall_4x4" }, h + new Vector2(-2f, 5.2f), 0f, 0.05f);
+            Prop(new[] { "MountainKit_int_wall_4x4" }, h + new Vector2(2f, 5.2f), 0f, 0.05f);
+            float[] crown = { 20f, 60f, 100f, 140f, 220f, 320f };
+            foreach (float deg in crown) StonePillar(h + Polar(deg, 6.5f), deg == 220f ? 1 : 2);
+            Brazier(h + new Vector2(-3.5f, -2.5f));
+            Brazier(h + new Vector2(3.5f, -2.5f));
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(-3.2f, 3.6f), 0f, 0.05f);
+            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(3.2f, 3.6f), 0f, 0.05f);
+
+            // Snow pines up on the rim, seen from the sea.
+            Vector2[] trees = { new Vector2(-17f, -20f), new Vector2(17f, -24f), new Vector2(-18f, 0f), new Vector2(20f, 8f), new Vector2(-16f, 32f), new Vector2(15f, -38f) };
             for (int i = 0; i < trees.Length; i++)
             {
-                if (ArenaHeight(trees[i].x, trees[i].y) < 1f) continue;
+                if (ArenaHeight(trees[i].x, trees[i].y) < 12f) continue;
                 int k = i;
-                Optional(0.85f, () => OnGround(k % 3 == 2 ? tier.SmallTrees : tier.Trees, trees[k], k * 71f, 0f, 0.05f, false));
+                Optional(0.85f, () => OnGround(k % 2 == 0 ? tier.Trees : tier.SmallTrees, trees[k], k * 71f, 0f, 0.05f, false));
             }
-            Vector2[] berries = { new Vector2(-8f, -24f), new Vector2(9f, -15f), new Vector2(-12f, 9f), new Vector2(6f, 21f) };
-            foreach (Vector2 b in berries) { Vector2 at = b; Optional(0.7f, () => PlaceNetworked(tier.Berries, at, 0f, 0f)); }
 
-            // The landing: an old jetty, a wreck, the stone that warns, cold fire at the way up.
-            PlaceDock(255f);
-            PlaceWreck(290f);
-            PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, new Vector2(3.6f, -27f), 180f, 0f);
-            Brazier(new Vector2(-3.2f, -18.6f));
-            Brazier(new Vector2(3.2f, -18.6f));
-
-            // Grímr's terrace: standing stones round where he waits, and those who came before.
-            Vector2 g = new Vector2(ArenaSpots[0].x, ArenaSpots[0].z);
-            // (Clear of the ramps: the one up from the landing at x 0, the one on to Ormr's at x 6.5.)
-            float[] stones = { 110f, 160f, 210f, 250f, 340f };
-            foreach (float deg in stones)
-            {
-                Vector2 p = g + Polar(deg, 7f);
-                float y = GroundMin(p.x, p.y, 0.5f) - 0.3f;
-                float top = Top(At("stone_pillar", new Vector3(p.x, y, p.y), Vector3.zero, false), y + 2f);
-                if (deg != 210f) At("stone_pillar", new Vector3(p.x, top, p.y), Vector3.zero, false);
-            }
-            quietProps = true;
-            Prop(new[] { "FrozenSkeleton_Pose1" }, g + new Vector2(-4f, -3.5f), 30f, 0.05f);
-            Prop(new[] { "FrozenSkeleton_Pose2" }, g + new Vector2(-5f, 3f), 200f, 0.05f);
-            Lying(new[] { "SwordSilver", "SwordIron" }, g + new Vector2(-3.2f, -4.6f), 70f, 1.4f);
-            quietProps = false;
-            Ice(g + new Vector2(-9f, 4f), 40f, 2.2f);
-            Ice(g + new Vector2(9.5f, -2f), 160f, 2f);
-
-            // Ormr's terrace: his cultists' circle of marker stones and blue fire.
-            Vector2 o = new Vector2(ArenaSpots[1].x, ArenaSpots[1].z);
-            for (int i = 0; i < 6; i++)
-            {
-                float deg = i * 60f + 15f;
-                Prop(new[] { i % 2 == 0 ? "marker01" : "marker02" }, o + Polar(deg, 5.5f), 90f - deg, 0.15f);
-            }
-            Brazier(o + new Vector2(-3f, 5.5f));
-            Brazier(o + new Vector2(3f, 5.5f));
-            quietProps = true;
-            Prop(new[] { "FrozenSkeleton_Pose2" }, o + new Vector2(7f, 2f), 120f, 0.05f);
-            quietProps = false;
-            Ice(o + new Vector2(9f, 4f), 250f, 1.8f);
-
-            // Hafdís's hall at the top, as it was on the old hidden islet: a floor, a high wall behind her,
-            // pillars round it (none at the front, where the ramp comes up), lanterns and blue fire.
-            Vector2 h = new Vector2(ArenaSpots[2].x, ArenaSpots[2].z);
-            float floor = Height(h.x, h.y) + 0.3f;
-            for (int ix = -3; ix <= 3; ix += 2)
-                for (int iz = -3; iz <= 3; iz += 2)
-                    At("MountainKit_int_floor_2x2", new Vector3(h.x + ix, floor, h.y + iz), Vector3.zero, true);
-            float wall = floor - 0.05f;
-            At("MountainKit_int_wall_4x4", new Vector3(h.x - 2f, wall, h.y + 4.4f), Vector3.zero, false);
-            At("MountainKit_int_wall_4x4", new Vector3(h.x + 2f, wall, h.y + 4.4f), Vector3.zero, false);
-            Vector2[] pillars = { new Vector2(-5.8f, 0.8f), new Vector2(5.8f, 0.8f), new Vector2(-4.6f, 4.4f), new Vector2(4.6f, 4.4f) };
-            foreach (Vector2 p in pillars)
-            {
-                Vector2 at = h + p;
-                float y = GroundMin(at.x, at.y, 0.5f) - 0.3f;
-                float top = Top(At("stone_pillar", new Vector3(at.x, y, at.y), Vector3.zero, false), y + 2f);
-                At("stone_pillar", new Vector3(at.x, top, at.y), Vector3.zero, false);
-            }
-            Brazier(h + new Vector2(-3.5f, -2.6f));
-            Brazier(h + new Vector2(3.5f, -2.6f));
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(-3.2f, 3.4f), 0f, 0.05f);
-            Prop(new[] { "deepnorth_lantern_standing", "dvergrprops_lantern_standing" }, h + new Vector2(3.2f, 3.4f), 0f, 0.05f);
-
-            // The ice across the middle of each ramp (where its sides fall away, so there's no way round),
-            // until the keeper below it falls.
-            IceGate(new Vector2(6.5f, -5.2f), Story.GrimrDown);
-            IceGate(new Vector2(-6.5f, 11.3f), Story.OrmrDown);
+            // The ice across each gorge, until the keeper below it falls.
+            GorgeGate(Gorges[1][1], Gorges[1][2], 0.5f, Story.GrimrDown);
+            GorgeGate(Gorges[2][1], Gorges[2][2], 0.5f, Story.OrmrDown);
 
             // What runs the fights, at the islet's middle.
             PlaceNetworked(Story.ArenaStand, Vector3.zero, 0f);
@@ -223,26 +250,62 @@ namespace IslandsOfValheim
             Prop(new[] { "MountainKit_brazier_blue", "MountainKit_brazier" }, at, 0f, 0.05f);
         }
 
-        // Blocks of ice across a ramp's top and a wall nobody slips through, in a group of their own that
-        // FinalArenaGate takes away once its keeper has fallen.
-        static void IceGate(Vector2 at, string key)
+        // The game's own paving, painted on its terrain (nothing reshaped).
+        static void Paved(float x, float z, float radius)
         {
+            GameObject go = new GameObject("IoV_Paint");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(x, Height(x, z), z);
+            TerrainModifier modifier = go.AddComponent<TerrainModifier>();
+            modifier.m_level = false;
+            modifier.m_smooth = false;
+            modifier.m_paintCleared = true;
+            modifier.m_paintHeightCheck = false;
+            modifier.m_paintType = TerrainModifier.PaintType.Paved;
+            modifier.m_paintRadius = radius;
+        }
+
+        // A pillar of stone_pillar blocks, static: one stands on the other.
+        static void StonePillar(Vector2 at, int blocks)
+        {
+            float bottom = GroundMin(at.x, at.y, 0.5f) - 0.3f;
+            for (int i = 0; i < blocks; i++)
+            {
+                GameObject go = Copy(new[] { "stone_pillar" }, Vector3.zero, 0f, true);
+                if (go == null) return;
+                Bounds b = LocalBounds(go);
+                Move(go, b, new Vector3(at.x, bottom, at.y), false);
+                bottom += b.size.y - 0.05f;
+            }
+        }
+
+        // Ice across a gorge at t along its segment a-b, and a wall nobody slips through, in a group of their
+        // own that FinalArenaGate takes away once its keeper has fallen.
+        static void GorgeGate(Vector3 a, Vector3 b, float t, string key)
+        {
+            Vector2 at = new Vector2(Mathf.Lerp(a.x, b.x, t), Mathf.Lerp(a.y, b.y, t));
+            Vector2 along = new Vector2(b.x - a.x, b.y - a.y).normalized;
+            Vector2 across = new Vector2(along.y, -along.x);
+            float yaw = Mathf.Atan2(along.x, along.y) * Mathf.Rad2Deg;
             GameObject gate = new GameObject("IoV_IceGate");
             gate.transform.SetParent(parent, false);
             GameObject ice = new GameObject("Ice");
             ice.transform.SetParent(gate.transform, false);
-            ice.layer = LayerMask.NameToLayer("static_solid");
+            GameObject wall = new GameObject("IoV_IceWall");
+            wall.transform.SetParent(ice.transform, false);
+            wall.layer = LayerMask.NameToLayer("static_solid");
             float y = Height(at.x, at.y);
-            BoxCollider wall = ice.AddComponent<BoxCollider>();
-            wall.center = new Vector3(at.x, y + 1.5f, at.y);
-            wall.size = new Vector3(6f, 3.2f, 1.6f);
+            wall.transform.localPosition = new Vector3(at.x, y + 1.6f, at.y);
+            wall.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            BoxCollider box = wall.AddComponent<BoxCollider>();
+            box.size = new Vector3(6f, 3.4f, 1.6f);
             FinalArenaGate g = gate.AddComponent<FinalArenaGate>();
             g.key = key;
-            g.middle = wall.center;
+            g.middle = wall.transform.localPosition;
             Transform outer = parent;
             parent = ice.transform;
             for (int i = -1; i <= 1; i++)
-                OnGround(tier.ShoreIce, new Vector2(at.x + i * 2.2f, at.y + (i == 0 ? 0.3f : 0f)), 60f + i * 50f, 3.2f, 0.2f);
+                OnGround(tier.ShoreIce, at + across * (i * 1.6f) + along * (i == 0 ? 0.3f : 0f), yaw + 60f + i * 50f, 3f, 0.2f);
             parent = outer;
         }
     }
