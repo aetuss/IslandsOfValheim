@@ -124,22 +124,30 @@ namespace IslandsOfValheim
             {
                 // The old ones stay known to the game (quantity 0), so those already built keep coming back
                 // as they are; every new one is of the game's own terrain.
-                BuildLarge(kind, kind.LocationName, false, 0);
-                BuildLarge(kind, kind.LandName, true, Plugin.LargeIslets.Value);
+                BuildLarge(kind, kind.LocationName, false, 0, false);
+                BuildLarge(kind, kind.LandName, true, Plugin.LargeIslets.Value, false);
+                // Work in progress (branch large-terrain, not for release): each kind's islet with nothing on it
+                // but its ground and rocks, unturned, for designing what stands on it (iov_goto emptylarge <tier>).
+                BuildLarge(kind, EmptyName(kind), true, 0, true);
             }
         }
 
-        static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity)
+        internal static string EmptyName(LargeKind kind)
+        {
+            return "IoVTest_EmptyLarge_" + kind.Tier.Name;
+        }
+
+        static void BuildLarge(LargeKind kind, string name, bool terrain, int quantity, bool empty)
         {
             buildingLarge = true;
-            try { LargeIsletOf(kind, name, terrain, quantity); }
+            try { LargeIsletOf(kind, name, terrain, quantity, empty); }
             catch (System.Exception e) { Plugin.Log.LogError("Large " + kind.Tier.Name + " islet failed: " + e); }
             finally { PlateauHeight = SmallPlateau; segments = SmallSegments; buildingLarge = false; cuts.Clear(); dungeonShift = 0f; }
         }
 
         // terrain: the ground is the game's own terrain, raised to the islet's shape (BakedGround), instead
         // of our mesh.
-        static void LargeIsletOf(LargeKind kind, string name, bool terrain, int quantity)
+        static void LargeIsletOf(LargeKind kind, string name, bool terrain, int quantity, bool empty)
         {
             tier = kind.Tier;
             locationName = name;
@@ -157,8 +165,8 @@ namespace IslandsOfValheim
             built = 0;
             missing = 0;
             // The dungeon in the middle, where there is one; a dug-in one shapes the ground first.
-            string source = kind.Dungeon != null ? FindLocation(kind.Dungeon) : null;
-            if (kind.Dungeon != null && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
+            string source = kind.Dungeon != null && !empty ? FindLocation(kind.Dungeon) : null;
+            if (kind.Dungeon != null && !empty && source == null) Plugin.Log.LogWarning("Large " + tier.Name + " islet: no vanilla dungeon " + string.Join(", ", kind.Dungeon) + "; it has none.");
             float dungeonTurn = cliffDeg + 180f;
             if (source != null && kind.Shaped) ReadCuts(source, Vector2.zero, dungeonTurn, locationName);
             if (terrain)
@@ -173,6 +181,24 @@ namespace IslandsOfValheim
             else BuildGround();
             PlaceRocks();
             DungeonInterior interior = source != null ? AddDungeon(source, Vector2.zero, dungeonTurn, locationName, kind.Shaped) : null;
+            if (!empty) Inhabit(kind, interior);
+
+            if (terrain)
+            {
+                // Nothing of ours may reshape the ground on top of the islet's own (on the mesh islets such
+                // things only ever touched the sea floor under them).
+                int stray = 0;
+                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(m.gameObject); stray++; }
+                foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); stray++; }
+                if (stray > 0) Plugin.Log.LogWarning(locationName + ": removed " + stray + " terrain modifiers from the islet's parts");
+            }
+            Finish(kind, quantity, interior, empty);
+        }
+
+        // Everything that stands on a large islet: the village or stronghold, the keeper, nature, docks,
+        // the wreck, hints and the outside guard.
+        static void Inhabit(LargeKind kind, DungeonInterior interior)
+        {
             Vector2 keeper;
             if (kind.Layout == Layout.Village)
             {
@@ -209,17 +235,10 @@ namespace IslandsOfValheim
             PlaceWreck(cliffDeg + 194f);
             PlaceHints();
             PlaceOutsideGuard();
+        }
 
-            if (terrain)
-            {
-                // Nothing of ours may reshape the ground on top of the islet's own (on the mesh islets such
-                // things only ever touched the sea floor under them).
-                int stray = 0;
-                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true)) { Object.DestroyImmediate(m.gameObject); stray++; }
-                foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) { Object.DestroyImmediate(op.gameObject); stray++; }
-                if (stray > 0) Plugin.Log.LogWarning(locationName + ": removed " + stray + " terrain modifiers from the islet's parts");
-            }
-
+        static void Finish(LargeKind kind, int quantity, DungeonInterior interior, bool empty)
+        {
             Location location = root.AddComponent<Location>();
             location.m_applyRandomDamage = tier.Ruined;
             location.m_exteriorRadius = 60f;
@@ -232,7 +251,7 @@ namespace IslandsOfValheim
             config.Quantity = quantity;
             config.Priotized = true;
             config.SnapToWater = true;
-            config.RandomRotation = true;
+            config.RandomRotation = !empty; // an empty one for designing on lies square to the world
             config.ClearArea = false;
             config.ExteriorRadius = 60f;
             config.MinAltitude = -1000f;

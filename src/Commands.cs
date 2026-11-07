@@ -88,6 +88,22 @@ namespace IslandsOfValheim
                         TerrainIsletTest.Goto(args.Context); // research prototype
                         return;
                     }
+                    if (args.Length > 1 && string.Equals(args[1], "emptylarge", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        // work in progress: an empty large islet to design on (iov_goto emptylarge <tier>)
+                        IsletBuilder.LargeKind kind = null;
+                        foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds)
+                            if (args.Length > 2 && string.Equals(k.Tier.Name, args[2], System.StringComparison.OrdinalIgnoreCase)) kind = k;
+                        if (kind == null)
+                        {
+                            List<string> tiers = new List<string>();
+                            foreach (IsletBuilder.LargeKind k in IsletBuilder.LargeKinds) tiers.Add(k.Tier.Name.ToLowerInvariant());
+                            args.Context.AddString("Which one? iov_goto emptylarge " + string.Join(" | ", tiers.ToArray()));
+                            return;
+                        }
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.EmptyName(kind), kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance), 0f);
+                        return;
+                    }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
