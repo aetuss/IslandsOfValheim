@@ -1,0 +1,17 @@
+{
+  "name": "Small_Mistlands_2",
+  "islet": "Small_Mistlands_2",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 8,
+  "objects": [
+    {"kind": "vanilla", "prefab": "Mistlands_Statue1", "x": 0, "y": 0, "z": 2.7, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "vanilla", "prefab": "Mistlands_RoadPost1", "x": -4.7, "y": 0, "z": -2.5, "yaw": 60, "qx": 0, "qy": 0.5, "qz": 0, "qw": 0.86603, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": 1.5, "y": 0, "z": -1.7, "yaw": 330, "qx": 0, "qy": 0.25882, "qz": 0, "qw": -0.96593, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 1.7, "y": 0, "z": -4.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "giant_helmet2", "x": 4.7, "y": 0, "z": -2.7, "yaw": 140, "qx": 0, "qy": 0.93969, "qz": 0, "qw": 0.34202, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "blackmarble_head01", "x": 4.1, "y": 0, "z": 2.5, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0},
+    {"kind": "prop", "prefab": "blackmarble_pile", "x": -3.9, "y": 0, "z": 2.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "pickable", "prefab": "Pickable_Mushroom_JotunPuffs", "x": -1.7, "y": 0, "z": -5.5, "yaw": 236.6, "qx": 0, "qy": -0.88048, "qz": 0, "qw": 0.47409, "aboveGround": 0, "chance": 0.6}
+  ]
+}

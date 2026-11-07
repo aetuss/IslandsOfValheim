@@ -96,6 +96,14 @@ namespace IslandsOfValheim
                             TerrainIsletTest.Goto(args.Context, kind.BaseName, kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance), 0f);
                             return;
                         }
+                    // Work in progress: one small islet design on its own, unturned (iov_goto small_meadows_2).
+                    foreach (IsletTier tier in IsletTier.All)
+                        for (int n = 1; n <= 9; n++)
+                            if (args.Length > 1 && string.Equals(args[1], SmallArg(tier, n), System.StringComparison.OrdinalIgnoreCase))
+                            {
+                                TerrainIsletTest.Goto(args.Context, IsletBuilder.SmallTestName(tier, n), IsletBuilder.SmallPlateau, 50f, 300f, 0f);
+                                return;
+                            }
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
@@ -137,8 +145,15 @@ namespace IslandsOfValheim
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
+                    foreach (IsletTier tier in IsletTier.All)
+                        for (int n = 1; n <= 3; n++) names.Add(SmallArg(tier, n));
                     return names;
                 });
+        }
+
+        static string SmallArg(IsletTier tier, int design)
+        {
+            return "small_" + tier.Name.ToLowerInvariant() + "_" + design;
         }
 
         // The sea trader's harbour: the one that was generated, or else the closest of the candidates (going

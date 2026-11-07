@@ -1,0 +1,21 @@
+{
+  "name": "Small_Meadows_1",
+  "islet": "Small_Meadows_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 12,
+  "objects": [
+    {"kind": "vanilla", "prefab": "WoodHouse1", "x": 0, "y": 0, "z": 2.4, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -1.6, "y": 0, "z": -3.3, "yaw": 10, "qx": 0, "qy": 0.08716, "qz": 0, "qw": 0.99619, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 0.9, "y": 0, "z": -3.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "prop_wood_stack", "x": 4.6, "y": 0, "z": 0.8, "yaw": 90, "qx": 0, "qy": 0.70711, "qz": 0, "qw": 0.70711, "aboveGround": 0},
+    {"kind": "prop", "prefab": "fire_pit", "x": 2.7, "y": 0, "z": -4.8, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.8},
+    {"kind": "prop", "prefab": "barrell", "x": -4.3, "y": 0, "z": -1.1, "yaw": 30, "qx": 0, "qy": 0.25882, "qz": 0, "qw": 0.96593, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "piece_bench01", "x": 3.1, "y": 0, "z": -2.4, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0, "chance": 0.5},
+    {"kind": "prop", "prefab": "bone_stack", "x": -3.4, "y": 0, "z": -5.4, "yaw": 60, "qx": 0, "qy": 0.5, "qz": 0, "qw": 0.86603, "aboveGround": 0, "chance": 0.5},
+    {"kind": "piece", "prefab": "wood_fence", "x": -5.55, "y": 0, "z": -3.5, "yaw": 234.16, "qx": 0, "qy": 0.89036, "qz": 0, "qw": -0.45525, "aboveGround": 0, "chance": 0.6},
+    {"kind": "piece", "prefab": "wood_fence", "x": -4.25, "y": 0, "z": -5.3, "yaw": 234.16, "qx": 0, "qy": 0.89036, "qz": 0, "qw": -0.45525, "aboveGround": 0, "chance": 0.6},
+    {"kind": "pickable", "prefab": "Pickable_Dandelion", "x": 4.2, "y": 0, "z": -3.2, "yaw": 120.2, "qx": 0, "qy": 0.8669, "qz": 0, "qw": 0.49849, "aboveGround": 0, "chance": 0.6},
+    {"kind": "pickable", "prefab": "Pickable_Branch", "x": -5.2, "y": 0, "z": 2.2, "yaw": 191.8, "qx": 0, "qy": -0.9947, "qz": 0, "qw": 0.10279, "aboveGround": 0, "chance": 0.7}
+  ]
+}

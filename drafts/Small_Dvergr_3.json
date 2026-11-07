@@ -1,0 +1,26 @@
+{
+  "name": "Small_Dvergr_3",
+  "islet": "Small_Dvergr_3",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 17,
+  "objects": [
+    {"kind": "vanilla", "prefab": "Mistlands_RoadPost1", "x": -3.7, "y": 0, "z": 3.5, "yaw": 135, "qx": 0, "qy": 0.92388, "qz": 0, "qw": 0.38268, "aboveGround": 0},
+    {"kind": "marker", "prefab": "WARD", "x": 3.5, "y": 0, "z": 3.5, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_wood_wall", "x": -0.65, "y": 0, "z": 5, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_wood_wall", "x": 1.25, "y": 0, "z": 5, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_table", "x": 0, "y": 0, "z": 1.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_stool", "x": -1.3, "y": 0, "z": 1.3, "yaw": 30, "qx": 0, "qy": 0.25882, "qz": 0, "qw": 0.96593, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_stool", "x": 1.2, "y": 0, "z": 0.9, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_bed", "x": -4.5, "y": 0, "z": -0.6, "yaw": 90, "qx": 0, "qy": 0.70711, "qz": 0, "qw": 0.70711, "aboveGround": 0, "chance": 0.8},
+    {"kind": "piece", "prefab": "dvergrprops_crate", "x": 4.7, "y": 0, "z": 0.6, "yaw": 10, "qx": 0, "qy": 0.08716, "qz": 0, "qw": 0.99619, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_crate", "x": 4.3, "y": 0, "z": -1.7, "yaw": 80, "qx": 0, "qy": 0.64279, "qz": 0, "qw": 0.76604, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_barrel", "x": -3.9, "y": 0, "z": -3.3, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_barrel", "x": -4.7, "y": 0, "z": -2.3, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.6},
+    {"kind": "piece", "prefab": "dvergrprops_lantern_standing", "x": 1.9, "y": 0, "z": -2.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -0.6, "y": 0, "z": 3.7, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 0.5, "y": 0, "z": -3.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_wood_stakewall", "x": -0.8, "y": 0, "z": -6.5, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_wood_stakewall", "x": 1.8, "y": 0, "z": -6.5, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0, "chance": 0.7}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Small_Ashlands_1",
+  "islet": "Small_Ashlands_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 9,
+  "objects": [
+    {"kind": "vanilla", "prefab": "CharredTowerRuins2", "x": 0, "y": 0, "z": 2.1, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -1.7, "y": 0, "z": -3.5, "yaw": 10, "qx": 0, "qy": 0.08716, "qz": 0, "qw": 0.99619, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 1.1, "y": 0, "z": -3.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "CharredBanner1", "x": 3.7, "y": 0, "z": -3.7, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0},
+    {"kind": "prop", "prefab": "Pickable_Charredskull", "x": -4.1, "y": 0, "z": -4.5, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "grausten_pile", "x": 4.5, "y": 0, "z": 1.5, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "veg_skull_Ashlands", "x": -4.7, "y": 0, "z": 1.1, "yaw": 90, "qx": 0, "qy": 0.70711, "qz": 0, "qw": 0.70711, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "Ashlands_Pillar4_tip_broken1", "x": -3.7, "y": 0, "z": 3.9, "yaw": 40, "qx": 0, "qy": 0.34202, "qz": 0, "qw": 0.93969, "aboveGround": 0, "chance": 0.6},
+    {"kind": "pickable", "prefab": "Pickable_SmokePuff", "x": 3.1, "y": 0, "z": -5.7, "yaw": 52, "qx": 0, "qy": 0.43837, "qz": 0, "qw": 0.89879, "aboveGround": 0, "chance": 0.5}
+  ]
+}

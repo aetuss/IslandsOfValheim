@@ -1,0 +1,17 @@
+{
+  "name": "Small_Ashlands_2",
+  "islet": "Small_Ashlands_2",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 8,
+  "objects": [
+    {"kind": "vanilla", "prefab": "CharredRuins4", "x": 0, "y": 0, "z": 1.3, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": 0.4, "y": 0, "z": -3.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": -1.9, "y": 0, "z": -4.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "CharredBanner2", "x": -4.5, "y": 0, "z": -3.1, "yaw": 170, "qx": 0, "qy": 0.99619, "qz": 0, "qw": 0.08716, "aboveGround": 0},
+    {"kind": "piece", "prefab": "Ashlands_Fortress_Wall_Spikes", "x": 4.7, "y": 0, "z": -3.7, "yaw": 30, "qx": 0, "qy": 0.25882, "qz": 0, "qw": 0.96593, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "Pickable_Charredskull", "x": 3.5, "y": 0, "z": -5.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "grausten_pile", "x": -5.1, "y": 0, "z": 1.5, "yaw": 60, "qx": 0, "qy": 0.5, "qz": 0, "qw": 0.86603, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "ashland_pot1_red", "x": 4.7, "y": 0, "z": 1.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.6}
+  ]
+}

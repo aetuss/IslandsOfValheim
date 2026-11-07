@@ -1,0 +1,18 @@
+{
+  "name": "Small_Mistlands_1",
+  "islet": "Small_Mistlands_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 9,
+  "objects": [
+    {"kind": "vanilla", "prefab": "Mistlands_GuardTower3_ruined_new", "x": 0, "y": 0, "z": 1.9, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -1.7, "y": 0, "z": -3.7, "yaw": 15, "qx": 0, "qy": 0.13053, "qz": 0, "qw": 0.99144, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 1.1, "y": 0, "z": -4.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "blackmarble_pile", "x": 4.5, "y": 0, "z": -2.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "blackmarble_pile", "x": -4.7, "y": 0, "z": 0.9, "yaw": 120, "qx": 0, "qy": 0.86603, "qz": 0, "qw": 0.5, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "dvergrprops_barrel", "x": 3.7, "y": 0, "z": 2.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.5},
+    {"kind": "prop", "prefab": "blackmarble_head01", "x": -5.1, "y": 0, "z": -2.7, "yaw": 230, "qx": 0, "qy": 0.90631, "qz": 0, "qw": -0.42262, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "SeekerEgg", "x": -3.1, "y": 0, "z": -5.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.35},
+    {"kind": "pickable", "prefab": "Pickable_Mushroom_Magecap", "x": 2.9, "y": 0, "z": -5.7, "yaw": 44.6, "qx": 0, "qy": 0.37946, "qz": 0, "qw": 0.92521, "aboveGround": 0, "chance": 0.6}
+  ]
+}

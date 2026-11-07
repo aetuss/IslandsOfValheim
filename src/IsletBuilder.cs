@@ -67,11 +67,42 @@ namespace IslandsOfValheim
         static bool quietProps; // decoration that should lie still: its particle effects off too (see KetillsIslet)
         static int missing;
 
+        // Variants 0-3 are the small islets up to 1.9, with our own ruins: kept known to the game (quantity 0),
+        // so those already built in a world come back as they are. Every new one is 4-7, the same four shapes
+        // with the game's own structures on them (PlaceTemplates).
         internal static void Register(IsletTier islet, int variant)
         {
+            RegisterSmall(islet, variant, islet.LocationName(variant), 0);
+        }
+
+        // Work in progress (not for release): a small islet with only design n of its land, unturned, to look
+        // at each design (iov_goto small_meadows_2).
+        internal static void RegisterSmallTests()
+        {
+            foreach (IsletTier islet in IsletTier.All)
+                for (int n = 1; ReadDraft(SmallDraftId(islet, n)) != null; n++)
+                    RegisterSmall(islet, Variants + (n - 1) % Variants, SmallTestName(islet, n), n);
+        }
+
+        internal static string SmallTestName(IsletTier islet, int design) { return "IoVTest_Small_" + islet.Name + "_" + design; }
+        static string SmallDraftId(IsletTier islet, int design) { return "Small_" + islet.Name + "_" + design; }
+
+        // The new small islet for an old one (variant n becomes n + 4), or null if it isn't an old small islet.
+        internal static string TemplatedName(string prefabName)
+        {
+            foreach (IsletTier islet in IsletTier.All)
+                for (int v = 0; v < Variants; v++)
+                    if (prefabName == islet.LocationName(v)) return islet.LocationName(v + Variants);
+            return null;
+        }
+
+        // onlyDesign: a test islet with that one design (quantity 0, unturned); 0 for the real ones.
+        static void RegisterSmall(IsletTier islet, int variant, string name, int onlyDesign)
+        {
             tier = islet;
-            locationName = tier.LocationName(variant);
-            SetVariant(variant);
+            locationName = name;
+            bool templated = variant >= Variants;
+            SetVariant(variant % Variants);
             root = ZoneManager.Instance.CreateLocationContainer(locationName);
             parent = root.transform;
             built = 0;
@@ -79,8 +110,12 @@ namespace IslandsOfValheim
 
             Material rockMaterial = BuildGround();
             PlaceRocks();
-            PlaceRuins();
-            if (tier.DvergrOutpost) PlaceDvergrWard();
+            if (templated) PlaceTemplates(onlyDesign);
+            else
+            {
+                PlaceRuins();
+                if (tier.DvergrOutpost) PlaceDvergrWard();
+            }
             if (tier.Raiders != null) PlaceRaiders();
             PlaceHints();
             PlaceBeaconTower();
@@ -92,16 +127,26 @@ namespace IslandsOfValheim
             PlacePlants();
             PlacePickables();
             PlaceOutsideGuard();
+            if (templated)
+            {
+                // The game's structures come with their own levelling and paint, made for the land: under our
+                // ground mesh they would only reshape the sea floor.
+                int stray = 0;
+                foreach (TerrainModifier m in root.GetComponentsInChildren<TerrainModifier>(true)) if (m != null) { Object.DestroyImmediate(m); stray++; }
+                foreach (TerrainOp op in root.GetComponentsInChildren<TerrainOp>(true)) if (op != null) { Object.DestroyImmediate(op.gameObject); stray++; }
+                if (stray > 0) Plugin.Debug(locationName + ": removed " + stray + " terrain modifiers");
+            }
             Plugin.Debug(locationName + " built: " + built + " parts, " + missing + " prefabs not found. Ground material: " + Describe(rockMaterial));
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median; // whole zone is ocean: no islets glued to a coast
-            // The tier's count is shared between its variants.
-            config.Quantity = tier.Count.Value / Variants + (variant < tier.Count.Value % Variants ? 1 : 0);
+            // The tier's count is shared between its four shapes; only the new kind is placed anew.
+            int shape = variant % Variants;
+            config.Quantity = !templated || onlyDesign > 0 ? 0 : tier.Count.Value / Variants + (shape < tier.Count.Value % Variants ? 1 : 0);
             config.Priotized = true;
             config.SnapToWater = true;
-            config.RandomRotation = true;
+            config.RandomRotation = onlyDesign <= 0;
             config.ClearArea = false;
             config.ExteriorRadius = 30f;
             config.MinAltitude = -1000f;

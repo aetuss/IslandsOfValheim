@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.9.19";
+        public const string Version = "1.9.20";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -84,7 +84,8 @@ namespace IslandsOfValheim
         {
             ZoneManager.OnVanillaLocationsAvailable -= OnVanillaLocations;
             foreach (IsletTier tier in IsletTier.All)
-                for (int variant = 0; variant < IsletBuilder.Variants; variant++) IsletBuilder.Register(tier, variant);
+                for (int variant = 0; variant < IsletBuilder.Variants * 2; variant++) IsletBuilder.Register(tier, variant);
+            IsletBuilder.RegisterSmallTests(); // work in progress: each small design on its own (iov_goto small_meadows_2)
             if (SeaTraderIslets.Value > 0)
             {
                 IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);

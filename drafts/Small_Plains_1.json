@@ -1,0 +1,21 @@
+{
+  "name": "Small_Plains_1",
+  "islet": "Small_Plains_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 12,
+  "objects": [
+    {"kind": "vanilla", "prefab": "GoblinHut02", "x": 0, "y": 0, "z": 2.4, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -1.7, "y": 0, "z": -2.9, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 0.9, "y": 0, "z": -3.3, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "goblin_totempole", "x": 3.5, "y": 0, "z": -3.9, "yaw": 160, "qx": 0, "qy": 0.98481, "qz": 0, "qw": 0.17365, "aboveGround": 0},
+    {"kind": "piece", "prefab": "goblin_banner", "x": -3.7, "y": 0, "z": -3.5, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0, "chance": 0.8},
+    {"kind": "prop", "prefab": "goblin_trashpile", "x": 4.5, "y": 0, "z": 1.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "goblin_strawpile", "x": -4.3, "y": 0, "z": 1.1, "yaw": 40, "qx": 0, "qy": 0.34202, "qz": 0, "qw": 0.93969, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "fire_pit", "x": 0.6, "y": 0, "z": -5.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.8},
+    {"kind": "prop", "prefab": "bone_stack", "x": -2.1, "y": 0, "z": -6.1, "yaw": 90, "qx": 0, "qy": 0.70711, "qz": 0, "qw": 0.70711, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "LargeBone_half01", "x": 5.1, "y": 0, "z": -1.1, "yaw": 30, "qx": 0, "qy": 0.25882, "qz": 0, "qw": 0.96593, "aboveGround": 0, "chance": 0.5},
+    {"kind": "piece", "prefab": "goblin_fence", "x": -5.88, "y": 0, "z": -1.75, "yaw": 256.68, "qx": 0, "qy": 0.78437, "qz": 0, "qw": -0.6203, "aboveGround": 0, "chance": 0.6},
+    {"kind": "piece", "prefab": "goblin_fence", "x": -5.43, "y": 0, "z": -3.65, "yaw": 256.68, "qx": 0, "qy": 0.78437, "qz": 0, "qw": -0.6203, "aboveGround": 0, "chance": 0.6}
+  ]
+}

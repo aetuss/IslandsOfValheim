@@ -1,0 +1,20 @@
+{
+  "name": "Small_Dvergr_1",
+  "islet": "Small_Dvergr_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 11,
+  "objects": [
+    {"kind": "vanilla", "prefab": "Mistlands_Lighthouse1_new", "x": 0, "y": 0, "z": 2.5, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "WARD", "x": -3.7, "y": 0, "z": -3.7, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": 1.5, "y": 0, "z": -3.5, "yaw": 350, "qx": 0, "qy": 0.08716, "qz": 0, "qw": -0.99619, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": -0.6, "y": 0, "z": -4.3, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_crate", "x": 4.5, "y": 0, "z": -1.9, "yaw": 20, "qx": 0, "qy": 0.17365, "qz": 0, "qw": 0.98481, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_barrel", "x": 4.9, "y": 0, "z": 0.4, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "piece", "prefab": "dvergrprops_crate_long", "x": -4.7, "y": 0, "z": -0.6, "yaw": 90, "qx": 0, "qy": 0.70711, "qz": 0, "qw": 0.70711, "aboveGround": 0, "chance": 0.8},
+    {"kind": "piece", "prefab": "dvergrprops_lantern_standing", "x": 2.9, "y": 0, "z": -5.5, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "dvergrprops_banner", "x": -2.5, "y": 0, "z": -5.9, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_wood_stakewall", "x": 5.23, "y": 0, "z": -4.65, "yaw": 320.83, "qx": 0, "qy": -0.33524, "qz": 0, "qw": 0.94213, "aboveGround": 0, "chance": 0.7},
+    {"kind": "piece", "prefab": "dvergrprops_wood_stakewall", "x": 3.88, "y": 0, "z": -5.75, "yaw": 320.83, "qx": 0, "qy": -0.33524, "qz": 0, "qw": 0.94213, "aboveGround": 0, "chance": 0.7}
+  ]
+}

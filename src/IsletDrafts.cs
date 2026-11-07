@@ -89,9 +89,69 @@ namespace IslandsOfValheim
             if (draft == null) return false;
             draftKeeper = false;
             draftLeft = 0;
+            BuildEntries(draft, (e, sources) => BuildEntry(kind, e, sources));
+            bool keeper = draftKeeper;
+            int left = draftLeft;
+            // Every islet has its keeper: the animals come from it, and on a dangerous one the guardian and chest.
+            if (!keeper) { Keeper(kind, Vector2.zero); Plugin.Log.LogWarning(locationName + ": its draft has no KEEPER mark; the keeper stands in the middle"); }
+            PlaceHints();
+            if (!kind.Peaceful) PlaceOutsideGuard();
+            if (tier.DvergrOutpost) PlaceDvergrWard(); // the islet is theirs
+            Plugin.Debug(locationName + ": draft " + kind.DraftId + ", " + draft.Count + " lines, " + left + " left out");
+            return true;
+        }
+
+        // A small islet's design (Small_<Land>_<n>): built where it is, in its turned group (see PlaceTemplates).
+        static void BuildSmallDraft(string id, List<DraftEntry> draft)
+        {
+            smallWard = false;
+            draftLeft = 0;
+            BuildEntries(draft, SmallEntry);
+            if (tier.DvergrOutpost && !smallWard) PlaceDvergrWard();
+            Plugin.Debug(locationName + ": small design " + id + ", " + draft.Count + " lines, " + draftLeft + " left out");
+        }
+
+        static bool smallWard;
+        // The three guards round a GUARDS mark, as in the old ruins' courtyards.
+        static readonly Vector2[] guardSpots = { new Vector2(1.2f, 0.4f), new Vector2(-1f, -0.9f), new Vector2(0.1f, 1.3f) };
+
+        static void SmallEntry(DraftEntry e, Dictionary<string, GameObject> sources)
+        {
+            if (e.Kind == "marker")
+            {
+                float y = Height(e.X, e.Z);
+                switch (e.Prefab)
+                {
+                    case "CHEST":
+                        PlaceNetworked(tier.ChestName, new Vector3(e.X, y, e.Z), e.Yaw);
+                        return;
+                    case "GUARDS":
+                        for (int i = 0; i < 3; i++)
+                        {
+                            Vector3 off = e.Rot * new Vector3(guardSpots[i].x, 0f, guardSpots[i].y);
+                            float gx = e.X + off.x, gz = e.Z + off.z;
+                            PlaceNetworked(IsletTier.SpawnerName(tier.Guards[i]), new Vector3(gx, Height(gx, gz) + 0.2f, gz), 0f);
+                        }
+                        return;
+                    case "WARD":
+                        if (!tier.DvergrOutpost) return;
+                        PlaceNetworked(DvergrOutposts.Ward, new Vector3(e.X, y, e.Z), 0f);
+                        smallWard = true;
+                        return;
+                }
+                draftLeft++;
+                Plugin.Log.LogWarning(locationName + ": unknown mark " + e.Prefab);
+                return;
+            }
+            if (e.Kind == "paint") return; // our ground mesh takes no paint
+            BuildEntry(null, e, sources);
+        }
+
+        // Builds a draft's lines. Things with the same group: one of them on each islet (RandomObject); a
+        // chance below 1: on some islets only (RandomSpawn). So no two islets of a design are quite the same.
+        static void BuildEntries(List<DraftEntry> draft, System.Action<DraftEntry, Dictionary<string, GameObject>> one)
+        {
             Dictionary<string, GameObject> sources = new Dictionary<string, GameObject>();
-            // Things with the same group: one of them on each islet (RandomObject); a chance below 1: on some
-            // islets only (RandomSpawn). So no two islets of a design are quite the same.
             Dictionary<string, List<DraftEntry>> groups = new Dictionary<string, List<DraftEntry>>();
             foreach (DraftEntry e in draft)
             {
@@ -110,24 +170,15 @@ namespace IslandsOfValheim
                     {
                         List<DraftEntry> members = groups[group];
                         System.Action[] each = new System.Action[members.Count];
-                        for (int i = 0; i < members.Count; i++) { DraftEntry m = members[i]; each[i] = () => BuildEntry(kind, m, sources); }
+                        for (int i = 0; i < members.Count; i++) { DraftEntry m = members[i]; each[i] = () => one(m, sources); }
                         OneOf(each);
                     };
                     if (e.Chance < 1f) Optional(e.Chance, build); else build();
                 }
-                else if (e.Chance < 1f && e.Kind != "marker") Optional(e.Chance, () => BuildEntry(kind, e, sources));
-                else BuildEntry(kind, e, sources);
+                else if (e.Chance < 1f && e.Kind != "marker") Optional(e.Chance, () => one(e, sources));
+                else one(e, sources);
             }
             foreach (GameObject source in sources.Values) if (source != null) Object.DestroyImmediate(source);
-            bool keeper = draftKeeper;
-            int left = draftLeft;
-            // Every islet has its keeper: the animals come from it, and on a dangerous one the guardian and chest.
-            if (!keeper) { Keeper(kind, Vector2.zero); Plugin.Log.LogWarning(locationName + ": its draft has no KEEPER mark; the keeper stands in the middle"); }
-            PlaceHints();
-            if (!kind.Peaceful) PlaceOutsideGuard();
-            if (tier.DvergrOutpost) PlaceDvergrWard(); // the islet is theirs
-            Plugin.Debug(locationName + ": draft " + kind.DraftId + ", " + draft.Count + " lines, " + left + " left out");
-            return true;
         }
 
         static int vanillaCount;
@@ -162,6 +213,18 @@ namespace IslandsOfValheim
             foreach (Mister m in group.GetComponentsInChildren<Mister>(true)) if (m != null) { Object.DestroyImmediate(m.gameObject); mist++; }
             if (mist > 0) Plugin.Log.LogInfo(locationName + ": " + source + ": " + mist + " mist makers left out");
             removed += mist;
+            if (!buildingLarge)
+            {
+                // On a small islet the chest and the guards are the islet's own: the structure's chests,
+                // creatures, nests and wards are left out, and its terrain changes (our ground mesh takes none).
+                foreach (Container c in group.GetComponentsInChildren<Container>(true)) if (c != null) { Object.DestroyImmediate(c.gameObject); removed++; }
+                foreach (CreatureSpawner s in group.GetComponentsInChildren<CreatureSpawner>(true)) if (s != null) { Object.DestroyImmediate(s.gameObject); removed++; }
+                foreach (SpawnArea a in group.GetComponentsInChildren<SpawnArea>(true)) if (a != null) { Object.DestroyImmediate(a.gameObject); removed++; }
+                foreach (PrivateArea w in group.GetComponentsInChildren<PrivateArea>(true)) if (w != null) { Object.DestroyImmediate(w.gameObject); removed++; }
+                // (Only the component: it may sit on a part of the structure.)
+                foreach (TerrainModifier m in group.GetComponentsInChildren<TerrainModifier>(true)) if (m != null) { Object.DestroyImmediate(m); removed++; }
+                LogSpan(group, source);
+            }
             foreach (CreatureSpawner spawner in group.GetComponentsInChildren<CreatureSpawner>(true))
             {
                 Vector3 p = root.transform.InverseTransformPoint(spawner.transform.position);
@@ -174,6 +237,24 @@ namespace IslandsOfValheim
             built++;
             Plugin.Debug(locationName + ": " + source + " at " + at.ToString("F0") + ", " + parts.Count + " parts, " + removed + " left out");
             return group;
+        }
+
+        // How much of a small islet's plateau a structure takes (its meshes, from above), so its design can be
+        // checked against the real sizes: in the log for the test islets, and a warning if it reaches past the
+        // plateau's edge onto the slope.
+        static void LogSpan(GameObject group, string source)
+        {
+            Bounds b = LocalBounds(group);
+            float reach = 0f;
+            for (int i = 0; i < 4; i++)
+            {
+                float x = (i & 1) == 0 ? b.min.x : b.max.x, z = (i & 2) == 0 ? b.min.z : b.max.z;
+                reach = Mathf.Max(reach, Mathf.Sqrt(x * x + z * z));
+            }
+            string span = source + " spans x " + b.min.x.ToString("F1") + ".." + b.max.x.ToString("F1") + ", z " + b.min.z.ToString("F1") + ".." + b.max.z.ToString("F1") +
+                ", height " + b.size.y.ToString("F1") + ", corners up to " + reach.ToString("F1") + " m from the middle (plateau " + plateauRadius.ToString("F1") + " m)";
+            if (locationName.StartsWith("IoVTest_Small_")) Plugin.Log.LogInfo(locationName + ": " + span);
+            else Plugin.Debug(locationName + ": " + span);
         }
 
         // Some of the game's structures come with materials whose shader the game can't draw outside the

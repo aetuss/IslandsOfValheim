@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace IslandsOfValheim
@@ -21,6 +22,62 @@ namespace IslandsOfValheim
                 case RuinStyle.GraustenFort: MainRuin(GraustenFort, AshlandsArches); Ridge(GraustenPillar); break;
                 case RuinStyle.DvergrCamp: MainRuin(DvergrCamp, DvergrDigSite); Ridge(DvergrWatch); break;
                 case RuinStyle.FrostKeep: MainRuin(FrostKeep, FrozenCamp); Ridge(FrozenGraves); break;
+            }
+        }
+
+        // The new small islets: one of the land's designs of the game's own structures (drafts
+        // Small_<Land>_<n>), each turned two ways; less often one of the two old ruins, or a nest where the land
+        // has one. The ridge structure as before. onlyDesign > 0: that design alone, unturned (a test islet).
+        static void PlaceTemplates(int onlyDesign)
+        {
+            System.Action oldA, oldB, ridge;
+            OldDesigns(out oldA, out oldB, out ridge);
+            List<System.Action> designs = new List<System.Action>();
+            List<float> weights = new List<float>();
+            for (int n = 1; ; n++)
+            {
+                string id = SmallDraftId(tier, n);
+                List<DraftEntry> draft = ReadDraft(id);
+                if (draft == null) break;
+                if (onlyDesign > 0 && n != onlyDesign) continue;
+                designs.Add(Turned(() => BuildSmallDraft(id, draft), 0f));
+                weights.Add(1f);
+                if (onlyDesign > 0) break;
+                designs.Add(Turned(() => BuildSmallDraft(id, draft), 180f));
+                weights.Add(1f);
+            }
+            if (onlyDesign <= 0)
+            {
+                designs.Add(Turned(WithWard(oldA), 90f)); weights.Add(0.75f);
+                designs.Add(Turned(WithWard(oldB), 270f)); weights.Add(0.75f);
+                if (tier.Nest != null) { designs.Add(NestSite); weights.Add(1.2f); }
+            }
+            if (designs.Count == 0)
+            {
+                Plugin.Log.LogWarning(locationName + ": no small designs for " + tier.Name + "; it keeps the old ruin");
+                designs.Add(WithWard(oldA)); weights.Add(1f);
+            }
+            OneOf(weights.ToArray(), designs.ToArray());
+            Ridge(ridge);
+        }
+
+        // An old ruin on a new islet: the dvergr's ward with it, in the middle as before.
+        static System.Action WithWard(System.Action design)
+        {
+            return () => { design(); if (tier.DvergrOutpost) PlaceDvergrWard(); };
+        }
+
+        static void OldDesigns(out System.Action a, out System.Action b, out System.Action ridge)
+        {
+            switch (tier.Style)
+            {
+                case RuinStyle.StoneHall: a = StoneHall; b = FishingCamp; ridge = StoneTower; break;
+                case RuinStyle.StiltHut: a = StiltHut; b = SunkenShrine; ridge = Graves; break;
+                case RuinStyle.FulingCamp: a = FulingCamp; b = FulingRuin; ridge = FulingLookout; break;
+                case RuinStyle.DvergrRuin: a = DvergrRuin; b = DvergrOutpost; ridge = DvergrColumn; break;
+                case RuinStyle.GraustenFort: a = GraustenFort; b = AshlandsArches; ridge = GraustenPillar; break;
+                case RuinStyle.DvergrCamp: a = DvergrCamp; b = DvergrDigSite; ridge = DvergrWatch; break;
+                default: a = FrostKeep; b = FrozenCamp; ridge = FrozenGraves; break;
             }
         }
 

@@ -1,0 +1,19 @@
+{
+  "name": "Small_Swamp_1",
+  "islet": "Small_Swamp_1",
+  "rev": 1,
+  "tool": "small draft generator",
+  "count": 10,
+  "objects": [
+    {"kind": "vanilla", "prefab": "SwampHut3", "x": 0, "y": 0, "z": 2.2, "yaw": 180, "qx": 0, "qy": 1, "qz": 0, "qw": 0, "aboveGround": 0},
+    {"kind": "marker", "prefab": "CHEST", "x": -1.6, "y": 0, "z": -3.9, "yaw": 20, "qx": 0, "qy": 0.17365, "qz": 0, "qw": 0.98481, "aboveGround": 0},
+    {"kind": "marker", "prefab": "GUARDS", "x": 1.1, "y": 0, "z": -4.1, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "prop", "prefab": "mudpile", "x": 4.3, "y": 0, "z": -2.6, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.7},
+    {"kind": "prop", "prefab": "bone_stack", "x": -4.3, "y": 0, "z": -1.7, "yaw": 80, "qx": 0, "qy": 0.64279, "qz": 0, "qw": 0.76604, "aboveGround": 0},
+    {"kind": "prop", "prefab": "skull_pile", "x": 3.3, "y": 0, "z": -5.1, "yaw": 150, "qx": 0, "qy": 0.96593, "qz": 0, "qw": 0.25882, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "marker01", "x": 4.7, "y": 0, "z": 1.9, "yaw": 200, "qx": 0, "qy": 0.98481, "qz": 0, "qw": -0.17365, "aboveGround": 0, "chance": 0.6},
+    {"kind": "prop", "prefab": "crypt_skeleton_laying", "x": 1.9, "y": 0, "z": -6.1, "yaw": 250, "qx": 0, "qy": 0.81915, "qz": 0, "qw": -0.57358, "aboveGround": 0, "chance": 0.5},
+    {"kind": "piece", "prefab": "piece_groundtorch_green", "x": -2.7, "y": 0, "z": -5.3, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0, "chance": 0.6},
+    {"kind": "pickable", "prefab": "Pickable_Thistle", "x": -4.7, "y": 0, "z": 2.5, "yaw": 213.6, "qx": 0, "qy": -0.95732, "qz": 0, "qw": 0.28903, "aboveGround": 0, "chance": 0.6}
+  ]
+}
