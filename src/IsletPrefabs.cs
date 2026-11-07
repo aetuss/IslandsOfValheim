@@ -139,6 +139,9 @@ namespace IslandsOfValheim
             container.m_defaultItems = table;
         }
 
+        // Every islet chest's stacks, small and large (1.9.21: a little more than the cut of 1.9.18).
+        const float LootScale = 1.3f;
+
         static DropTable LootTable(IsletTier tier, bool hoard)
         {
             DropTable table = new DropTable();
@@ -158,7 +161,7 @@ namespace IslandsOfValheim
                 }
                 DropTable.DropData drop = new DropTable.DropData();
                 drop.m_item = prefab;
-                float scale = hoard ? 1.5f : 1f;
+                float scale = (hoard ? 1.5f : 1f) * LootScale;
                 drop.m_stackMin = Mathf.Max(1, Mathf.RoundToInt(loot.Min * scale));
                 drop.m_stackMax = Mathf.Max(drop.m_stackMin, Mathf.RoundToInt(loot.Max * scale));
                 drop.m_weight = loot.Weight;

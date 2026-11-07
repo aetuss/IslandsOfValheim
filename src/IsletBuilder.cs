@@ -328,8 +328,9 @@ namespace IslandsOfValheim
                 Texture2D mask = new Texture2D(2, 2);
                 mask.name = "IoV_IsletPaintMask";
                 mask.wrapMode = TextureWrapMode.Clamp;
-                // Alpha is lava where the ground is painted as Ashlands, so it stays 0 there.
-                Color nothing = new Color(0f, 0f, 0f, tier.Biome == Heightmap.Biome.AshLands ? 0f : 1f);
+                // Alpha is lava where the ground is painted as Ashlands, and the Mistlands' grass instead of
+                // their moss, so it stays 0 there.
+                Color nothing = new Color(0f, 0f, 0f, tier.Biome == Heightmap.Biome.AshLands || tier.Biome == Heightmap.Biome.Mistlands ? 0f : 1f);
                 mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
                 mask.Apply();
                 material.SetTexture("_ClearedMaskTex", mask);
