@@ -3,14 +3,7 @@
 ## 1.10.0
 
 - Large islets are made of the game's own terrain now, raised out of the sea, with sandy beaches your boat can land on. The hoe, the pickaxe and the cultivator work on them, and crops grow there. Each is painted as its land: ash in the Ashlands, dark moss in the Mistlands, snow in the Deep North.
-- Each kind of large islet has three designs now, and a world gets each one once (with the default `LargeIsletsPerKind` of 3), so no two are alike. Some are peaceful, with no guardian:
-  - Meadows: a barrow hill, a farmstead, a fishers' bay.
-  - Swamp: a sunken crypt among houses on stilts, a witch's hill, a misty graveyard.
-  - Plains: a Fuling stronghold, an abandoned farm with grazing lox, a tar lake.
-  - Mistlands: an infested mine, a giants' graveyard, a fallen watchtower.
-  - Dvergr: an infested mine by a dig site, a dvergr harbour, a dvergr watchtower.
-  - Ashlands: a charred fortress, the morgen pits, a sulfur arch over a vultures' nest.
-  - Deep North: Mørkhalla's way down by an ice hold, frozen ships in the ice, a ghost town.
+- Each kind of large islet has three designs now, and a world gets each one once (with the default `LargeIsletsPerKind` of 3), so no two are alike. Some are guarded, some are peaceful, with no guardian, left to the animals and to what their people left behind.
 - Small islets can now carry one of three of the game's own structures for their land instead of a ruin: a plank house, a dolmen, a hut on stilts, a Fuling hut, dvergr towers, giant swords, a northern hut and more.
 - The tale's last islet is a dark crag in the Deep North waters now: a hidden cove, then Grímr's, Ormr's and Hafdís's hollows one above the other, none seen from the one before. Ice closes the way up until the keeper below falls. A keeper only comes once it's their turn, out of a gathering mist, and Hafdís comes down out of the sky onto her summit.
 - Islet chests are closer to the game's own: fewer items and smaller stacks than before, still richer the further out you sail.

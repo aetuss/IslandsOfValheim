@@ -18,7 +18,7 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 - **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
 - **Fishing grounds** around about half the islets (see below).
-- **Large islets**, three of each kind, each of its own design: a vanilla dungeon, a stronghold, an old farm, a ghost town... with animals and often a starred guardian. Their ground is the game's own: dig, level and farm on it (see below).
+- **Large islets**, three of each kind, each of its own design, some guarded, some peaceful. Their ground is the game's own: dig, level and farm on it (see below).
 - **The sea trader**, the last of the people who built the islet ruins, keeps a harbour on one islet (see below).
 
 The further from the world centre, the tougher the islet:
@@ -74,19 +74,9 @@ There aren't endless fish: a ground holds a few at a time and puts one back ever
 
 ## Large islets
 
-Rarely, three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones. Each kind has three designs, and with the default setting a world gets each of them once, so no two are alike. Some are peaceful: no guardian, only animals and things to find.
+Rarely, three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones. Each kind comes in three designs, and with the default setting a world gets each of them once, so no two are alike. Some hold one of the game's dungeons or a stronghold, with a starred guardian, a few of the kind's creatures and a chest of their own; some are peaceful, left to the animals and to what the people who lived there left behind. What's on each is for you to find.
 
-| Large islet | Its three designs |
-|---|---|
-| Meadows | a barrow hill: a burial chamber among dolmens and an old village; a farmstead left to the deer (peaceful); a fishers' bay with a lighthouse tower and a wreck (peaceful) |
-| Swamp | a sunken crypt among houses on stilts (it needs the Swamp key, as on land); a witch's hill, which a Wraith keeps; a misty graveyard |
-| Plains | a Fuling stronghold among old standing stones; an abandoned farm where lox graze (peaceful); a tar lake the Fulings come to |
-| Mistlands | an infested mine, dug into a tall islet the way the game digs it on land; a giants' graveyard (peaceful); a fallen watchtower where the Seekers nest |
-| Dvergr | an infested mine by the dvergr's dig site; a dvergr harbour with its lighthouse (peaceful, as long as you are); a dvergr watchtower the Seekers come for |
-| Ashlands | a charred fortress; the morgen pits; a sulfur arch over a vultures' nest |
-| Deep North | Mørkhalla's way down by an ice hold; frozen ships locked in the ice (peaceful); a ghost town whose people never left |
-
-Most have a starred guardian, a few of the kind's creatures and a chest of their own, and all have life that comes back: deer, boar and necks in the Meadows, leeches and crows in the Swamp, lox and deathsquitos on the Plains, hares in the Mistlands, asksvin and voltures in the Ashlands, moose, seals and a bear in the Deep North. When there are fewer than a few, one comes back every few minutes, but not near a player's base. Boar, lox and asksvin can be tamed. Trees, berries and mushrooms grow back the game's way.
+All have life of their own that comes back, the animals of their land: when there are fewer than a few, one comes back every few minutes, but not near a player's base. Some can be tamed. Trees, berries and mushrooms grow back the game's way.
 
 Like the small islets, the further out in its ring a large islet is, the tougher it gets: in the inner third its creatures have no stars, in the middle third some have one, in the outer third some have two, and the chest grows with it.
 
@@ -204,8 +194,6 @@ Install it on the server and on every player's game: the islands are part of the
 Found a bug or have an idea? Open an issue on [GitHub](https://github.com/aetuss/IslandsOfValheim/issues). Turn on `DebugLog` and include the matching lines from `BepInEx/LogOutput.log`.
 
 Stuck in Sævar's tale, or did one of its steps not work the way it should? You can also reach me on Discord: **aethuswulf**.
-
-Enjoying the islands? A 👍 on Thunderstore helps other sailors find them.
 
 ## Thanks
 
