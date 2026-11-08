@@ -29,7 +29,7 @@ namespace IslandsOfValheim
 
         // How the ghost is drawn. The game leaves out the Standard shader's see-through kind, so these use the
         // shader Odin's light beam uses, which it does draw see-through.
-        internal const int Solid = 0, GhostSoft = 1, GhostShade = 3;
+        internal const int Solid = 0, GhostSoft = 1, GhostFlat = 2, GhostShade = 3;
 
         // Set before Instantiate: the next spirit made here takes these (its owner writes them to its ZDO).
         internal static Look NextLook;
@@ -175,13 +175,16 @@ namespace IslandsOfValheim
                 // The underwear's own little mesh: under clothes drawn see-through it would show white.
                 if (r.name == "shorts") { r.enabled = false; continue; }
                 Material[] mats = r.materials;
-                for (int i = 0; i < mats.Length; i++)
-                {
-                    if (!loggedShaders && mats[i] != null && mats[i].shader != null)
-                        Plugin.Debug("Spirits: " + r.name + " was drawn with " + mats[i].shader.name +
-                            (r is SkinnedMeshRenderer && ((SkinnedMeshRenderer)r).sharedMesh != null ? " (mesh " + ((SkinnedMeshRenderer)r).sharedMesh.name + ")" : ""));
-                    mats[i] = GhostMaterial(mats[i], ghost, BodyTexture(mats[i]));
-                }
+                // More materials than the mesh has parts draws its last part again, once per extra material:
+                // solid, no one sees it; see-through, every layer thickens it.
+                Mesh mesh = r is SkinnedMeshRenderer ? ((SkinnedMeshRenderer)r).sharedMesh
+                    : r.GetComponent<MeshFilter>() != null ? r.GetComponent<MeshFilter>().sharedMesh : null;
+                int parts = mesh != null ? Mathf.Max(1, mesh.subMeshCount) : mats.Length;
+                if (!loggedShaders)
+                    Plugin.Debug("Spirits: " + r.name + " (mesh " + (mesh != null ? mesh.name : "?") + ", " + parts + " parts, " + mats.Length + " materials) was drawn with " +
+                        (mats.Length > 0 && mats[0] != null && mats[0].shader != null ? mats[0].shader.name : "?"));
+                if (mats.Length > parts) System.Array.Resize(ref mats, parts);
+                for (int i = 0; i < mats.Length; i++) mats[i] = GhostMaterial(mats[i], ghost, BodyTexture(mats[i]));
                 r.materials = mats;
                 r.shadowCastingMode = ShadowCastingMode.Off;
                 r.receiveShadows = false;
@@ -190,21 +193,50 @@ namespace IslandsOfValheim
         }
 
         bool loggedShaders;
-        static Shader sprite;
+        static Shader sprite, lit;
+        static bool looked;
+
+        static Shader FindShader(params string[] names)
+        {
+            foreach (string name in names)
+            {
+                Shader s = Shader.Find(name);
+                if (s != null && s.isSupported) return s;
+            }
+            return null;
+        }
 
         static Material GhostMaterial(Material source, int style, Texture body)
         {
             if (source == null) return source;
-            if (sprite == null) sprite = Shader.Find("Sprites/Default");
-            if (sprite == null) return source;
-            Material m = new Material(sprite);
-            if (style == GhostShade) // no clothes' pattern at all: a pale see-through shape
-                m.color = new Color(0.62f, 0.8f, 1f, 0.32f);
-            else // its clothes and face as they are, pale blue and half see-through
+            if (!looked)
             {
-                Texture texture = body != null ? body : source.HasProperty("_MainTex") ? source.mainTexture : null;
+                looked = true;
+                sprite = FindShader("Sprites/Default");
+                // Lit by the world's light like everything else, and its far side isn't drawn through its near one.
+                lit = FindShader("Legacy Shaders/Transparent/Diffuse", "Transparent/Diffuse", "Legacy Shaders/Transparent/VertexLit");
+                Plugin.Debug("Spirits: see-through shaders: unlit " + (sprite != null ? sprite.name : "none") + ", lit " + (lit != null ? lit.name : "none"));
+            }
+            Texture texture = body != null ? body : source.HasProperty("_MainTex") ? source.mainTexture : null;
+            Material m;
+            if (style == GhostShade) // no clothes' pattern at all: a pale see-through shape
+            {
+                if (sprite == null) return source;
+                m = new Material(sprite);
+                m.color = new Color(0.62f, 0.8f, 1f, 0.32f);
+            }
+            else if (style == GhostSoft && lit != null) // its clothes and face, in the world's light, pale and faint
+            {
+                m = new Material(lit);
                 if (texture != null) m.mainTexture = texture;
-                m.color = new Color(0.72f, 0.86f, 1f, 0.5f);
+                m.color = new Color(0.8f, 0.9f, 1f, 0.42f);
+            }
+            else // its clothes and face, lit by nothing, pale and faint
+            {
+                if (sprite == null) return source;
+                m = new Material(sprite);
+                if (texture != null) m.mainTexture = texture;
+                m.color = new Color(0.72f, 0.86f, 1f, 0.3f);
             }
             m.renderQueue = 3000;
             return m;
@@ -248,7 +280,10 @@ namespace IslandsOfValheim
 
         static Texture Paint(Texture skin, params Texture[] over)
         {
-            RenderTexture target = new RenderTexture(skin.width, skin.height, 0, RenderTextureFormat.ARGB32);
+            int size = skin.width; // as sharp as its sharpest layer (the skin's own picture is small)
+            foreach (Texture layer in over) if (layer != null) size = Mathf.Max(size, layer.width);
+            size = Mathf.Min(size, 2048);
+            RenderTexture target = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
             target.Create();
             Graphics.Blit(skin, target);
             if (painter == null) painter = new Material(sprite);
@@ -272,14 +307,14 @@ namespace IslandsOfValheim
             }
             GL.PopMatrix();
             RenderTexture.active = before;
-            Plugin.Debug("Spirits: body painted " + skin.width + "x" + skin.height);
+            Plugin.Debug("Spirits: body painted at " + size + " (skin " + skin.width + ")");
             return target;
         }
 
         // ---- the test (development builds): iov_spirits ----
 
-        // In a row in front of you, left to right: the man solid (to compare), then the two ways of drawing a
-        // ghost (soft, shade), then a woman seated on a bench (soft). The spirits a test made before,
+        // In a row in front of you, left to right: the man solid (to compare), then the three ways of drawing a
+        // ghost (soft and lit, flat, shade), then a woman seated on a bench (soft). The spirits a test made before,
         // near you, go first.
         internal static void SpawnTest(Terminal context)
         {
@@ -300,19 +335,24 @@ namespace IslandsOfValheim
             }
 
             Look sailor = new Look { Hair = "Hair3", Beard = "Beard5", Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
-            int[] styles = { Solid, GhostSoft, GhostShade };
+            int[] styles = { Solid, GhostSoft, GhostFlat, GhostShade };
             for (int i = 0; i < styles.Length; i++)
             {
                 NextLook = sailor; NextPose = Stand; NextGhost = styles[i];
-                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 3.75f)), facing);
+                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 5f)), facing);
             }
+            List<string> shaders = new List<string>();
+            foreach (Shader s in Resources.FindObjectsOfTypeAll<Shader>())
+                if (s != null && s.isSupported) shaders.Add(s.name);
+            shaders.Sort();
+            Plugin.Log.LogInfo("Spirits: shaders loaded: " + string.Join(" | ", shaders.ToArray()));
 
             Look woman = new Look { Model = 1, Hair = "Hair12", Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, HairColor = new Vector3(0.85f, 0.75f, 0.55f) };
             GameObject bench = ZNetScene.instance.GetPrefab("piece_bench01");
             Chair chair = bench != null ? bench.GetComponentInChildren<Chair>(true) : null;
             if (bench != null && chair != null && chair.m_attachPoint != null)
             {
-                Vector3 at = Ground(p + f * 4f + r * 4f);
+                Vector3 at = Ground(p + f * 4f + r * 5.5f);
                 Quaternion turn = Quaternion.LookRotation(-f);
                 Object.Instantiate(bench, at, turn);
                 Vector3 seat = at + turn * bench.transform.InverseTransformPoint(chair.m_attachPoint.position);
@@ -323,7 +363,7 @@ namespace IslandsOfValheim
             }
             else context.AddString("No bench with a seat found.");
 
-            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, shade, and seated on a bench (soft).");
+            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft (lit), flat, shade, and seated on a bench (soft).");
         }
 
         static Vector3 Ground(Vector3 p)
