@@ -27,9 +27,9 @@ namespace IslandsOfValheim
 
         internal const int Stand = 0, Sit = 1;
 
-        // How the ghost is drawn. The game leaves out the Standard shader's see-through kind, so these use
-        // shaders it does draw see-through (the ones Odin's light beam and the game's own smoke use).
-        internal const int Solid = 0, GhostSoft = 1, GhostGlow = 2, GhostShade = 3;
+        // How the ghost is drawn. The game leaves out the Standard shader's see-through kind, so these use the
+        // shader Odin's light beam uses, which it does draw see-through.
+        internal const int Solid = 0, GhostSoft = 1, GhostShade = 3;
 
         // Set before Instantiate: the next spirit made here takes these (its owner writes them to its ZDO).
         internal static Look NextLook;
@@ -80,6 +80,7 @@ namespace IslandsOfValheim
 
         void Awake()
         {
+            nextGhostCheck = Time.time + 1f; // its clothes are put on first
             nview = GetComponent<ZNetView>();
             vis = GetComponent<VisEquipment>();
             animator = GetComponentInChildren<Animator>(true);
@@ -170,59 +171,115 @@ namespace IslandsOfValheim
             foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null || r is ParticleSystemRenderer || ghosted.Contains(r)) continue;
+                ghosted.Add(r);
+                // The underwear's own little mesh: under clothes drawn see-through it would show white.
+                if (r.name == "shorts") { r.enabled = false; continue; }
                 Material[] mats = r.materials;
                 for (int i = 0; i < mats.Length; i++)
                 {
                     if (!loggedShaders && mats[i] != null && mats[i].shader != null)
-                        Plugin.Debug("Spirits: " + r.name + " was drawn with " + mats[i].shader.name);
-                    mats[i] = GhostMaterial(mats[i], ghost);
+                        Plugin.Debug("Spirits: " + r.name + " was drawn with " + mats[i].shader.name +
+                            (r is SkinnedMeshRenderer && ((SkinnedMeshRenderer)r).sharedMesh != null ? " (mesh " + ((SkinnedMeshRenderer)r).sharedMesh.name + ")" : ""));
+                    mats[i] = GhostMaterial(mats[i], ghost, BodyTexture(mats[i]));
                 }
                 r.materials = mats;
                 r.shadowCastingMode = ShadowCastingMode.Off;
                 r.receiveShadows = false;
-                ghosted.Add(r);
             }
             loggedShaders = true;
         }
 
         bool loggedShaders;
-        static Shader sprite, additive;
+        static Shader sprite;
 
-        static Material GhostMaterial(Material source, int style)
+        static Material GhostMaterial(Material source, int style, Texture body)
         {
             if (source == null) return source;
             if (sprite == null) sprite = Shader.Find("Sprites/Default");
-            if (additive == null) additive = Shader.Find("Legacy Shaders/Particles/Additive");
-            Texture texture = source.HasProperty("_MainTex") ? source.mainTexture : null;
-            Material m;
-            switch (style)
+            if (sprite == null) return source;
+            Material m = new Material(sprite);
+            if (style == GhostShade) // no clothes' pattern at all: a pale see-through shape
+                m.color = new Color(0.62f, 0.8f, 1f, 0.32f);
+            else // its clothes and face as they are, pale blue and half see-through
             {
-                case GhostGlow: // light only: glows, the darker its clothes the fainter
-                    if (additive == null) return source;
-                    m = new Material(additive);
-                    if (texture != null) m.mainTexture = texture;
-                    m.SetColor("_TintColor", new Color(0.3f, 0.45f, 0.6f, 0.6f));
-                    break;
-                case GhostShade: // no clothes' pattern at all: a pale see-through shape
-                    if (sprite == null) return source;
-                    m = new Material(sprite);
-                    m.color = new Color(0.62f, 0.8f, 1f, 0.32f);
-                    break;
-                default: // its clothes and face as they are, pale blue and half see-through
-                    if (sprite == null) return source;
-                    m = new Material(sprite);
-                    if (texture != null) m.mainTexture = texture;
-                    m.color = new Color(0.72f, 0.86f, 1f, 0.5f);
-                    break;
+                Texture texture = body != null ? body : source.HasProperty("_MainTex") ? source.mainTexture : null;
+                if (texture != null) m.mainTexture = texture;
+                m.color = new Color(0.72f, 0.86f, 1f, 0.5f);
             }
             m.renderQueue = 3000;
             return m;
         }
 
+        // A player's shirt and trousers aren't things of their own: the player's shader paints them over the
+        // skin (_ChestTex, _LegsTex). The see-through shader can't, so for the body they're painted together
+        // once, here, into one picture: skin, then trousers, then shirt.
+        Texture BodyTexture(Material source)
+        {
+            if (source == null || !source.HasProperty("_ChestTex") || nview == null || nview.GetZDO() == null) return null;
+            ZDO zdo = nview.GetZDO();
+            Texture skin = source.mainTexture;
+            int model = zdo.GetInt(ZDOVars.s_modelIndex, 0);
+            if (vis != null && vis.m_models != null && model >= 0 && model < vis.m_models.Length && vis.m_models[model].m_baseMaterial != null
+                && vis.m_models[model].m_baseMaterial.mainTexture != null)
+                skin = vis.m_models[model].m_baseMaterial.mainTexture;
+            if (skin == null) return null;
+            Texture legs = ArmorTexture(zdo.GetInt(ZDOVars.s_legItem, 0), "_LegsTex");
+            Texture chest = ArmorTexture(zdo.GetInt(ZDOVars.s_chestItem, 0), "_ChestTex");
+            if (legs == null && chest == null) return skin;
+            string key = skin.GetInstanceID() + "/" + (legs != null ? legs.GetInstanceID() : 0) + "/" + (chest != null ? chest.GetInstanceID() : 0);
+            Texture made;
+            if (bodies.TryGetValue(key, out made) && made != null) return made;
+            made = Paint(skin, legs, chest);
+            bodies[key] = made;
+            return made;
+        }
+
+        static readonly Dictionary<string, Texture> bodies = new Dictionary<string, Texture>();
+        static Material painter;
+
+        static Texture ArmorTexture(int hash, string property)
+        {
+            if (hash == 0 || ObjectDB.instance == null) return null;
+            GameObject item = ObjectDB.instance.GetItemPrefab(hash);
+            ItemDrop drop = item != null ? item.GetComponent<ItemDrop>() : null;
+            Material armor = drop != null ? drop.m_itemData.m_shared.m_armorMaterial : null;
+            return armor != null && armor.HasProperty(property) ? armor.GetTexture(property) : null;
+        }
+
+        static Texture Paint(Texture skin, params Texture[] over)
+        {
+            RenderTexture target = new RenderTexture(skin.width, skin.height, 0, RenderTextureFormat.ARGB32);
+            target.Create();
+            Graphics.Blit(skin, target);
+            if (painter == null) painter = new Material(sprite);
+            RenderTexture before = RenderTexture.active;
+            RenderTexture.active = target;
+            GL.PushMatrix();
+            GL.LoadOrtho();
+            foreach (Texture layer in over)
+            {
+                if (layer == null) continue;
+                painter.mainTexture = layer;
+                painter.color = Color.white;
+                painter.SetPass(0);
+                GL.Begin(GL.QUADS);
+                GL.Color(Color.white);
+                GL.TexCoord2(0f, 0f); GL.Vertex3(0f, 0f, 0f);
+                GL.TexCoord2(0f, 1f); GL.Vertex3(0f, 1f, 0f);
+                GL.TexCoord2(1f, 1f); GL.Vertex3(1f, 1f, 0f);
+                GL.TexCoord2(1f, 0f); GL.Vertex3(1f, 0f, 0f);
+                GL.End();
+            }
+            GL.PopMatrix();
+            RenderTexture.active = before;
+            Plugin.Debug("Spirits: body painted " + skin.width + "x" + skin.height);
+            return target;
+        }
+
         // ---- the test (development builds): iov_spirits ----
 
-        // In a row in front of you, left to right: the man solid (to compare), then the three ways of drawing a
-        // ghost (soft, glowing, shade), then a woman seated on a bench (soft). The spirits a test made before,
+        // In a row in front of you, left to right: the man solid (to compare), then the two ways of drawing a
+        // ghost (soft, shade), then a woman seated on a bench (soft). The spirits a test made before,
         // near you, go first.
         internal static void SpawnTest(Terminal context)
         {
@@ -243,11 +300,11 @@ namespace IslandsOfValheim
             }
 
             Look sailor = new Look { Hair = "Hair3", Beard = "Beard5", Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
-            int[] styles = { Solid, GhostSoft, GhostGlow, GhostShade };
+            int[] styles = { Solid, GhostSoft, GhostShade };
             for (int i = 0; i < styles.Length; i++)
             {
                 NextLook = sailor; NextPose = Stand; NextGhost = styles[i];
-                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 5f)), facing);
+                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 3.75f)), facing);
             }
 
             Look woman = new Look { Model = 1, Hair = "Hair12", Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, HairColor = new Vector3(0.85f, 0.75f, 0.55f) };
@@ -255,7 +312,7 @@ namespace IslandsOfValheim
             Chair chair = bench != null ? bench.GetComponentInChildren<Chair>(true) : null;
             if (bench != null && chair != null && chair.m_attachPoint != null)
             {
-                Vector3 at = Ground(p + f * 4f + r * 5.5f);
+                Vector3 at = Ground(p + f * 4f + r * 4f);
                 Quaternion turn = Quaternion.LookRotation(-f);
                 Object.Instantiate(bench, at, turn);
                 Vector3 seat = at + turn * bench.transform.InverseTransformPoint(chair.m_attachPoint.position);
@@ -266,7 +323,7 @@ namespace IslandsOfValheim
             }
             else context.AddString("No bench with a seat found.");
 
-            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, glowing, shade, and seated on a bench (soft).");
+            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, shade, and seated on a bench (soft).");
         }
 
         static Vector3 Ground(Vector3 p)
