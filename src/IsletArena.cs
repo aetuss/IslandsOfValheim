@@ -23,7 +23,9 @@ namespace IslandsOfValheim
     {
         // The crag: an oval, its rim this high over the sea; towards the summit it comes down to the summit's
         // own level, so the top is open.
-        const float CragAx = 30f, CragAz = 52f, CragCz = -4f, CragRim = 19f;
+        // (Longer to the north than to the south, so the summit's floor reaches 7 m past its middle before the
+        // crag falls to the sea.)
+        const float CragAx = 30f, CragAz = 54f, CragCz = -2f, CragRim = 19f;
         const float ArenaReach = 64f, ArenaLand = 54f;
         internal const float ArenaTop = CragRim + 2f; // over the rim, for iov_goto
 
@@ -224,11 +226,14 @@ namespace IslandsOfValheim
             // the diagonals framing an open floor; the frozen remains of giants on the rim either side, above.
             Vector4 g = ArenaHollows[1];
             Vector2 gc = new Vector2(g.x, g.y);
-            StaticPart(sources, "MorkBorg", "exterior/Morkhalla_jotun_gate", new Vector2(0f, -9.6f), 0f, 1f, false, -0.4f);
-            Brazier(new Vector2(-4.6f, -11.5f));
-            Brazier(new Vector2(4.6f, -11.5f));
-            foreach (float deg in new[] { 45f, 135f, 225f, 315f })
-                OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, gc + Polar(deg, 8.5f), deg * 2f + 30f, 5f, 0.1f);
+            // (The gate is set back into the far wall, its face where the wall meets the floor, so it stands in
+            // the rock; the great stones stand back against the walls: two as its posts, two either side of the way
+            // in from the cove. The way on, to the east, stays open.)
+            StaticPart(sources, "MorkBorg", "exterior/Morkhalla_jotun_gate", new Vector2(0f, -7.6f), 0f, 1.25f, false, -0.4f);
+            Brazier(new Vector2(-2.8f, -12f));
+            Brazier(new Vector2(2.8f, -12f));
+            foreach (float deg in new[] { 55f, 125f, 240f, 300f })
+                OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, gc + Polar(deg, deg < 180f ? 11.4f : 10.5f), deg * 2f + 30f, 5f, 0.1f);
             StaticPart(sources, "DN_gammeltrollFrac01", "TrollFrost_Frac_legs", new Vector2(19f, -28f), 0f, 1f, true, 4.8f);
             StaticPart(sources, "DN_gammeltrollFrac02", "TrollFrost_Frac_arm", new Vector2(-19f, -16f), 90f, 1f, true, 4.6f);
 
@@ -246,16 +251,59 @@ namespace IslandsOfValheim
                 Prop(new[] { deg == 200f ? "FrozenSkeleton_Pose2" : "FrozenSkeleton_Pose1" }, oc + Polar(deg, 7.6f), 270f - deg, 0.05f);
             quietProps = false;
 
-            // Hafdís's summit: a ring of great stones, open to the way in (from the west gorge, about 219 degrees)
-            // and to the sea on the north; blue fire before each stone. She comes down out of the sky into the
-            // middle. (A dragon head on the cliff was tried: from inside it read as a black spike.)
+            // Hafdís's summit, the guardians' temple: a round dais of black marble in the middle, where she comes
+            // down out of the sky; the great black-marble guardian statues of the Mistlands (4 to 7.5 m) and carved
+            // columns in a ring round it, all facing in; the two tallest statues either side of the opening to the
+            // sea, so from the way in (the west gorge, about 219 degrees) you see the sea between them; two columns
+            // either side of the way in; blue fire only at the dais' edge. Black marble, so her light shows.
+            // (A ring of rough great stones was tried first: too crude for her.)
             Vector4 s = ArenaHollows[3];
             Vector2 sc = new Vector2(s.x, s.y);
-            foreach (float deg in new[] { 0f, 30f, 150f, 180f, 255f, 290f, 325f })
+            MarbleDais(sc, 5f);
+            foreach (float deg in new[] { 0f, 70f, 110f, 180f, 290f }) Brazier(sc + Polar(deg, 6.2f)); // none on the way in (about 219)
+            Guardian(sources, "statue", sc, 62f, 8.2f);       // 7.5 m: the sea's right
+            Guardian(sources, "statue (4)", sc, 118f, 8.2f);  // 6.5 m: the sea's left
+            Guardian(sources, "statue (1)", sc, 178f, 10.5f); // 6 m
+            Guardian(sources, "statue (2)", sc, 0f, 10.5f);   // 5.5 m
+            Guardian(sources, "statue (3)", sc, 270f, 10.5f); // 4 m, facing the way to the sea
+            foreach (float deg in new[] { 30f, 150f, 203f, 235f, 310f })
+                MarbleColumn(sc + Polar(deg, 10.5f), 2);
+        }
+
+        // One of Mistlands_StatueGroup1's statues, at deg degrees r from the middle, facing it.
+        static void Guardian(Dictionary<string, GameObject> sources, string statue, Vector2 middle, float deg, float r)
+        {
+            StaticPart(sources, "Mistlands_StatueGroup1", statue, middle + Polar(deg, r), 270f - deg, 1f, false, -0.2f);
+        }
+
+        // A carved black marble column, static: a base, its shafts and a tip, each on the one below.
+        static void MarbleColumn(Vector2 at, int shafts)
+        {
+            List<string> parts = new List<string> { "blackmarble_base_1" };
+            for (int i = 0; i < shafts; i++) parts.Add("blackmarble_column_3");
+            parts.Add("blackmarble_tip");
+            float bottom = GroundMin(at.x, at.y, 0.8f) - 0.25f;
+            foreach (string name in parts)
             {
-                OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, sc + Polar(deg, 11.5f), deg * 3f + 10f, 6.5f, 0.1f);
-                Brazier(sc + Polar(deg, 9f));
+                GameObject go = Copy(new[] { name }, Vector3.zero, 0f, true);
+                if (go == null) return;
+                Move(go, LocalBounds(go), new Vector3(at.x, bottom, at.y), false);
+                bottom = LocalBounds(go).max.y - 0.03f;
             }
+        }
+
+        // A round dais of black marble floor tiles (2 m), static, a hand's breadth over the ground.
+        static void MarbleDais(Vector2 middle, float radius)
+        {
+            float top = Height(middle.x, middle.y) + 0.2f;
+            for (float x = -radius; x <= radius; x += 2f)
+                for (float z = -radius; z <= radius; z += 2f)
+                {
+                    if (x * x + z * z > radius * radius) continue;
+                    GameObject go = Copy(new[] { "blackmarble_floor" }, Vector3.zero, 0f, true);
+                    if (go == null) return;
+                    Move(go, LocalBounds(go), new Vector3(middle.x + x, top, middle.y + z), true);
+                }
         }
 
         // A piece of one of the game's structures (path inside the location), copied without its scripts so it
