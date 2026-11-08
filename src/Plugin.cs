@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.10.7";
+        public const string Version = "1.10.8";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -97,6 +97,7 @@ namespace IslandsOfValheim
             IsletBuilder.RegisterLargeIslets();
 #if IOV_DEV
             TerrainIsletTest.Register(); // research prototype (branch iov-terrain-test)
+            IsletBuilder.RegisterValhallaBase(); // Valhalla's bare rock, to lay out its draft on (iov_goto draft_valhalla)
 #endif
         }
 

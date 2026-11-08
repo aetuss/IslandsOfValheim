@@ -111,6 +111,12 @@ namespace IslandsOfValheim
                         TerrainIsletTest.Goto(args.Context, IsletBuilder.ArenaBase, summit.w, 75f, 900f, 0f, summit.x, summit.y);
                         return;
                     }
+                    // Work in progress: Valhalla's bare rock, high over the sea, to lay out its draft on.
+                    if (args.Length > 1 && string.Equals(args[1], "draft_valhalla", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1.5f, 150f, 900f, 0f);
+                        return;
+                    }
                     // Work in progress: one small islet design on its own, unturned (iov_goto small_meadows_2).
                     foreach (IsletTier tier in IsletTier.All)
                         for (int n = 1; n <= 9; n++)
@@ -163,6 +169,7 @@ namespace IslandsOfValheim
 #if IOV_DEV
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
                     names.Add("draft_arena");
+                    names.Add("draft_valhalla");
                     foreach (IsletTier tier in IsletTier.All)
                         for (int n = 1; n <= 3; n++) names.Add(SmallArg(tier, n));
 #endif
