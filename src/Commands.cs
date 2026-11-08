@@ -65,6 +65,18 @@ namespace IslandsOfValheim
                 }, true);
 
 #if IOV_DEV
+            new Terminal.ConsoleCommand("iov_tree",
+                "- IslandsOfValheim (development): where the World-tree's branches in the sky are, over where you stand",
+                args =>
+                {
+                    if (Player.m_localPlayer == null) return;
+                    foreach (string line in ValhallaSky.MeasureTree(Player.m_localPlayer.transform.position, 400f))
+                    {
+                        args.Context.AddString(line);
+                        Plugin.Log.LogInfo("iov_tree: " + line);
+                    }
+                }, true);
+
             new Terminal.ConsoleCommand("iov_spirits",
                 "- IslandsOfValheim (development): a standing ghost, a seated one and a solid one around you, to see the spirits",
                 args => SpiritHuman.SpawnTest(args.Context), true);

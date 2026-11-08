@@ -23,8 +23,10 @@ namespace IslandsOfValheim
         internal const string ValhallaBase = "IoVTest_Base_Valhalla"; // the bare rock, to lay out its draft on
         internal const float SkyHeight = 2000f;   // the rock's floor, above the sea
         internal const string SkyFloorName = "IoV_SkyFloor"; // the dev tool measures a sky draft's heights from it
+        internal const string SkyGroundName = "IoV_ValhallaGround";
         internal const float ValhallaEdge = 82f;  // the rock's edge, on average
-        const float ValhallaDrop = 70f;           // how far its cliffs fall into the clouds
+        const float RockDepth = 150f;             // from its meadow down to the tip of its underside
+        const int RockSegments = 240, TopRings = 70, SideRings = 34;
 
         internal static void RegisterValhallaBase()
         {
@@ -37,18 +39,9 @@ namespace IslandsOfValheim
             parent = sky.transform;
             built = 0;
             missing = 0;
-
             seed = 911f;
-            int oldSegments = segments;
-            segments = 240;
-            maxRadius = ValhallaEdge + 28f;
-            heightOverride = ValhallaHeight;
-            Material groundMaterial = BuildGround();
-            heightOverride = null;
-            segments = oldSegments;
-            Transform ground = root.transform.Find("IoV_Ground");
-            if (ground != null) { ground.SetParent(sky.transform, false); ground.name = "IoV_ValhallaGround"; }
 
+            BuildFloatingRock(sky.transform);
             ValhallaClouds.Build(sky.transform);
             ValhallaClouds.Motes(sky.transform);
             sky.AddComponent<ValhallaSky>();
@@ -67,26 +60,147 @@ namespace IslandsOfValheim
             config.ExteriorRadius = ValhallaEdge + 20f;
             config.Group = ValhallaBase;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
-            Plugin.Log.LogInfo("Registered location " + ValhallaBase + " (Valhalla's bare rock, " + SkyHeight + " m up). Ground material: " + Describe(groundMaterial));
+            Plugin.Log.LogInfo("Registered location " + ValhallaBase + " (Valhalla's bare rock, " + SkyHeight + " m up)");
         }
 
-        // The rock's top: a wide meadow rolling gently (a metre or two), its rim a little lower, then cliffs
-        // falling into the clouds. The outline wanders, so it doesn't read as a circle.
-        static float ValhallaHeight(float x, float z)
+        // ---- the rock ----
+
+        // Its outline: wandering, so it doesn't read as a circle.
+        static float RockEdge(float angle)
         {
-            float r = Mathf.Sqrt(x * x + z * z);
-            float angle = Mathf.Atan2(z, x);
             float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
-            float edge = ValhallaEdge * (1f + 0.11f * Noise(c * 1.4f + 3f, s * 1.4f + 3f) + 0.05f * Noise(c * 3.5f + 9f, s * 3.5f + 9f));
-            float meadow = 1.1f * Noise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * Noise(x * 0.05f + 15f, z * 0.05f + 15f)
+            return ValhallaEdge * (1f + 0.11f * Noise(c * 1.4f + 3f, s * 1.4f + 3f) + 0.05f * Noise(c * 3.5f + 9f, s * 3.5f + 9f));
+        }
+
+        // Its meadow: rolling gently, a metre or two.
+        internal static float RockMeadow(float x, float z)
+        {
+            return 1.1f * Noise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * Noise(x * 0.05f + 15f, z * 0.05f + 15f)
                 + 0.08f * Noise(x * 0.4f + 25f, z * 0.4f + 25f);
-            float rim = Mathf.Clamp01((r - (edge - 10f)) / 10f);
-            float top = meadow - rim * rim * 1.2f;
-            if (r <= edge) return top;
-            // Over the rim: crumbling rock, steeper and steeper, into the clouds.
-            float t = Mathf.Clamp01((r - edge) / 9f);
-            float rough = Noise(x * 0.15f + 35f, z * 0.15f + 35f) * 2.5f * t;
-            return Mathf.Lerp(top, -ValhallaDrop, Mathf.Pow(t, 0.7f)) + rough;
+        }
+
+        // One mesh, two parts: the meadow on top (the game's terrain look: grass, and rock where it's steep),
+        // and the rock underneath, which narrows, ragged, to a point far down in the clouds, as a rock torn
+        // out of the ground would. The rim rounds over a little lip before the rock falls away.
+        static void BuildFloatingRock(Transform sky)
+        {
+            int perRing = RockSegments + 1; // the last repeats the first, so the textures wrap without a seam
+            List<Vector3> verts = new List<Vector3>();
+            List<Vector2> uvs = new List<Vector2>();
+            List<Color32> colors = new List<Color32>();
+            List<int> top = new List<int>(), under = new List<int>();
+            Color32 grass = Heightmap.GetBiomeColor(Heightmap.Biome.Meadows);
+            float span = ValhallaEdge * 2.6f;
+
+            // The meadow: rings out from the middle, each following the outline.
+            for (int ring = 0; ring <= TopRings; ring++)
+            {
+                float t = (float)ring / TopRings;
+                for (int seg = 0; seg < perRing; seg++)
+                {
+                    float a = seg * Mathf.PI * 2f / RockSegments;
+                    float r = t * RockEdge(a);
+                    float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
+                    float lip = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.9f) / 0.1f));
+                    verts.Add(new Vector3(x, RockMeadow(x, z) - lip * 1.6f, z));
+                    uvs.Add(new Vector2(x / span + 0.5f, z / span + 0.5f));
+                    colors.Add(grass);
+                }
+            }
+            // The underside: on from the rim, down and in, ragged, to the tip.
+            int sideStart = verts.Count;
+            for (int ring = 1; ring <= SideRings; ring++)
+            {
+                float d = (float)ring / SideRings;
+                for (int seg = 0; seg < perRing; seg++)
+                {
+                    float a = seg * Mathf.PI * 2f / RockSegments;
+                    float c = Mathf.Cos(a), s = Mathf.Sin(a);
+                    float edge = RockEdge(a);
+                    // a little overhang under the lip, then narrowing faster and faster
+                    float bulge = 1f + 0.05f * Mathf.Sin(Mathf.PI * Mathf.Clamp01(d * 5f));
+                    float narrow = Mathf.Pow(1f - d, 0.75f);
+                    float jag = 1f + 0.16f * Noise(c * 2.2f + d * 3f + 51f, s * 2.2f + d * 3f + 51f) * Mathf.Clamp01(d * 4f)
+                        + 0.07f * Noise(c * 7f + d * 9f + 71f, s * 7f + d * 9f + 71f);
+                    float r = ring == SideRings ? 0f : edge * bulge * narrow * jag;
+                    float rimY = RockMeadow(Mathf.Cos(a) * edge, Mathf.Sin(a) * edge) - 1.6f;
+                    float y = rimY - 2f - Mathf.Pow(d, 1.25f) * RockDepth + 6f * Noise(c * 3f + d * 5f + 91f, s * 3f + d * 5f + 91f) * d;
+                    verts.Add(new Vector3(c * r, y, s * r));
+                    // the rock's picture: around by distance, down by height
+                    uvs.Add(new Vector2(a * edge / 9f, y / 9f));
+                    colors.Add(new Color32(255, 255, 255, 255));
+                }
+            }
+            for (int ring = 0; ring < TopRings; ring++)
+            {
+                int inner = ring * perRing, outer = (ring + 1) * perRing;
+                for (int seg = 0; seg < RockSegments; seg++)
+                {
+                    top.Add(inner + seg); top.Add(inner + seg + 1); top.Add(outer + seg);
+                    top.Add(inner + seg + 1); top.Add(outer + seg + 1); top.Add(outer + seg);
+                }
+            }
+            // the rim ring of the meadow joins the first ring of the underside
+            for (int ring = 0; ring < SideRings; ring++)
+            {
+                int upper = ring == 0 ? TopRings * perRing : sideStart + (ring - 1) * perRing, lower = sideStart + ring * perRing;
+                for (int seg = 0; seg < RockSegments; seg++)
+                {
+                    under.Add(upper + seg); under.Add(upper + seg + 1); under.Add(lower + seg);
+                    under.Add(upper + seg + 1); under.Add(lower + seg + 1); under.Add(lower + seg);
+                }
+            }
+
+            Mesh mesh = new Mesh();
+            mesh.name = SkyGroundName;
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetColors(colors);
+            mesh.subMeshCount = 2;
+            mesh.SetTriangles(top, 0);
+            mesh.SetTriangles(under, 1);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+
+            GameObject ground = new GameObject(SkyGroundName);
+            ground.layer = LayerMask.NameToLayer("static_solid");
+            ground.transform.SetParent(sky, false);
+            ground.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer renderer = ground.AddComponent<MeshRenderer>();
+            ground.AddComponent<MeshCollider>().sharedMesh = mesh;
+            renderer.sharedMaterials = new[] { MeadowMaterial(), UndersideMaterial() };
+            Plugin.Debug("Valhalla: the rock has " + verts.Count + " points; materials " + renderer.sharedMaterials[0].name + ", " + renderer.sharedMaterials[1].name);
+        }
+
+        // The game's terrain material, as the small islets' ground has it (BuildGround).
+        static Material MeadowMaterial()
+        {
+            Heightmap terrain = ZoneSystem.instance != null && ZoneSystem.instance.m_zonePrefab != null
+                ? ZoneSystem.instance.m_zonePrefab.GetComponentInChildren<Heightmap>(true) : null;
+            if (terrain == null || terrain.m_material == null) return UndersideMaterial();
+            Material material = new Material(terrain.m_material);
+            material.name = "IoV_ValhallaMeadow";
+            Texture2D mask = new Texture2D(2, 2);
+            mask.wrapMode = TextureWrapMode.Clamp;
+            Color nothing = new Color(0f, 0f, 0f, 1f);
+            mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
+            mask.Apply();
+            material.SetTexture("_ClearedMaskTex", mask);
+            material.SetFloat("_LodHideDistance", 10000f);
+            return material;
+        }
+
+        // A big rock's own material, for the underside.
+        static Material UndersideMaterial()
+        {
+            foreach (string name in new[] { "rock1_mountain", "rock4_coast", "Rock_7", "rock3_mountain", "Rock_3" })
+            {
+                GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+                MeshRenderer source = prefab != null ? prefab.GetComponentInChildren<MeshRenderer>(true) : null;
+                if (source != null && source.sharedMaterial != null) return source.sharedMaterial;
+            }
+            return new Material(Shader.Find("Standard"));
         }
     }
 
@@ -104,13 +218,15 @@ namespace IslandsOfValheim
             Texture2D puffs = CloudTexture(256, 4f, 0.42f, 7.3f);
             Texture2D wisps = CloudTexture(256, 6f, 0.55f, 19.1f);
             // depth below the floor, how thick, tint, metres per tile of the picture
-            Layer(sky, Layers[0], -24f, 0.97f, new Color(0.78f, 0.64f, 0.74f), 300f, puffs, shader, 2980, 0.62f);
-            Layer(sky, Layers[1], -17f, 0.8f, new Color(1f, 0.85f, 0.78f), 190f, puffs, shader, 2981, 0.0f);
-            Layer(sky, Layers[2], -9f, 0.38f, new Color(1f, 0.93f, 0.86f), 110f, wisps, shader, 2982, 0.0f);
+            Layer(sky, Layers[0], -24f, 0.97f, new Color(0.78f, 0.64f, 0.74f), 300f, puffs, shader, 2980, 0.62f, true);
+            Layer(sky, Layers[1], -17f, 0.8f, new Color(1f, 0.85f, 0.78f), 190f, puffs, shader, 2981, 0.0f, false);
+            Layer(sky, Layers[2], -9f, 0.38f, new Color(1f, 0.93f, 0.86f), 110f, wisps, shader, 2982, 0.0f, false);
         }
 
-        // floor: the least the layer covers anywhere (the deck is never quite clear, so no hole shows the world)
-        static void Layer(Transform sky, string name, float y, float alpha, Color tint, float tile, Texture2D texture, Shader shader, int queue, float floor)
+        // floor: the least the layer covers anywhere (the deck is never quite clear, so no hole shows the world).
+        // depth: the deck also gives the game's fog its distance (the game's invisible shader, drawn just before
+        // it); without, the fog takes the world 2 km below as what's seen there and washes the clouds out white.
+        static void Layer(Transform sky, string name, float y, float alpha, Color tint, float tile, Texture2D texture, Shader shader, int queue, float floor, bool depth)
         {
             const float Radius = 2600f, Solid = 900f;
             const int Rings = 40, Segments = 72;
@@ -165,6 +281,25 @@ namespace IslandsOfValheim
             renderer.sharedMaterial = m;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
+            Shader invisible = depth ? Find("Unlit/Invis") : null;
+            if (invisible == null) return;
+            // Both faces, whichever way that shader culls.
+            List<int> both = new List<int>(tris);
+            for (int i = 0; i < tris.Count; i += 3) { both.Add(tris[i]); both.Add(tris[i + 2]); both.Add(tris[i + 1]); }
+            Mesh twinMesh = new Mesh();
+            twinMesh.name = name + "_Depth";
+            twinMesh.SetVertices(verts);
+            twinMesh.SetTriangles(both, 0);
+            twinMesh.RecalculateBounds();
+            GameObject twin = new GameObject(name + "_Depth");
+            twin.transform.SetParent(go.transform, false);
+            twin.AddComponent<MeshFilter>().sharedMesh = twinMesh;
+            MeshRenderer twinRenderer = twin.AddComponent<MeshRenderer>();
+            Material dm = new Material(invisible);
+            dm.renderQueue = queue - 1;
+            twinRenderer.sharedMaterial = dm;
+            twinRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            twinRenderer.receiveShadows = false;
         }
 
         static Texture2D Floored(Texture2D source, float floor)
@@ -352,6 +487,53 @@ namespace IslandsOfValheim
                 Transform t = transform.Find(name);
                 if (t != null) clouds.Add(t);
             }
+            if (!measured)
+            {
+                measured = true;
+                foreach (string line in MeasureTree(transform.position, 400f)) Plugin.Log.LogInfo("Valhalla: " + line);
+            }
+        }
+
+        static bool measured;
+
+        // The World-tree in the game's sky is real, and huge: where its branches are, by its own parts (the
+        // shader they're drawn with), and how low and high they come within reach metres of a spot, to keep
+        // the rock clear of them (while it's being made: from the test's log, and iov_tree).
+        internal static List<string> MeasureTree(Vector3 at, float reach)
+        {
+            List<string> lines = new List<string>();
+            int parts = 0;
+            float low = float.MaxValue, high = float.MinValue;
+            int points = 0;
+            foreach (Renderer r in Object.FindObjectsOfType<Renderer>())
+            {
+                bool tree = r.name.IndexOf("ygg", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                foreach (Material m in r.sharedMaterials)
+                    if (m != null && m.shader != null && m.shader.name.IndexOf("Yggdrasil", System.StringComparison.OrdinalIgnoreCase) >= 0) tree = true;
+                if (!tree) continue;
+                parts++;
+                Bounds b = r.bounds;
+                string path = r.name;
+                for (Transform p = r.transform.parent; p != null && path.Length < 120; p = p.parent) path = p.name + "/" + path;
+                MeshFilter filter = r.GetComponent<MeshFilter>();
+                Mesh mesh = filter != null ? filter.sharedMesh : r is SkinnedMeshRenderer ? ((SkinnedMeshRenderer)r).sharedMesh : null;
+                bool readable = mesh != null && mesh.isReadable;
+                lines.Add("tree part " + path + ": from " + b.min.ToString("F0") + " to " + b.max.ToString("F0") + (mesh != null ? ", " + mesh.vertexCount + " points" + (readable ? "" : " (not readable)") : ""));
+                if (!readable) continue;
+                Matrix4x4 world = r.transform.localToWorldMatrix;
+                foreach (Vector3 v in mesh.vertices)
+                {
+                    Vector3 w = world.MultiplyPoint3x4(v);
+                    if (Utils.DistanceXZ(w, at) > reach) continue;
+                    points++;
+                    low = Mathf.Min(low, w.y);
+                    high = Mathf.Max(high, w.y);
+                }
+            }
+            lines.Add(parts == 0 ? "no part of the World-tree found" :
+                points == 0 ? "no point of the World-tree within " + reach + " m of " + at.ToString("F0") + " (that its parts let us read)" :
+                "the World-tree within " + reach + " m of " + at.ToString("F0") + ": " + points + " points, lowest " + low.ToString("F0") + " m, highest " + high.ToString("F0") + " m (world height; the sea is at 30)");
+            return lines;
         }
 
         void Update()
