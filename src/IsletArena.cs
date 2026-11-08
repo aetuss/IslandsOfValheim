@@ -251,59 +251,25 @@ namespace IslandsOfValheim
                 Prop(new[] { deg == 200f ? "FrozenSkeleton_Pose2" : "FrozenSkeleton_Pose1" }, oc + Polar(deg, 7.6f), 270f - deg, 0.05f);
             quietProps = false;
 
-            // Hafdís's summit, the guardians' temple: a round dais of black marble in the middle, where she comes
-            // down out of the sky; the great black-marble guardian statues of the Mistlands (4 to 7.5 m) and carved
-            // columns in a ring round it, all facing in; the two tallest statues either side of the opening to the
-            // sea, so from the way in (the west gorge, about 219 degrees) you see the sea between them; two columns
-            // either side of the way in; blue fire only at the dais' edge. Black marble, so her light shows.
-            // (A ring of rough great stones was tried first: too crude for her.)
+            // Hafdís's summit, the bells: the three great bells of the Fader's arena in their stone frames, a third
+            // of the way round from each other, each facing the middle: one at the south, one at the north-east,
+            // one at the north-west. The way in (the west gorge, about 219 degrees) comes between two of them, and
+            // the sea on the north shows between the other two. Bells for the crews the sea took, and for her; a
+            // ring of blue fire round the middle (none on the way in), where she comes down out of the sky. The
+            // floor is the game's dark paving, so her light shows. (Tried first: a ring of rough great stones, then
+            // the Mistlands' marble statues and columns, which came out mossy and blocky.)
             Vector4 s = ArenaHollows[3];
             Vector2 sc = new Vector2(s.x, s.y);
-            MarbleDais(sc, 5f);
-            foreach (float deg in new[] { 0f, 70f, 110f, 180f, 290f }) Brazier(sc + Polar(deg, 6.2f)); // none on the way in (about 219)
-            Guardian(sources, "statue", sc, 62f, 8.2f);       // 7.5 m: the sea's right
-            Guardian(sources, "statue (4)", sc, 118f, 8.2f);  // 6.5 m: the sea's left
-            Guardian(sources, "statue (1)", sc, 178f, 10.5f); // 6 m
-            Guardian(sources, "statue (2)", sc, 0f, 10.5f);   // 5.5 m
-            Guardian(sources, "statue (3)", sc, 270f, 10.5f); // 4 m, facing the way to the sea
-            foreach (float deg in new[] { 30f, 150f, 203f, 235f, 310f })
-                MarbleColumn(sc + Polar(deg, 10.5f), 2);
-        }
-
-        // One of Mistlands_StatueGroup1's statues, at deg degrees r from the middle, facing it.
-        static void Guardian(Dictionary<string, GameObject> sources, string statue, Vector2 middle, float deg, float r)
-        {
-            StaticPart(sources, "Mistlands_StatueGroup1", statue, middle + Polar(deg, r), 270f - deg, 1f, false, -0.2f);
-        }
-
-        // A carved black marble column, static: a base, its shafts and a tip, each on the one below.
-        static void MarbleColumn(Vector2 at, int shafts)
-        {
-            List<string> parts = new List<string> { "blackmarble_base_1" };
-            for (int i = 0; i < shafts; i++) parts.Add("blackmarble_column_3");
-            parts.Add("blackmarble_tip");
-            float bottom = GroundMin(at.x, at.y, 0.8f) - 0.25f;
-            foreach (string name in parts)
+            string[] bells = { "Bell", "Bell (1)", "Bell (2)" };
+            float[] at = { 279f, 39f, 159f };
+            for (int i = 0; i < bells.Length; i++)
             {
-                GameObject go = Copy(new[] { name }, Vector3.zero, 0f, true);
-                if (go == null) return;
-                Move(go, LocalBounds(go), new Vector3(at.x, bottom, at.y), false);
-                bottom = LocalBounds(go).max.y - 0.03f;
+                // Each bell stands at the Fader's own middle, turned to its side of it (the first at the south,
+                // turned 0): turned so its side is this one, and moved here.
+                float faderDeg = 270f - i * 120f;
+                StaticPart(sources, "FaderLocation", bells[i], sc + Polar(at[i], 10f), faderDeg - at[i], 1f, false, -0.3f);
             }
-        }
-
-        // A round dais of black marble floor tiles (2 m), static, a hand's breadth over the ground.
-        static void MarbleDais(Vector2 middle, float radius)
-        {
-            float top = Height(middle.x, middle.y) + 0.2f;
-            for (float x = -radius; x <= radius; x += 2f)
-                for (float z = -radius; z <= radius; z += 2f)
-                {
-                    if (x * x + z * z > radius * radius) continue;
-                    GameObject go = Copy(new[] { "blackmarble_floor" }, Vector3.zero, 0f, true);
-                    if (go == null) return;
-                    Move(go, LocalBounds(go), new Vector3(middle.x + x, top, middle.y + z), true);
-                }
+            foreach (float deg in new[] { 15f, 75f, 105f, 165f, 270f, 330f }) Brazier(sc + Polar(deg, 5.5f));
         }
 
         // A piece of one of the game's structures (path inside the location), copied without its scripts so it
