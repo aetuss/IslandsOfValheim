@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.10.1";
+        public const string Version = "1.10.2";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -78,6 +78,7 @@ namespace IslandsOfValheim
             IsletBeacons.Register();
             IsletFishing.Register();
             IsletBuilder.RegisterLargePrefabs(); // after the beacons and chests
+            SpiritHuman.Register(); // the Brim Folk's spirits in human form (Valhalla arc, work in progress)
         }
 
         void OnVanillaLocations()

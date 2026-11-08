@@ -64,6 +64,12 @@ namespace IslandsOfValheim
                     ExistingWorlds.RunNow(args.Context);
                 }, true);
 
+#if IOV_DEV
+            new Terminal.ConsoleCommand("iov_spirits",
+                "- IslandsOfValheim (development): a standing ghost, a seated one and a solid one around you, to see the spirits",
+                args => SpiritHuman.SpawnTest(args.Context), true);
+#endif
+
             new Terminal.ConsoleCommand("iov_light",
                 "- IslandsOfValheim: shows the light from the end of Sævar's tale a few metres in front of you (needs devcommands)",
                 args =>
