@@ -1,18 +1,24 @@
 {
   "name": "Arena_Summit",
   "islet": "Arena",
-  "rev": 2,
-  "tool": "starting draft",
-  "count": 9,
+  "rev": 3,
+  "tool": "AetussDevTools 1.10.0",
+  "count": 15,
   "objects": [
-    {"kind": "marker", "prefab": "KEEPER", "x": 0, "y": 0, "z": 35, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": 5.313, "y": 0, "z": 36.424, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": 1.424, "y": 0, "z": 40.313, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": -1.424, "y": 0, "z": 40.313, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": -5.313, "y": 0, "z": 36.424, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": 0, "y": 0, "z": 29.5, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "prop", "prefab": "MountainKit_brazier_blue", "x": 4.763, "y": 0, "z": 32.25, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
-    {"kind": "locpart", "prefab": "StatueSeed", "source": "GDKing|StatueSeed", "x": -12.129, "y": 0, "z": 31.976, "yaw": 76, "qx": 0, "qy": 0.616, "qz": 0, "qw": 0.788, "aboveGround": 0},
-    {"kind": "locpart", "prefab": "StatueSeed", "source": "GDKing|StatueSeed", "x": -5.48, "y": 0, "z": 23.765, "yaw": 26, "qx": 0, "qy": 0.225, "qz": 0, "qw": 0.974, "aboveGround": 0}
+    {"kind": "marker", "prefab": "KEEPER", "x": 4.94, "y": 0, "z": 36.6, "yaw": 0, "qx": 0, "qy": 0, "qz": 0, "qw": 1, "aboveGround": 0},
+    {"kind": "locpart", "prefab": "StonePillar", "x": -6.54, "y": 0, "z": 24.49, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "locpart", "prefab": "StonePillar", "x": -11.03, "y": 0, "z": 29.32, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "locpart", "prefab": "StonePillar", "x": 9.77, "y": 0, "z": 24.96, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "locpart", "prefab": "StonePillar", "x": -4.63, "y": 0, "z": 39.4, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "destructible", "prefab": "giant_skull", "x": 14.43, "y": 0, "z": 13.67, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": 0},
+    {"kind": "destructible", "prefab": "ancient_skull", "x": -20.99, "y": 0, "z": -6.23, "yaw": 285, "qx": 0, "qy": 0.60876, "qz": 0, "qw": -0.79335, "aboveGround": 0},
+    {"kind": "locpart", "prefab": "StonePillar", "x": 13.2, "y": 0, "z": 35.45, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "locpart", "prefab": "StonePillar", "x": 2.83, "y": 0, "z": 45.41, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": -0.14, "source": "GDKing|platforms/StonePillarTall/StonePillar"},
+    {"kind": "other", "prefab": "CastleKit_groundtorch", "x": -0.76, "y": 0, "z": 43.2, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": 0.05},
+    {"kind": "other", "prefab": "CastleKit_groundtorch", "x": -8.09, "y": 0, "z": 34.64, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": 0.05},
+    {"kind": "other", "prefab": "CastleKit_groundtorch", "x": 10.77, "y": 0, "z": 30.24, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": 0.05},
+    {"kind": "other", "prefab": "CastleKit_groundtorch", "x": 1.74, "y": 0, "z": 23.59, "yaw": 315, "qx": 0, "qy": -0.38268, "qz": 0, "qw": 0.92388, "aboveGround": 0.05},
+    {"kind": "destructible", "prefab": "giant_sword1", "x": 1.79, "y": 0, "z": 44.5, "yaw": 40, "qx": 0, "qy": 0.34202, "qz": 0, "qw": 0.93969, "aboveGround": 0},
+    {"kind": "destructible", "prefab": "giant_sword1", "x": 11.86, "y": 0, "z": 34.74, "yaw": 41.403, "qx": 0, "qy": 0.3535, "qz": 0, "qw": 0.93543, "aboveGround": 0}
   ]
 }

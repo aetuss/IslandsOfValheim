@@ -302,11 +302,11 @@ namespace IslandsOfValheim
                     return;
                 case "vanilla":
                     GameObject group = Vanilla(new[] { e.Prefab }, at, e.Yaw, e.Above);
-                    if (group != null) Strip(group);
+                    if (group != null) { LightFires(group); Strip(group); }
                     return;
                 case "locpart":
                     GameObject part = DraftPartObject(e, sources);
-                    if (part != null) Strip(part); else draftLeft++;
+                    if (part != null) { LightFires(part); Strip(part); } else draftLeft++;
                     return;
                 case "creature":
                 case "level":
@@ -317,6 +317,7 @@ namespace IslandsOfValheim
             if (prefab == null) { missing++; Plugin.Log.LogWarning(locationName + ": the summit's draft has " + e.Prefab + ", which doesn't exist"); return; }
             GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
+            LightFires(go);
             Strip(go);
             go.transform.localPosition = new Vector3(e.X, Height(e.X, e.Z) + e.Above, e.Z);
             go.transform.localRotation = e.Rot;
@@ -364,6 +365,18 @@ namespace IslandsOfValheim
             Plugin.Log.LogInfo(locationName + ": " + location + "/" + path + " placed at " + at.ToString("F1") + ", spans x " + placed.min.x.ToString("F1") + ".." + placed.max.x.ToString("F1") +
                 " z " + placed.min.z.ToString("F1") + ".." + placed.max.z.ToString("F1") + " y " + placed.min.y.ToString("F1") + ".." + placed.max.y.ToString("F1") + " (ground " + Height(at.x, at.y).ToString("F1") + ")");
             return go;
+        }
+
+        // A torch or a brazier only shows its flames while it burns: lit for good before its scripts go.
+        static void LightFires(GameObject go)
+        {
+            foreach (Fireplace fire in go.GetComponentsInChildren<Fireplace>(true))
+            {
+                foreach (GameObject state in new[] { fire.m_enabledObjectLow, fire.m_halfObject, fire.m_emptyObject })
+                    if (state != null && state != fire.m_enabledObject && state != fire.m_enabledObjectHigh) state.SetActive(false);
+                foreach (GameObject flames in new[] { fire.m_enabledObject, fire.m_enabledObjectHigh })
+                    if (flames != null) flames.SetActive(true);
+            }
         }
 
         static void Brazier(Vector2 at)
