@@ -4,7 +4,7 @@
 
 - Large islets are made of the game's own terrain now, raised out of the sea, with sandy beaches your boat can land on. The hoe, the pickaxe and the cultivator work on them, and crops grow there. Each is painted as its land: ash in the Ashlands, dark moss in the Mistlands, snow in the Deep North.
 - Each kind of large islet has three designs now, and a world gets each one once (with the default `LargeIsletsPerKind` of 3), so no two are alike. Some are guarded, some are peaceful, with no guardian, left to the animals and to what their people left behind.
-- Small islets can now carry one of three of the game's own structures for their land instead of a ruin: a plank house, a dolmen, a hut on stilts, a Fuling hut, dvergr towers, giant swords, a northern hut and more.
+- Small islets can now carry one of the game's own structures of their land instead of one of our ruins.
 - The tale's last islet is a dark crag in the Deep North waters now: a hidden cove, then Grímr's, Ormr's and Hafdís's hollows one above the other, none seen from the one before. Ice closes the way up until the keeper below falls. A keeper only comes once it's their turn, out of a gathering mist, and Hafdís comes down out of the sky onto her summit.
 - Islet chests are closer to the game's own: fewer items and smaller stacks than before, still richer the further out you sail.
 - Already built islets stay as they were. Large islets, small islets and the tale's last islet that nobody had reached yet come up the new way.

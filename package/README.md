@@ -33,9 +33,7 @@ The further from the world centre, the tougher the islet:
 | Ashlands | 7500 m and further, southern half of the world | Charred warriors, an archer and a mage | coins, flametal ore, grausten, gemstones, molten cores, charred arrows |
 | Deep North | 7500 m and further, northern half of the world | a Deep North skeleton, Ulvs, a Cultist, a Fenring | coins, frostwood, ice, frost cores, crystal, silver, freeze glands, frost arrows |
 
-Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or an abandoned dvergr post (Mistlands), a dvergr camp or a dvergr dig site (Dvergr outposts), a grausten fortress or broken arches (Ashlands), a frozen stone keep or a hunters' camp the frost took (Deep North, with ice washed up on the shore). Every kind comes in four shapes (round, long, with a bay, with two humps), the ruin is turned differently from islet to islet, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
-
-Islets placed from 1.10.0 on can carry one of three of the game's own structures for their land instead of a ruin: a plank house, a ruined stone tower or a dolmen (Meadows), a hut on stilts, a well among graves or a sunken ruin (Swamp), a Fuling hut, a stone house or a broken tower (Plains), statues, a road post or giant swords (Mistlands), a dvergr lighthouse, watchtower or road post (Dvergr outposts), a charred tower, charred ruins or a vultures' nest (Ashlands), a northern hut or a memorial (Deep North).
+Each kind has its own ground, painted like its biome, its own plants, and what stands on it belongs to its land: our own ruins, or one of the game's own structures of that land (from 1.10.0). Every kind comes in four shapes, what's on top is turned differently from islet to islet, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
 
 About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**: a second, richer chest tucked between rocks on the slope (it isn't buried, look around). Some have a runestone.
 
@@ -74,7 +72,7 @@ There aren't endless fish: a ground holds a few at a time and puts one back ever
 
 ## Large islets
 
-Rarely, three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones. Each kind comes in three designs, and with the default setting a world gets each of them once, so no two are alike. Some hold one of the game's dungeons or a stronghold, with a starred guardian, a few of the kind's creatures and a chest of their own; some are peaceful, left to the animals and to what the people who lived there left behind. What's on each is for you to find.
+Rarely, three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones. Each kind comes in three designs, and with the default setting a world gets each of them once, so no two are alike. Some hold one of the game's dungeons or a stronghold, with a starred guardian, a few of the kind's creatures and a chest of their own; some are peaceful, left to the animals and to what the people who lived there left behind.
 
 All have life of their own that comes back, the animals of their land: when there are fewer than a few, one comes back every few minutes, but not near a player's base. Some can be tamed. Trees, berries and mushrooms grow back the game's way.
 
