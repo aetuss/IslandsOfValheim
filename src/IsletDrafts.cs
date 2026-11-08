@@ -391,8 +391,13 @@ namespace IslandsOfValheim
         // One part of a vanilla structure (as the dev tool saves them): taken out of a copy of that location.
         static bool DraftPart(DraftEntry e, Dictionary<string, GameObject> sources)
         {
+            return DraftPartObject(e, sources) != null;
+        }
+
+        static GameObject DraftPartObject(DraftEntry e, Dictionary<string, GameObject> sources)
+        {
             int bar = e.Source.IndexOf('|');
-            if (bar < 0) return false;
+            if (bar < 0) return null;
             string location = e.Source.Substring(0, bar);
             GameObject source;
             if (!sources.TryGetValue(location, out source))
@@ -406,7 +411,7 @@ namespace IslandsOfValheim
                 }
                 sources[location] = source;
             }
-            if (source == null) { Plugin.Log.LogWarning(locationName + ": no vanilla structure " + location); return false; }
+            if (source == null) { Plugin.Log.LogWarning(locationName + ": no vanilla structure " + location); return null; }
             Transform t = source.transform;
             foreach (string step in e.Source.Substring(bar + 1).Split('/'))
             {
@@ -418,7 +423,7 @@ namespace IslandsOfValheim
                 int seen = 0;
                 foreach (Transform child in t)
                     if (child.name == name && seen++ == nth) { next = child; break; }
-                if (next == null) { Plugin.Log.LogWarning(locationName + ": no part " + e.Source); return false; }
+                if (next == null) { Plugin.Log.LogWarning(locationName + ": no part " + e.Source); return null; }
                 t = next;
             }
             GameObject go = Object.Instantiate(t.gameObject, parent, false);
@@ -430,7 +435,7 @@ namespace IslandsOfValheim
             go.transform.localRotation = e.Rot;
             go.transform.localScale = e.Scale;
             built++;
-            return true;
+            return go;
         }
     }
 }

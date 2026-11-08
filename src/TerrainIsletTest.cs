@@ -70,7 +70,8 @@ namespace IslandsOfValheim
 
         // The same for any test location: placed in open water (clear for reach metres round) at least
         // from metres out from the world's centre, the first time.
-        internal static void Goto(Terminal context, string name, float top, float reach, float from, float turn = 137f)
+        // (dx, dz: where over it you come out, in its own space; it's unturned when turn is 0.)
+        internal static void Goto(Terminal context, string name, float top, float reach, float from, float turn = 137f, float dx = 0f, float dz = 0f)
         {
             ZoneSystem zones = ZoneSystem.instance;
             Player player = Player.m_localPlayer;
@@ -96,7 +97,7 @@ namespace IslandsOfValheim
                     spawnLocation.Invoke(zones, new object[] { location, 1234, spot, Quaternion.Euler(0f, turn, 0f), ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
                 Plugin.Log.LogInfo("Test location " + name + " placed at " + spot.ToString("F0") + (built ? " (zone already there: built now)" : " (built when the zone is)"));
             }
-            Vector3 target = new Vector3(spot.x, zones.m_waterLevel + top + 4f, spot.z);
+            Vector3 target = new Vector3(spot.x + dx, zones.m_waterLevel + top + 4f, spot.z + dz);
             player.TeleportTo(target, player.transform.rotation, true);
             context.AddString("Teleporting to the test location " + name + " at " + spot.x.ToString("0", CultureInfo.InvariantCulture) + ", " + spot.z.ToString("0", CultureInfo.InvariantCulture) + ".");
         }

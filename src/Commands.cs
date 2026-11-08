@@ -96,6 +96,14 @@ namespace IslandsOfValheim
                             TerrainIsletTest.Goto(args.Context, kind.BaseName, kind.Height, 140f, Mathf.Max(900f, kind.Tier.MinDistance), 0f);
                             return;
                         }
+                    // Work in progress: the arena without its summit, unturned, to lay out the summit's draft on;
+                    // you come out over the summit.
+                    if (args.Length > 1 && string.Equals(args[1], "draft_arena", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        Vector4 summit = IsletBuilder.ArenaHollows[3];
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.ArenaBase, summit.w, 75f, 900f, 0f, summit.x, summit.y);
+                        return;
+                    }
                     // Work in progress: one small islet design on its own, unturned (iov_goto small_meadows_2).
                     foreach (IsletTier tier in IsletTier.All)
                         for (int n = 1; n <= 9; n++)
@@ -145,6 +153,7 @@ namespace IslandsOfValheim
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
+                    names.Add("draft_arena");
                     foreach (IsletTier tier in IsletTier.All)
                         for (int n = 1; n <= 3; n++) names.Add(SmallArg(tier, n));
                     return names;

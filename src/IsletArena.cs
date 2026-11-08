@@ -120,10 +120,23 @@ namespace IslandsOfValheim
             return ArenaReach;
         }
 
+        // Work in progress (not for release): the arena without its summit, unturned, to lay out the summit's
+        // draft on with the dev tool (iov_goto draft_arena; drafts/Arena_Summit.json).
+        internal const string ArenaBase = "IoVTest_Base_Arena";
+        static bool arenaBare;
+
         static void FinalArena()
         {
+            FinalArenaOf(Story.Arena, false);
+            arenaBare = true;
+            try { FinalArenaOf(ArenaBase, true); }
+            finally { arenaBare = false; }
+        }
+
+        static void FinalArenaOf(string name, bool bare)
+        {
             tier = IsletTier.All[6];
-            locationName = Story.Arena;
+            locationName = name;
             SetVariant(0);
             root = ZoneManager.Instance.CreateLocationContainer(locationName);
             parent = root.transform;
@@ -139,9 +152,9 @@ namespace IslandsOfValheim
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
             config.BiomeArea = Heightmap.BiomeArea.Median;
-            config.Quantity = StorySpots;
-            config.Priotized = true;
-            config.Unique = true;
+            config.Quantity = bare ? 0 : StorySpots;
+            config.Priotized = !bare;
+            config.Unique = !bare;
             config.SnapToWater = true;
             config.RandomRotation = true;
             config.ClearArea = false;
@@ -158,7 +171,8 @@ namespace IslandsOfValheim
             location.m_applyRandomDamage = false;
             location.m_exteriorRadius = ArenaReach;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
-            Plugin.Log.LogInfo("Registered location " + locationName + " (" + StorySpots + " possible spots, one is kept)");
+            if (bare) Plugin.Log.LogInfo("Registered test location " + locationName + " (the arena without its summit, for its draft)");
+            else Plugin.Log.LogInfo("Registered location " + locationName + " (" + StorySpots + " possible spots, one is kept)");
         }
 
         static void ArenaParts()
@@ -204,6 +218,9 @@ namespace IslandsOfValheim
                 int k = i;
                 Optional(0.85f, () => OnGround(k % 2 == 0 ? tier.Trees : tier.SmallTrees, trees[k], k * 71f, 0f, 0.05f, false));
             }
+
+            // (The bare arena, for the draft, has no gates and nobody runs its fights.)
+            if (arenaBare) return;
 
             // The ice across each gorge, until the keeper below it falls.
             GorgeGate(Gorges[1][1], Gorges[1][2], 0.5f, Story.GrimrDown);
@@ -251,25 +268,60 @@ namespace IslandsOfValheim
                 Prop(new[] { deg == 200f ? "FrozenSkeleton_Pose2" : "FrozenSkeleton_Pose1" }, oc + Polar(deg, 7.6f), 270f - deg, 0.05f);
             quietProps = false;
 
-            // Hafdís's summit, the bells: the three great bells of the Fader's arena in their stone frames, a third
-            // of the way round from each other, each facing the middle: one at the south, one at the north-east,
-            // one at the north-west. The way in (the west gorge, about 219 degrees) comes between two of them, and
-            // the sea on the north shows between the other two. Bells for the crews the sea took, and for her; a
-            // ring of blue fire round the middle (none on the way in), where she comes down out of the sky. The
-            // floor is the game's dark paving, so her light shows. (Tried first: a ring of rough great stones, then
-            // the Mistlands' marble statues and columns, which came out mossy and blocky.)
-            Vector4 s = ArenaHollows[3];
-            Vector2 sc = new Vector2(s.x, s.y);
-            string[] bells = { "Bell", "Bell (1)", "Bell (2)" };
-            float[] at = { 279f, 39f, 159f };
-            for (int i = 0; i < bells.Length; i++)
+            // Hafdís's summit: laid out by eye in the game with the dev tool, on the bare arena (iov_goto
+            // draft_arena), and read from its draft. (Tried first, blind: a ring of rough great stones, the
+            // Mistlands' marble statues and columns, the Fader's bells: none of them looked right.)
+            if (!arenaBare) SummitDraft();
+        }
+
+        // The summit's draft (drafts/Arena_Summit.json), in the arena's own space. Everything in it stands as it
+        // is and never breaks, whatever the fight does: the game's structures and pieces are copied without
+        // their scripts. Its KEEPER mark is where Hafdís comes down.
+        const string SummitDraftId = "Arena_Summit";
+
+        static void SummitDraft()
+        {
+            List<DraftEntry> draft = ReadDraft(SummitDraftId);
+            if (draft == null) { Plugin.Log.LogWarning(locationName + ": no draft " + SummitDraftId + "; the summit is bare"); return; }
+            draftLeft = 0;
+            BuildEntries(draft, SummitEntry);
+            Plugin.Debug(locationName + ": summit draft, " + draft.Count + " lines, " + draftLeft + " left out");
+        }
+
+        static void SummitEntry(DraftEntry e, Dictionary<string, GameObject> sources)
+        {
+            Vector2 at = new Vector2(e.X, e.Z);
+            switch (e.Kind)
             {
-                // Each bell stands at the Fader's own middle, turned to its side of it (the first at the south,
-                // turned 0): turned so its side is this one, and moved here.
-                float faderDeg = 270f - i * 120f;
-                StaticPart(sources, "FaderLocation", bells[i], sc + Polar(at[i], 10f), faderDeg - at[i], 1f, false, -0.3f);
+                case "marker":
+                    if (e.Prefab == "KEEPER") ArenaSpots[2] = at;
+                    else { draftLeft++; Plugin.Log.LogWarning(locationName + ": the summit's draft has a mark " + e.Prefab + ", left out"); }
+                    return;
+                case "paint":
+                    Paint(e);
+                    return;
+                case "vanilla":
+                    GameObject group = Vanilla(new[] { e.Prefab }, at, e.Yaw, e.Above);
+                    if (group != null) Strip(group);
+                    return;
+                case "locpart":
+                    GameObject part = DraftPartObject(e, sources);
+                    if (part != null) Strip(part); else draftLeft++;
+                    return;
+                case "creature":
+                case "level":
+                    draftLeft++;
+                    return;
             }
-            foreach (float deg in new[] { 15f, 75f, 105f, 165f, 270f, 330f }) Brazier(sc + Polar(deg, 5.5f));
+            GameObject prefab = PlantOrSelf(e.Prefab);
+            if (prefab == null) { missing++; Plugin.Log.LogWarning(locationName + ": the summit's draft has " + e.Prefab + ", which doesn't exist"); return; }
+            GameObject go = Object.Instantiate(prefab, parent, false);
+            go.name = prefab.name;
+            Strip(go);
+            go.transform.localPosition = new Vector3(e.X, Height(e.X, e.Z) + e.Above, e.Z);
+            go.transform.localRotation = e.Rot;
+            if (e.Scale != Vector3.one) go.transform.localScale = e.Scale;
+            built++;
         }
 
         // A piece of one of the game's structures (path inside the location), copied without its scripts so it
