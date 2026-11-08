@@ -28,9 +28,10 @@ namespace IslandsOfValheim
         internal const int Stand = 0, Sit = 1;
 
         // How the ghost is drawn. The game leaves out the Standard shader's see-through kind, so these use the
-        // shader Odin's light beam uses, which it does draw see-through. Soft and veil differ only in how their
-        // far side is kept from showing through (two shaders the game has; the test shows which works).
-        internal const int Solid = 0, GhostSoft = 1, GhostFlat = 2, GhostShade = 3, GhostVeil = 4;
+        // shader Odin's light beam uses, which it does draw see-through. Soft: its clothes and face, washed pale
+        // blue. Shade: a pale shape only. (Tried and dropped: a lit see-through shader, which the game hasn't, and
+        // Unlit/DepthWrite for the depth twin, which paints colour too: they came out purple.)
+        internal const int Solid = 0, GhostSoft = 1, GhostShade = 3;
 
         // Set before Instantiate: the next spirit made here takes these (its owner writes them to its ZDO).
         internal static Look NextLook;
@@ -203,7 +204,10 @@ namespace IslandsOfValheim
         // ---- how a ghost is drawn ----
 
         static bool looked;
-        static Shader sprite, blend, depthOnly, invisible;
+        static Shader sprite, blend, invisible;
+        // Ghosts are drawn after the world's other see-through things (water, smoke), so the depth their twins
+        // write hides none of those behind them; twin first, then the ghost.
+        const int TwinQueue = 3500, GhostQueue = 3501;
         static Material painter, washer;
         static readonly Dictionary<string, Texture> painted = new Dictionary<string, Texture>();
         static readonly Color Wash = new Color(0.62f, 0.82f, 1f, 0.4f); // the pale blue over everything it wears
@@ -222,20 +226,11 @@ namespace IslandsOfValheim
             looked = true;
             sprite = Loaded("Sprites/Default");
             blend = Loaded("Legacy Shaders/Particles/Alpha Blended");
-            depthOnly = Loaded("Unlit/DepthWrite");
             invisible = Loaded("Unlit/Invis");
-            Plugin.Debug("Spirits: shaders: see-through " + Name(sprite) + ", wash " + Name(blend) + ", depth " + Describe(depthOnly) + ", invisible " + Describe(invisible));
+            Plugin.Debug("Spirits: shaders: see-through " + Name(sprite) + ", wash " + Name(blend) + ", depth " + Name(invisible));
         }
 
         static string Name(Shader s) { return s != null ? s.name : "none"; }
-
-        static string Describe(Shader s)
-        {
-            if (s == null) return "none";
-            List<string> props = new List<string>();
-            for (int i = 0; i < s.GetPropertyCount(); i++) props.Add(s.GetPropertyName(i));
-            return s.name + " (queue " + s.renderQueue + ", " + s.passCount + " passes, properties " + string.Join(" ", props.ToArray()) + ")";
-        }
 
         static Material GhostMaterial(Material source, int style, Texture body)
         {
@@ -249,21 +244,19 @@ namespace IslandsOfValheim
             {
                 Texture texture = body != null ? body : source.HasProperty("_MainTex") ? source.mainTexture : null;
                 m.mainTexture = Washed(texture != null ? texture : Texture2D.whiteTexture);
-                m.color = new Color(1f, 1f, 1f, style == GhostFlat ? 0.32f : 0.42f);
+                m.color = new Color(1f, 1f, 1f, 0.42f);
             }
-            m.renderQueue = 3000;
+            m.renderQueue = style == GhostShade ? 3000 : GhostQueue;
             return m;
         }
 
-        // Its own shape drawn first into the depth only, so only its nearest side is drawn see-through: the far
-        // side of its body and the arm behind it don't show through and thicken it. (The flat ghost hasn't one,
-        // to compare.)
+        // Its own shape drawn first into the depth only (the game's invisible shader), so only its nearest side
+        // is drawn see-through: the far side of its body and the arm behind it don't show through and thicken it.
         static Renderer DepthTwin(Renderer r, Mesh mesh, int parts, int style)
         {
-            Shader shader = style == GhostVeil ? invisible : style == GhostSoft ? depthOnly : null;
-            if (shader == null || mesh == null) return null;
-            Material m = new Material(shader);
-            m.renderQueue = 2990;
+            if (style != GhostSoft || invisible == null || mesh == null) return null;
+            Material m = new Material(invisible);
+            m.renderQueue = TwinQueue;
             Material[] mats = new Material[parts];
             for (int i = 0; i < parts; i++) mats[i] = m;
             GameObject twin = new GameObject("IoV_GhostDepth");
@@ -377,8 +370,8 @@ namespace IslandsOfValheim
 
         // ---- the test (development builds): iov_spirits ----
 
-        // In a row in front of you, left to right: the man solid (to compare), then the ways of drawing a ghost
-        // (soft, veil, flat, shade), then a woman seated on a bench (soft). The spirits a test made before,
+        // In a row in front of you, left to right: the man solid (to compare), then the two ways of drawing a
+        // ghost (soft, shade), then a woman seated on a bench (soft). The spirits a test made before,
         // near you, go first.
         internal static void SpawnTest(Terminal context)
         {
@@ -399,11 +392,11 @@ namespace IslandsOfValheim
             }
 
             Look sailor = new Look { Hair = "Hair3", Beard = "Beard5", Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
-            int[] styles = { Solid, GhostSoft, GhostVeil, GhostFlat, GhostShade };
+            int[] styles = { Solid, GhostSoft, GhostShade };
             for (int i = 0; i < styles.Length; i++)
             {
                 NextLook = sailor; NextPose = Stand; NextGhost = styles[i];
-                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 7.5f)), facing);
+                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 3.75f)), facing);
             }
 
             Look woman = new Look { Model = 1, Hair = "Hair12", Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, HairColor = new Vector3(0.85f, 0.75f, 0.55f) };
@@ -411,7 +404,7 @@ namespace IslandsOfValheim
             Chair chair = bench != null ? bench.GetComponentInChildren<Chair>(true) : null;
             if (bench != null && chair != null && chair.m_attachPoint != null)
             {
-                Vector3 at = Ground(p + f * 4f + r * 5.5f);
+                Vector3 at = Ground(p + f * 4f + r * 4f);
                 Quaternion turn = Quaternion.LookRotation(-f);
                 Object.Instantiate(bench, at, turn);
                 Vector3 seat = at + turn * bench.transform.InverseTransformPoint(chair.m_attachPoint.position);
@@ -422,7 +415,7 @@ namespace IslandsOfValheim
             }
             else context.AddString("No bench with a seat found.");
 
-            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, veil, flat, shade, and seated on a bench (soft).");
+            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, shade, and seated on a bench (soft).");
         }
 
         static Vector3 Ground(Vector3 p)
