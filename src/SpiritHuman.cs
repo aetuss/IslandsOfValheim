@@ -27,11 +27,15 @@ namespace IslandsOfValheim
 
         internal const int Stand = 0, Sit = 1;
 
+        // How the ghost is drawn. The game leaves out the Standard shader's see-through kind, so these use
+        // shaders it does draw see-through (the ones Odin's light beam and the game's own smoke use).
+        internal const int Solid = 0, GhostSoft = 1, GhostGlow = 2, GhostShade = 3;
+
         // Set before Instantiate: the next spirit made here takes these (its owner writes them to its ZDO).
         internal static Look NextLook;
         internal static int NextPose;
         internal static string NextSitAnimation = "";
-        internal static bool NextGhost = true;
+        internal static int NextGhost = GhostSoft;
 
         const string KeySet = "IoVSpirit.set", KeyPose = "IoVSpirit.pose", KeySitAnim = "IoVSpirit.sitanim", KeyGhost = "IoVSpirit.ghost";
 
@@ -68,8 +72,8 @@ namespace IslandsOfValheim
         VisEquipment vis;
         Animator animator;
         Light glow;
-        bool ghost, loggedParams;
-        int pose;
+        bool loggedParams;
+        int pose, ghost;
         string sitAnim = "";
         readonly HashSet<Renderer> ghosted = new HashSet<Renderer>();
         float nextGhostCheck;
@@ -88,12 +92,12 @@ namespace IslandsOfValheim
                 zdo.Set(KeySitAnim, NextSitAnimation ?? "");
                 zdo.Set(KeyGhost, NextGhost);
                 Dress(NextLook ?? new Look { Hair = "Hair3", Beard = "Beard5" });
-                NextLook = null; NextPose = Stand; NextSitAnimation = ""; NextGhost = true;
+                NextLook = null; NextPose = Stand; NextSitAnimation = ""; NextGhost = GhostSoft;
             }
             pose = zdo.GetInt(KeyPose, Stand);
             sitAnim = zdo.GetString(KeySitAnim, "");
-            ghost = zdo.GetBool(KeyGhost, true);
-            if (ghost) AddGlow();
+            ghost = zdo.GetInt(KeyGhost, GhostSoft);
+            if (ghost != Solid) AddGlow();
         }
 
         void Dress(Look look)
@@ -140,7 +144,7 @@ namespace IslandsOfValheim
             SetFloat("forward_speed", 0f);
             SetFloat("sideway_speed", 0f);
             if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
-            if (ghost && Time.time >= nextGhostCheck)
+            if (ghost != Solid && Time.time >= nextGhostCheck)
             {
                 nextGhostCheck = Time.time + 0.5f;
                 Ghostly();
@@ -167,40 +171,59 @@ namespace IslandsOfValheim
             {
                 if (r == null || r is ParticleSystemRenderer || ghosted.Contains(r)) continue;
                 Material[] mats = r.materials;
-                for (int i = 0; i < mats.Length; i++) mats[i] = GhostMaterial(mats[i]);
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (!loggedShaders && mats[i] != null && mats[i].shader != null)
+                        Plugin.Debug("Spirits: " + r.name + " was drawn with " + mats[i].shader.name);
+                    mats[i] = GhostMaterial(mats[i], ghost);
+                }
                 r.materials = mats;
                 r.shadowCastingMode = ShadowCastingMode.Off;
+                r.receiveShadows = false;
                 ghosted.Add(r);
             }
+            loggedShaders = true;
         }
 
-        static Shader standard;
+        bool loggedShaders;
+        static Shader sprite, additive;
 
-        static Material GhostMaterial(Material source)
+        static Material GhostMaterial(Material source, int style)
         {
-            if (standard == null) standard = Shader.Find("Standard");
-            if (standard == null || source == null) return source;
-            Material m = new Material(standard);
-            if (source.HasProperty("_MainTex") && source.mainTexture != null) m.mainTexture = source.mainTexture;
-            m.SetFloat("_Mode", 2f);
-            m.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-            m.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-            m.SetInt("_ZWrite", 0);
-            m.DisableKeyword("_ALPHATEST_ON");
-            m.EnableKeyword("_ALPHABLEND_ON");
-            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            if (source == null) return source;
+            if (sprite == null) sprite = Shader.Find("Sprites/Default");
+            if (additive == null) additive = Shader.Find("Legacy Shaders/Particles/Additive");
+            Texture texture = source.HasProperty("_MainTex") ? source.mainTexture : null;
+            Material m;
+            switch (style)
+            {
+                case GhostGlow: // light only: glows, the darker its clothes the fainter
+                    if (additive == null) return source;
+                    m = new Material(additive);
+                    if (texture != null) m.mainTexture = texture;
+                    m.SetColor("_TintColor", new Color(0.3f, 0.45f, 0.6f, 0.6f));
+                    break;
+                case GhostShade: // no clothes' pattern at all: a pale see-through shape
+                    if (sprite == null) return source;
+                    m = new Material(sprite);
+                    m.color = new Color(0.62f, 0.8f, 1f, 0.32f);
+                    break;
+                default: // its clothes and face as they are, pale blue and half see-through
+                    if (sprite == null) return source;
+                    m = new Material(sprite);
+                    if (texture != null) m.mainTexture = texture;
+                    m.color = new Color(0.72f, 0.86f, 1f, 0.5f);
+                    break;
+            }
             m.renderQueue = 3000;
-            m.color = new Color(0.75f, 0.88f, 1f, 0.45f);
-            m.EnableKeyword("_EMISSION");
-            m.SetColor("_EmissionColor", new Color(0.25f, 0.4f, 0.55f));
-            m.SetFloat("_Glossiness", 0.1f);
             return m;
         }
 
         // ---- the test (development builds): iov_spirits ----
 
-        // A standing ghost in front of you, a seated one on a bench to your right, and the same man solid to
-        // your left, to compare.
+        // In a row in front of you, left to right: the man solid (to compare), then the three ways of drawing a
+        // ghost (soft, glowing, shade), then a woman seated on a bench (soft). The spirits a test made before,
+        // near you, go first.
         internal static void SpawnTest(Terminal context)
         {
             Player player = Player.m_localPlayer;
@@ -210,29 +233,40 @@ namespace IslandsOfValheim
             f.y = 0f; f.Normalize(); r.y = 0f; r.Normalize();
             Quaternion facing = Quaternion.LookRotation(-f);
 
+            int removed = 0;
+            foreach (SpiritHuman old in Object.FindObjectsOfType<SpiritHuman>())
+            {
+                if (Vector3.Distance(old.transform.position, p) > 25f || old.nview == null || !old.nview.IsValid()) continue;
+                old.nview.ClaimOwnership();
+                ZNetScene.instance.Destroy(old.gameObject);
+                removed++;
+            }
+
             Look sailor = new Look { Hair = "Hair3", Beard = "Beard5", Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
-            NextLook = sailor; NextPose = Stand; NextGhost = true;
-            Object.Instantiate(prefab, Ground(p + f * 3f), facing);
+            int[] styles = { Solid, GhostSoft, GhostGlow, GhostShade };
+            for (int i = 0; i < styles.Length; i++)
+            {
+                NextLook = sailor; NextPose = Stand; NextGhost = styles[i];
+                Object.Instantiate(prefab, Ground(p + f * 4f + r * (i * 2.5f - 5f)), facing);
+            }
 
             Look woman = new Look { Model = 1, Hair = "Hair12", Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, HairColor = new Vector3(0.85f, 0.75f, 0.55f) };
             GameObject bench = ZNetScene.instance.GetPrefab("piece_bench01");
             Chair chair = bench != null ? bench.GetComponentInChildren<Chair>(true) : null;
             if (bench != null && chair != null && chair.m_attachPoint != null)
             {
-                Vector3 at = Ground(p + f * 3f + r * 3f);
+                Vector3 at = Ground(p + f * 4f + r * 5.5f);
                 Quaternion turn = Quaternion.LookRotation(-f);
                 Object.Instantiate(bench, at, turn);
                 Vector3 seat = at + turn * bench.transform.InverseTransformPoint(chair.m_attachPoint.position);
                 Quaternion seatRot = turn * (Quaternion.Inverse(bench.transform.rotation) * chair.m_attachPoint.rotation);
-                NextLook = woman; NextPose = Sit; NextSitAnimation = chair.m_attachAnimation; NextGhost = true;
+                NextLook = woman; NextPose = Sit; NextSitAnimation = chair.m_attachAnimation; NextGhost = GhostSoft;
                 Object.Instantiate(prefab, seat, seatRot);
                 Plugin.Log.LogInfo("Spirits: seated on piece_bench01 with " + chair.m_attachAnimation);
             }
             else context.AddString("No bench with a seat found.");
 
-            NextLook = sailor; NextPose = Stand; NextGhost = false;
-            Object.Instantiate(prefab, Ground(p + f * 3f - r * 3f), facing);
-            context.AddString("Spirits: a ghost in front of you, one seated to your right, the same man solid to your left.");
+            context.AddString("Spirits (" + removed + " old ones removed), left to right: solid, soft, glowing, shade, and seated on a bench (soft).");
         }
 
         static Vector3 Ground(Vector3 p)
