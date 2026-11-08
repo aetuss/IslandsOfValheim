@@ -4,6 +4,10 @@ Small islands out at sea with old ruins, dvergr outposts, guards and treasure, t
 
 Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
+| ![A large Meadows islet with standing stones, a hut and greydwarfs](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/large-islet.webp) | ![Sailing towards an islet at night, its fire burning on the cliff](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sailing-at-night.png) |
+|---|---|
+| ![Sævar's harbour at night, lanterns along the path](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sea-trader-harbour.webp) | ![The summit of the final arena, blue fire on its pillars](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/final-arena.webp) |
+
 ## What changes?
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
@@ -198,6 +202,8 @@ Found a bug or have an idea? Open an issue on [GitHub](https://github.com/aetuss
 
 Stuck in Sævar's tale, or did one of its steps not work the way it should? You can also reach me on Discord: **aethuswulf**.
 
+Enjoying the islands? A 👍 on Thunderstore helps other sailors find them.
+
 ## Made with AI
 
-aetuss decided what this mod does and how it should work, and tested it in game. The code, the icon, this description and the Turkish translation were written by Claude, an AI model by Anthropic (through Claude Code); aetuss checked the Turkish texts in game.
+aetuss decided what this mod does and how it should work, and tested it in game. The code, the icon, this description and the Turkish translation were written by Claude, an AI model by Anthropic (through Claude Code); aetuss checked the Turkish texts in game. The screenshots are aetuss's own, taken in game.
