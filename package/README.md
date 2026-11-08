@@ -200,3 +200,7 @@ The idea of raising the large islets out of the game's own terrain came from Shu
 ## Made with AI
 
 aetuss decided what this mod does and how it should work, and tested it in game. The code, the icon, this description and the Turkish translation were written by Claude, an AI model by Anthropic (through Claude Code); aetuss checked the Turkish texts in game. The screenshots are aetuss's own, taken in game.
+
+## License
+
+MIT. See [LICENSE](https://github.com/aetuss/IslandsOfValheim/blob/main/LICENSE) on GitHub.

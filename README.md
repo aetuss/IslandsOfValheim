@@ -13,3 +13,7 @@ No asset bundle: the islet is built when the game starts. The ground is a genera
 ## Made with AI
 
 aetuss decided what this mod does and how it should work, and tested it in game. The code, the icon, this description and the Turkish translation were written by Claude, an AI model by Anthropic (through Claude Code); aetuss checked the Turkish texts in game.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
