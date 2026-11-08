@@ -208,9 +208,11 @@ namespace IslandsOfValheim
                 // as they are; every new one is of the game's own terrain.
                 if (kind.Design == 1) BuildLarge(kind, kind.LocationName, false, 0, false);
                 BuildLarge(kind, kind.LandName, true, QuantityOf(kind), false);
-                // Work in progress (branch large-terrain, not for release): each design's islet with only its
-                // ground, rocks and dungeon, unturned, to draw its draft on (iov_goto draft_meadows_2).
+#if IOV_DEV
+                // Design work (development build only): each design's islet with only its ground, rocks and
+                // dungeon, unturned, to draw its draft on (iov_goto draft_meadows_2).
                 BuildLarge(kind, kind.BaseName, true, 0, true);
+#endif
             }
         }
 

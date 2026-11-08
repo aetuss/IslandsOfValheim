@@ -83,12 +83,13 @@ namespace IslandsOfValheim
                         GotoHarbour(args.Context);
                         return;
                     }
+#if IOV_DEV
                     if (args.Length > 1 && string.Equals(args[1], "terraintest", System.StringComparison.OrdinalIgnoreCase))
                     {
                         TerrainIsletTest.Goto(args.Context); // research prototype
                         return;
                     }
-                    // Work in progress: a design's bare islet (ground, rocks, dungeon), unturned, to lay out its
+                    // Design work (development build only): a design's bare islet (ground, rocks, dungeon), unturned, to lay out its
                     // draft on with the dev tool (iov_goto draft_meadows_2).
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
                         if (args.Length > 1 && string.Equals(args[1], "draft_" + LargeArg(kind).Substring(6), System.StringComparison.OrdinalIgnoreCase))
@@ -112,6 +113,7 @@ namespace IslandsOfValheim
                                 TerrainIsletTest.Goto(args.Context, IsletBuilder.SmallTestName(tier, n), IsletBuilder.SmallPlateau, 50f, 300f, 0f);
                                 return;
                             }
+#endif
                     string story = args.Length > 1 ? StoryLocation(args[1]) : null;
                     if (story != null)
                     {
@@ -152,10 +154,12 @@ namespace IslandsOfValheim
                     names.Add("trader");
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
+#if IOV_DEV
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
                     names.Add("draft_arena");
                     foreach (IsletTier tier in IsletTier.All)
                         for (int n = 1; n <= 3; n++) names.Add(SmallArg(tier, n));
+#endif
                     return names;
                 });
         }

@@ -128,9 +128,11 @@ namespace IslandsOfValheim
         static void FinalArena()
         {
             FinalArenaOf(Story.Arena, false);
+#if IOV_DEV
             arenaBare = true;
             try { FinalArenaOf(ArenaBase, true); }
             finally { arenaBare = false; }
+#endif
         }
 
         static void FinalArenaOf(string name, bool bare)

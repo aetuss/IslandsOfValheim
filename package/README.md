@@ -12,13 +12,13 @@ Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
 Valheim's ocean is mostly empty water between continents. This mod puts small islands in it, worth sailing to:
 
-- **Islets** in the open sea, away from the coasts, with ruins on top, often a tower or graves on the cliff, sometimes an old jetty or a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
+- **Islets** in the open sea, away from the coasts, with ruins or one of the game's own structures on top, often a tower or graves on the cliff, sometimes an old jetty or a wrecked ship on the shore, plus berries, mushrooms, flint and branches to pick up.
 - **Guards** that show up when you come close, once: killed guards don't come back.
 - **Treasure.** One chest per islet. Sometimes it holds a **sea vegvisir shard**: use it (right-click in your inventory) and it marks the closest islet nobody has visited yet on your map, one of the kind of the waters you're in or a tougher one, so one islet leads you to the next. If none is left, the shard isn't used up.
 - **Signs from the sea.** Gulls circle over every islet by day, and a fire burns on its cliff at night, so you can spot one from your boat.
 - **Old beacons** on about one islet in three: light one and it shows you the islets around it (see below).
 - **Fishing grounds** around about half the islets (see below).
-- **Large islets**, two or three of each kind: a vanilla dungeon or a stronghold, a ruined village, animals and a starred guardian (see below).
+- **Large islets**, three of each kind, each of its own design: a vanilla dungeon, a stronghold, an old farm, a ghost town... with animals and often a starred guardian. Their ground is the game's own: dig, level and farm on it (see below).
 - **The sea trader**, the last of the people who built the islet ruins, keeps a harbour on one islet (see below).
 
 The further from the world centre, the tougher the islet:
@@ -34,6 +34,8 @@ The further from the world centre, the tougher the islet:
 | Deep North | 7500 m and further, northern half of the world | a Deep North skeleton, Ulvs, a Cultist, a Fenring | coins, frostwood, ice, frost cores, crystal, silver, freeze glands, frost arrows |
 
 Each kind has its own ground, painted like its biome, its own plants and its own ruins, two designs each: a stone hall or a fishing camp (Meadows), a hut on stilts or a sunken crypt's entrance (Swamp), a Fuling camp or a ruin Fulings took over (Plains), a ring of black marble columns or an abandoned dvergr post (Mistlands), a dvergr camp or a dvergr dig site (Dvergr outposts), a grausten fortress or broken arches (Ashlands), a frozen stone keep or a hunters' camp the frost took (Deep North, with ice washed up on the shore). Every kind comes in four shapes (round, long, with a bay, with two humps), the ruin is turned differently from islet to islet, and towers, wrecks, jetties and plants are there on some islets and not on others, so no two islets look quite the same.
+
+Islets placed from 1.10.0 on can carry one of three of the game's own structures for their land instead of a ruin: a plank house, a ruined stone tower or a dolmen (Meadows), a hut on stilts, a well among graves or a sunken ruin (Swamp), a Fuling hut, a stone house or a broken tower (Plains), statues, a road post or giant swords (Mistlands), a dvergr lighthouse, watchtower or road post (Dvergr outposts), a charred tower, charred ruins or a vultures' nest (Ashlands), a northern hut or a memorial (Deep North).
 
 About one islet in four has a **creature nest** instead of a ruin (a Greydwarf nest, a Swamp bone pile, Seeker eggs, Charred twitcher nests): break it before it sends more. About one in eight hides a **hoard**: a second, richer chest tucked between rocks on the slope (it isn't buried, look around). Some have a runestone.
 
@@ -72,23 +74,24 @@ There aren't endless fish: a ground holds a few at a time and puts one back ever
 
 ## Large islets
 
-Rarely, two or three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones:
+Rarely, three of each kind in a world (`LargeIsletsPerKind`), there's a much bigger islet, three to four times a normal one, in the same ring as that kind's small ones. Each kind has three designs, and with the default setting a world gets each of them once, so no two are alike. Some are peaceful: no guardian, only animals and things to find.
 
-| Large islet | What's on it |
+| Large islet | Its three designs |
 |---|---|
-| Meadows | a burial chamber in the middle, and round it what's left of a village: a stone hall, plank houses, a well, their fire and a broken watchtower |
-| Swamp | a sunken crypt (it needs the Swamp key, as on land), houses on stilts, a graveyard and a watchtower |
-| Plains | a Fuling stronghold: a palisade with a totem gate, huts, a great fire and the Fulings who hold it |
-| Mistlands | an infested mine, dug into a tall islet the way the game digs it on land, old dvergr ruins, a Seeker nest and a black marble spire |
-| Dvergr | an infested mine with the dvergr's camp and dig site round it (theirs, as on their outposts) |
-| Ashlands | a charred fortress: tall broken grausten walls, corner towers and a ruined keep |
-| Deep North | Mørkhalla's way down, a frost keep, a house left to the snow, graves and a watchtower |
+| Meadows | a barrow hill: a burial chamber among dolmens and an old village; a farmstead left to the deer (peaceful); a fishers' bay with a lighthouse tower and a wreck (peaceful) |
+| Swamp | a sunken crypt among houses on stilts (it needs the Swamp key, as on land); a witch's hill, which a Wraith keeps; a misty graveyard |
+| Plains | a Fuling stronghold among old standing stones; an abandoned farm where lox graze (peaceful); a tar lake the Fulings come to |
+| Mistlands | an infested mine, dug into a tall islet the way the game digs it on land; a giants' graveyard (peaceful); a fallen watchtower where the Seekers nest |
+| Dvergr | an infested mine by the dvergr's dig site; a dvergr harbour with its lighthouse (peaceful, as long as you are); a dvergr watchtower the Seekers come for |
+| Ashlands | a charred fortress; the morgen pits; a sulfur arch over a vultures' nest |
+| Deep North | Mørkhalla's way down by an ice hold; frozen ships locked in the ice (peaceful); a ghost town whose people never left |
 
-Each has a starred guardian, a few of the kind's creatures and a chest of its own, and life that comes back: deer, boar and necks in the Meadows, leeches and crows in the Swamp, lox and deathsquitos on the Plains, hares in the Mistlands, asksvin and voltures in the Ashlands, moose, seals and a bear in the Deep North. When there are fewer than a few, one comes back every few minutes, but not near a player's base. Boar, lox and asksvin can be tamed. Trees, berries and mushrooms grow back the game's way.
+Most have a starred guardian, a few of the kind's creatures and a chest of their own, and all have life that comes back: deer, boar and necks in the Meadows, leeches and crows in the Swamp, lox and deathsquitos on the Plains, hares in the Mistlands, asksvin and voltures in the Ashlands, moose, seals and a bear in the Deep North. When there are fewer than a few, one comes back every few minutes, but not near a player's base. Boar, lox and asksvin can be tamed. Trees, berries and mushrooms grow back the game's way.
 
 Like the small islets, the further out in its ring a large islet is, the tougher it gets: in the inner third its creatures have no stars, in the middle third some have one, in the outer third some have two, and the chest grows with it.
 
-You may build on a large islet and settle there. The islet's ground isn't the game's terrain, though, so the hoe and the cultivator don't work on it.
+You may build on a large islet and settle there. Its ground is the game's own terrain, raised out of the sea: the hoe, the pickaxe and the cultivator work on it, and crops grow there. (A large islet already built in a world before 1.10.0 stays as it was, on its old ground, where they don't work; the ones nobody had reached yet come up the new way.)
+
 ## The sea trader
 
 Somewhere in the Swamp or Plains waters there's one peaceful islet with a harbour, the last one the seafaring people kept: a thatched plank house on the stone floor of their old harbour hall, his counter in front of it and a paved path down to the shore, a campfire with benches, a fisher's corner, an old hull he's mending, a jetty with a moored karve, a statue of one of their captains and, on the ridge, one of their beacon towers, whole, its fire never out. No guards, and creatures keep away from it. Sævar lives there, the last of the seafaring people whose ruins are on the other islets. He's one of the shadows of the Deep North, the ghosts of the fallen, standing at his counter. His seal Bára lies on her straw mat by the campfire (you can pet her), and like a vendor's camp, his islet is under a see-through dome nobody can build under.
@@ -125,7 +128,7 @@ In an existing world his harbour is added like the islets (see below).
 
 Sævar has a story to tell, about the Brim Folk, his people, and what the sea gave them. He tells it a step at a time. Talk to him and he gives you a torn map; use it (right-click) and it marks roughly where it leads. Go there, do what has to be done, and come back to him for the next page of the tale (in your compendium) and the next map. The tale belongs to the world, not to one player: whoever takes a step, everyone hears the rest.
 
-The tale has seven steps, each further out to sea than the last: the old Brim harbour in the Meadows waters, Ketill's islet in the Swamp waters, Sigrún's islet in the Plains waters, Ormr's islet in the Mistlands waters, a dvergr outpost that keeps something it shouldn't, a shore in the Ashlands waters where it all began, and at last a hidden islet in the Deep North waters, where three keepers stand between you and the last fragment. Some fragments are guarded, some are hidden, one has to be fished out of the sea, and one belongs to the dvergr, who won't like you taking it. Bring Sævar the last one and the tale ends, with a trinket for you to keep. His goods stay on sale after that.
+The tale has seven steps, each further out to sea than the last: the old Brim harbour in the Meadows waters, Ketill's islet in the Swamp waters, Sigrún's islet in the Plains waters, Ormr's islet in the Mistlands waters, a dvergr outpost that keeps something it shouldn't, a shore in the Ashlands waters where it all began, and at last a dark crag in the Deep North waters: a hidden cove, then three hollows one above the other, each with a keeper between you and the last fragment, and ice across the way up until the keeper below it falls. Some fragments are guarded, some are hidden, one has to be fished out of the sea, and one belongs to the dvergr, who won't like you taking it. Bring Sævar the last one and the tale ends, with a trinket for you to keep. His goods stay on sale after that.
 
 The tale's foes and the trader's goods use the game's own models, reworked with new names, stats, colours and fights. No new models are added.
 
@@ -203,6 +206,10 @@ Found a bug or have an idea? Open an issue on [GitHub](https://github.com/aetuss
 Stuck in Sævar's tale, or did one of its steps not work the way it should? You can also reach me on Discord: **aethuswulf**.
 
 Enjoying the islands? A 👍 on Thunderstore helps other sailors find them.
+
+## Thanks
+
+The idea of raising the large islets out of the game's own terrain came from Shuiei's [Valheim World Editor](https://github.com/Shuiei/valheim-world-editor) (MIT licence). None of its code is used.
 
 ## Made with AI
 

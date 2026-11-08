@@ -4,7 +4,10 @@
 param(
     [string]$Managed = "C:\Program Files (x86)\Steam\steamapps\common\Valheim\valheim_Data\Managed",
     [string]$BepInExCore = "C:\Valheim Mod\valheim\profiles\mod 1\BepInEx\core",
-    [string]$Jotunn = "C:\Valheim Mod\valheim\profiles\mod 1\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll"
+    [string]$Jotunn = "C:\Valheim Mod\valheim\profiles\mod 1\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll",
+    # A development build: with the design work's test locations and their iov_goto commands (IOV_DEV).
+    # Never upload one; its zip is named -dev.
+    [switch]$Dev
 )
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
@@ -71,8 +74,10 @@ $resources = Get-ChildItem $langRoot -Directory | ForEach-Object { "/resource:" 
 # The large islets' drafts (what stands on each design, laid out in the game with the dev tool).
 $resources += Get-ChildItem (Join-Path $root "drafts") -Filter *.json -ErrorAction SilentlyContinue | ForEach-Object { "/resource:" + $_.FullName + ",IoV.Drafts." + $_.Name }
 
+$defines = @()
+if ($Dev) { $defines += "/define:IOV_DEV" }
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /nostdlib /noconfig /target:library /optimize+ `
-    /codepage:65001 $refs $resources /out:"$tmp\IslandsOfValheim.dll" "$tmp\*.cs"
+    /codepage:65001 $refs $resources $defines /out:"$tmp\IslandsOfValheim.dll" "$tmp\*.cs"
 if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
 $out = Join-Path $root "bin"
@@ -90,7 +95,7 @@ Copy-Item (Join-Path $root "package\*") $stage -Recurse -Force
 Copy-Item "$out\IslandsOfValheim.dll" $stage -Force
 $dist = Join-Path $root "dist"
 New-Item -ItemType Directory -Force $dist | Out-Null
-$zip = Join-Path $dist "IslandsOfValheim-$version.zip"
+$zip = Join-Path $dist ("IslandsOfValheim-$version" + $(if ($Dev) { "-dev" } else { "" }) + ".zip")
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Create)

@@ -6,6 +6,9 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
 
+// Only in a development build (build.ps1 -Dev): this file holds the research prototype and the placing of
+// the test locations that the design work's commands use.
+#if IOV_DEV
 namespace IslandsOfValheim
 {
     // RESEARCH PROTOTYPE (branch iov-terrain-test, not for release): an islet of the game's own terrain
@@ -282,3 +285,4 @@ namespace IslandsOfValheim
         }
     }
 }
+#endif
