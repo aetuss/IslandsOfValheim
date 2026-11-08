@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.1
+
+- The README's pictures are the same size now, so they line up. No changes in the game.
+
 ## 1.10.0
 
 - Large islets are made of the game's own terrain now, raised out of the sea, with sandy beaches your boat can land on. The hoe, the pickaxe and the cultivator work on them, and crops grow there. Each is painted as its land: ash in the Ashlands, dark moss in the Mistlands, snow in the Deep North.

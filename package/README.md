@@ -4,9 +4,9 @@ Small islands out at sea with old ruins, dvergr outposts, guards and treasure, t
 
 Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
-| ![A large Meadows islet with standing stones, a hut and greydwarfs](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/large-islet.webp) | ![Sailing towards an islet at night, its fire burning on the cliff](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sailing-at-night.png) |
+| ![A large Meadows islet with standing stones, a hut and greydwarfs](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/large-islet.jpg) | ![Sailing towards an islet at night, its fire burning on the cliff](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sailing-at-night.jpg) |
 |---|---|
-| ![Sævar's harbour at night, lanterns along the path](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sea-trader-harbour.webp) | ![The summit of the final arena, blue fire on its pillars](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/final-arena.webp) |
+| ![Sævar's harbour at night, lanterns along the path](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/sea-trader-harbour.jpg) | ![The summit of the final arena, blue fire on its pillars](https://raw.githubusercontent.com/aetuss/IslandsOfValheim/main/docs/screenshots/final-arena.jpg) |
 
 ## What changes?
 
