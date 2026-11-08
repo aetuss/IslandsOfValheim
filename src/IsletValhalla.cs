@@ -42,6 +42,7 @@ namespace IslandsOfValheim
             seed = 911f;
 
             BuildFloatingRock(sky.transform);
+            UnderRocks();
             ValhallaClouds.Build(sky.transform);
             ValhallaClouds.Motes(sky.transform);
             sky.AddComponent<ValhallaSky>();
@@ -171,6 +172,47 @@ namespace IslandsOfValheim
             ground.AddComponent<MeshCollider>().sharedMesh = mesh;
             renderer.sharedMaterials = new[] { MeadowMaterial(), UndersideMaterial() };
             Plugin.Debug("Valhalla: the rock has " + verts.Count + " points; materials " + renderer.sharedMaterials[0].name + ", " + renderer.sharedMaterials[1].name);
+        }
+
+        // The underside is clad in the game's own big rocks, turned upside down and hung in rings under the rim,
+        // bigger and lower towards the middle: a ragged mass, as if torn out of a mountain. (Our underside
+        // mesh stays inside them, so no gap shows.)
+        static readonly string[] UnderRockNames = { "rock1_mountain", "rock3_mountain", "Rock_7", "rock4_coast" };
+
+        static void UnderRocks()
+        {
+            int placed = 0;
+            // ring: how many, how far in (part of the edge), how big, how deep their tops hang
+            float[][] rings =
+            {
+                new[] { 30f, 0.86f, 15f, 3f },
+                new[] { 18f, 0.62f, 24f, 14f },
+                new[] { 9f, 0.36f, 34f, 34f },
+                new[] { 3f, 0.12f, 42f, 62f },
+            };
+            for (int k = 0; k < rings.Length; k++)
+            {
+                int count = (int)rings[k][0];
+                for (int i = 0; i < count; i++)
+                {
+                    float deg = (i + 0.5f * (k % 2)) * 360f / count + 9f * Noise(i * 1.3f + k * 7f, k * 2.1f + 3f);
+                    float a = deg * Mathf.Deg2Rad;
+                    float r = RockEdge(a) * rings[k][1] * (1f + 0.06f * Noise(i * 2.7f + 1f, k * 3.3f + 2f));
+                    float size = rings[k][2] * (1f + 0.25f * Noise(i * 1.9f + k * 5f + 4f, 0.5f + k));
+                    float rimY = RockMeadow(Mathf.Cos(a) * r, Mathf.Sin(a) * r) - 1.6f;
+                    float topY = rimY - rings[k][3] - 2f;
+                    string name = UnderRockNames[(i + k) % UnderRockNames.Length];
+                    // upside down, each turned its own way, leaning a little outward
+                    Vector3 euler = new Vector3(180f + 12f * Noise(i * 3.1f, k + 9f), deg * 2.3f + i * 47f, 8f * Noise(k + 4f, i * 2.3f));
+                    GameObject go = Copy(new[] { name }, euler, size, true);
+                    if (go == null) continue;
+                    Bounds b = LocalBounds(go);
+                    b.center -= new Vector3(0f, SkyHeight, 0f); // LocalBounds is the location's space; these hang under the sky floor
+                    Move(go, b, new Vector3(Mathf.Cos(a) * r, topY, Mathf.Sin(a) * r), true);
+                    placed++;
+                }
+            }
+            Plugin.Debug("Valhalla: " + placed + " rocks under the rock");
         }
 
         // The game's terrain material, as the small islets' ground has it (BuildGround).
@@ -326,7 +368,7 @@ namespace IslandsOfValheim
                     float u = (float)x / size, v = (float)y / size;
                     float n = Seamless(u, v, scale, seed);
                     float a = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((n - (1f - cover)) / 0.35f));
-                    float shade = 0.82f + 0.18f * n; // brighter where thicker
+                    float shade = 0.5f + 0.5f * Mathf.Pow(n, 1.4f); // bright tops, shadowed hollows
                     px[y * size + x] = new Color(shade, shade, shade, a);
                 }
             t.SetPixels(px);
@@ -450,7 +492,7 @@ namespace IslandsOfValheim
             env.m_fogColorMorning = env.m_fogColorDay = env.m_fogColorEvening = env.m_fogColorNight = haze;
             Color sunHaze = new Color(1f, 0.8f, 0.56f);
             env.m_fogColorSunMorning = env.m_fogColorSunDay = env.m_fogColorSunEvening = env.m_fogColorSunNight = sunHaze;
-            env.m_fogDensityMorning = env.m_fogDensityDay = env.m_fogDensityEvening = env.m_fogDensityNight = 0.0025f;
+            env.m_fogDensityMorning = env.m_fogDensityDay = env.m_fogDensityEvening = env.m_fogDensityNight = 0.0012f; // the far clouds and the branch still show
             Color sun = new Color(1f, 0.82f, 0.6f);
             env.m_sunColorMorning = env.m_sunColorDay = env.m_sunColorEvening = env.m_sunColorNight = sun;
             env.m_lightIntensityDay = env.m_lightIntensityNight = 1.15f;
@@ -466,18 +508,26 @@ namespace IslandsOfValheim
             Plugin.Debug("Valhalla: weather " + Name + " added (from Clear)");
         }
     }
-
     // On each client, while its own player is at Valhalla: the weather and the held dusk, the meadow's birds
-    // instead of the sea's sounds, the clouds drifting, and a catch for whoever steps off the edge.
+    // instead of the sea's sounds, the World-tree's branch overhead, the clouds drifting, and a catch for
+    // whoever steps off the edge.
+    //
+    // The World-tree in the game's sky is a real branch, and huge, but it goes along with the player (the
+    // game's FollowPlayer), so from the ground it always hangs in the sky. Up here it would cut through the
+    // rock, and walk along with you. So while you're here, the game's own is hidden and a still copy of it
+    // takes its place, fixed to the rock and lifted until its nearest parts arch high overhead.
     class ValhallaSky : MonoBehaviour
     {
         const float Reach = 600f;      // across, from the rock's middle
         const float Below = 300f;      // how far under the floor still counts as there
         const float FallLimit = 45f;   // under the floor: caught and set back
-        bool inside, heldTime, previousDebugTime;
+        const float CanopyClearance = 260f; // the branch's lowest part near the rock, above its floor
+        const float CanopyNear = 350f;      // how near counts
+        bool inside, heldTime, previousDebugTime, hidTree;
         float previousTime;
         float nextCheck;
         readonly List<Transform> clouds = new List<Transform>();
+        GameObject tree, canopy;
         static string meadowAmbients;
 
         void Start()
@@ -487,54 +537,84 @@ namespace IslandsOfValheim
                 Transform t = transform.Find(name);
                 if (t != null) clouds.Add(t);
             }
-            if (!measured)
+        }
+
+        // ---- the World-tree ----
+
+        static GameObject FindTree()
+        {
+            foreach (MeshFilter f in Object.FindObjectsOfType<MeshFilter>())
+                if (f != null && f.transform.parent != null && f.transform.parent.name == "YggdrasilBranch") return f.transform.parent.gameObject;
+            return null;
+        }
+
+        void Canopy(bool on)
+        {
+            if (on)
             {
-                measured = true;
-                foreach (string line in MeasureTree(transform.position, 400f)) Plugin.Log.LogInfo("Valhalla: " + line);
+                if (tree == null) tree = FindTree();
+                if (tree == null) return;
+                if (canopy == null) MakeCanopy();
+                if (tree.activeSelf) { tree.SetActive(false); hidTree = true; }
+                if (canopy != null) canopy.SetActive(true);
+            }
+            else
+            {
+                if (hidTree && tree != null) tree.SetActive(true);
+                hidTree = false;
+                if (canopy != null) canopy.SetActive(false);
             }
         }
 
-        static bool measured;
-
-        // The World-tree in the game's sky is real, and huge: where its branches are, by its own parts (the
-        // shader they're drawn with), and how low and high they come within reach metres of a spot, to keep
-        // the rock clear of them (while it's being made: from the test's log, and iov_tree).
-        internal static List<string> MeasureTree(Vector3 at, float reach)
+        void MakeCanopy()
         {
-            List<string> lines = new List<string>();
-            int parts = 0;
-            float low = float.MaxValue, high = float.MinValue;
-            int points = 0;
-            foreach (Renderer r in Object.FindObjectsOfType<Renderer>())
+            Camera cam = Utils.GetMainCamera();
+            Vector3 eye = cam != null ? cam.transform.position : transform.position;
+            Vector3 offset = tree.transform.position - eye; // where it hangs from where we see it from
+            canopy = Object.Instantiate(tree);
+            canopy.name = "IoV_WorldTreeCanopy";
+            foreach (FollowPlayer follow in canopy.GetComponentsInChildren<FollowPlayer>(true)) Object.Destroy(follow);
+            canopy.transform.localScale = tree.transform.lossyScale;
+            canopy.transform.rotation = tree.transform.rotation;
+            canopy.transform.position = new Vector3(transform.position.x + offset.x, tree.transform.position.y, transform.position.z + offset.z);
+            float low = Lowest(canopy, transform.position, CanopyNear);
+            if (!float.IsNaN(low)) canopy.transform.position += Vector3.up * (transform.position.y + CanopyClearance - low);
+            canopy.transform.SetParent(transform, true);
+            Plugin.Debug("Valhalla: the World-tree's branch held over the rock" + (float.IsNaN(low) ? " (none of it near)" : ", lifted " +
+                (transform.position.y + CanopyClearance - low).ToString("F0") + " m"));
+        }
+
+        // The lowest point of a thing's meshes within reach metres of a spot (NaN: none there, or not readable).
+        static float Lowest(GameObject thing, Vector3 at, float reach)
+        {
+            float low = float.NaN;
+            foreach (MeshFilter f in thing.GetComponentsInChildren<MeshFilter>(true))
             {
-                bool tree = r.name.IndexOf("ygg", System.StringComparison.OrdinalIgnoreCase) >= 0;
-                foreach (Material m in r.sharedMaterials)
-                    if (m != null && m.shader != null && m.shader.name.IndexOf("Yggdrasil", System.StringComparison.OrdinalIgnoreCase) >= 0) tree = true;
-                if (!tree) continue;
-                parts++;
-                Bounds b = r.bounds;
-                string path = r.name;
-                for (Transform p = r.transform.parent; p != null && path.Length < 120; p = p.parent) path = p.name + "/" + path;
-                MeshFilter filter = r.GetComponent<MeshFilter>();
-                Mesh mesh = filter != null ? filter.sharedMesh : r is SkinnedMeshRenderer ? ((SkinnedMeshRenderer)r).sharedMesh : null;
-                bool readable = mesh != null && mesh.isReadable;
-                lines.Add("tree part " + path + ": from " + b.min.ToString("F0") + " to " + b.max.ToString("F0") + (mesh != null ? ", " + mesh.vertexCount + " points" + (readable ? "" : " (not readable)") : ""));
-                if (!readable) continue;
-                Matrix4x4 world = r.transform.localToWorldMatrix;
-                foreach (Vector3 v in mesh.vertices)
+                if (f.sharedMesh == null || !f.sharedMesh.isReadable) continue;
+                Matrix4x4 world = f.transform.localToWorldMatrix;
+                foreach (Vector3 v in f.sharedMesh.vertices)
                 {
                     Vector3 w = world.MultiplyPoint3x4(v);
                     if (Utils.DistanceXZ(w, at) > reach) continue;
-                    points++;
-                    low = Mathf.Min(low, w.y);
-                    high = Mathf.Max(high, w.y);
+                    if (float.IsNaN(low) || w.y < low) low = w.y;
                 }
             }
-            lines.Add(parts == 0 ? "no part of the World-tree found" :
-                points == 0 ? "no point of the World-tree within " + reach + " m of " + at.ToString("F0") + " (that its parts let us read)" :
-                "the World-tree within " + reach + " m of " + at.ToString("F0") + ": " + points + " points, lowest " + low.ToString("F0") + " m, highest " + high.ToString("F0") + " m (world height; the sea is at 30)");
+            return low;
+        }
+
+        // Where the game's own branch is over a spot (iov_tree, while the place is being made).
+        internal static List<string> MeasureTree(Vector3 at, float reach)
+        {
+            List<string> lines = new List<string>();
+            GameObject t = FindTree();
+            if (t == null) { lines.Add("the World-tree isn't in sight (hidden while at Valhalla)"); return lines; }
+            float low = Lowest(t, at, reach);
+            lines.Add("the World-tree's branch at " + t.transform.position.ToString("F0") + ", its lowest within " + reach + " m of " + at.ToString("F0") + ": " +
+                (float.IsNaN(low) ? "none" : low.ToString("F0") + " m (world height; the sea is at 30)"));
             return lines;
         }
+
+        // ---- being here ----
 
         void Update()
         {
@@ -546,7 +626,13 @@ namespace IslandsOfValheim
             if (player == null) return;
             Vector3 p = player.transform.position, floor = transform.position;
             bool here = Utils.DistanceXZ(p, floor) < Reach && p.y > floor.y - Below;
-            if (here != inside) { inside = here; Apply(here); }
+            if (here != inside)
+            {
+                inside = here;
+                Apply(here);
+                Canopy(here);
+                Plugin.Debug(here ? "Valhalla: here (its weather, dusk and branch)" : "Valhalla: left");
+            }
             if (!inside) return;
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
@@ -583,7 +669,6 @@ namespace IslandsOfValheim
                     heldTime = false;
                 }
             }
-            Plugin.Debug(on ? "Valhalla: here (its weather and dusk)" : "Valhalla: left");
         }
 
         // The meadow's random sounds (birds by day) instead of whatever the sea far below would play.
@@ -591,11 +676,17 @@ namespace IslandsOfValheim
         {
             if (meadowAmbients != null || AudioMan.instance == null || EnvMan.instance == null) return;
             meadowAmbients = "";
+            List<string> names = new List<string>();
             foreach (AudioMan.BiomeAmbients a in AudioMan.instance.m_randomAmbients)
-                if (a != null && a.m_biome == Heightmap.Biome.Meadows) { meadowAmbients = a.m_name; break; }
+            {
+                if (a == null) continue;
+                names.Add(a.m_name + " (" + a.m_biome + ")");
+                bool meadow = (a.m_biome & Heightmap.Biome.Meadows) != 0 || a.m_name.IndexOf("meadow", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (meadow && meadowAmbients == "") meadowAmbients = a.m_name;
+            }
             foreach (EnvSetup e in EnvMan.instance.m_environments)
                 if (e != null && e.m_name == ValhallaWeather.Name) e.m_ambientList = meadowAmbients;
-            Plugin.Debug("Valhalla: random sounds from " + (meadowAmbients == "" ? "nothing" : meadowAmbients));
+            Plugin.Debug("Valhalla: random sounds from " + (meadowAmbients == "" ? "nothing" : meadowAmbients) + "; the game has " + string.Join(", ", names.ToArray()));
         }
 
         // Stepped off the edge: back onto the rock, near where Odin's light sets you down, unhurt.
@@ -609,7 +700,9 @@ namespace IslandsOfValheim
 
         void OnDestroy()
         {
-            if (inside) Apply(false);
+            if (!inside) return;
+            Apply(false);
+            if (hidTree && tree != null) tree.SetActive(true);
         }
     }
 }
