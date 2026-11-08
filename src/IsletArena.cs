@@ -284,9 +284,27 @@ namespace IslandsOfValheim
             List<DraftEntry> draft = ReadDraft(SummitDraftId);
             if (draft == null) { Plugin.Log.LogWarning(locationName + ": no draft " + SummitDraftId + "; the summit is bare"); return; }
             draftLeft = 0;
+            summitPillars.Clear();
             BuildEntries(draft, SummitEntry);
+            // Blue fire on top of each pillar, except those standing behind a giant sword (the user's wish).
+            foreach (GameObject pillar in summitPillars)
+            {
+                Bounds p = LocalBounds(pillar);
+                bool bySword = false;
+                foreach (DraftEntry e in draft)
+                    if (e.Prefab.StartsWith("giant_sword") && Vector2.Distance(new Vector2(e.X, e.Z), new Vector2(p.center.x, p.center.z)) < 3f) bySword = true;
+                if (bySword) continue;
+                GameObject fire = Copy(new[] { "MountainKit_brazier_blue", "MountainKit_brazier" }, Vector3.zero, 0f, true);
+                if (fire == null) break;
+                Move(fire, LocalBounds(fire), new Vector3(p.center.x, p.max.y - 0.05f, p.center.z), false);
+                Plugin.Log.LogInfo(locationName + ": fire on the pillar at " + p.center.x.ToString("F1") + ", " + p.center.z.ToString("F1") + ", " + (p.max.y - Height(p.center.x, p.center.z)).ToString("F1") + " m up");
+                built++;
+            }
+            summitPillars.Clear();
             Plugin.Debug(locationName + ": summit draft, " + draft.Count + " lines, " + draftLeft + " left out");
         }
+
+        static readonly List<GameObject> summitPillars = new List<GameObject>();
 
         static void SummitEntry(DraftEntry e, Dictionary<string, GameObject> sources)
         {
@@ -306,7 +324,13 @@ namespace IslandsOfValheim
                     return;
                 case "locpart":
                     GameObject part = DraftPartObject(e, sources);
-                    if (part != null) { LightFires(part); Strip(part); } else draftLeft++;
+                    if (part != null)
+                    {
+                        LightFires(part);
+                        Strip(part);
+                        if (e.Prefab == "StonePillar") summitPillars.Add(part);
+                    }
+                    else draftLeft++;
                     return;
                 case "creature":
                 case "level":
