@@ -462,14 +462,14 @@ namespace IslandsOfValheim
                 }
             // and beyond them an avenue of golden birches, one by each torch, their crowns over the way; none by
             // the hall's front (their crowns would reach its roof) or on the memorial path
+            // (in pairs: where the path keeps one side bare, the other goes too, or it stands alone)
             int k = 0;
             for (float z = ValhallaArrival.z + 6f; z <= HallStart - 14f; z += 8f)
+            {
+                if (NearMemorial(-7.5f, z, 3f) || NearMemorial(7.5f, z, 3f)) continue;
                 foreach (float side in new[] { -1f, 1f })
-                {
-                    float x = side * 7.5f;
-                    if (NearMemorial(x, z, 3f)) continue;
-                    SkyPlant(k++ % 3 == 1 ? "Birch2_aut" : "Birch1_aut", x, z, k * 71f, 0.1f);
-                }
+                    SkyPlant(k++ % 3 == 1 ? "Birch2_aut" : "Birch1_aut", side * 7.5f, z, k * 71f, 0.1f);
+            }
         }
 
         static readonly string[] SpearNames = { "SpearBronze", "SpearElderbark", "SpearChitin", "SpearCarapace" };
@@ -691,7 +691,7 @@ namespace IslandsOfValheim
             {
                 new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-24f, 12f),
                 new Vector2(-58f, -14f), new Vector2(-36f, -22f), new Vector2(26f, 46f), new Vector2(50f, 34f), new Vector2(-22f, 50f),
-                new Vector2(22f, -30f), new Vector2(70f, 8f),
+                new Vector2(70f, 8f),
             };
             string[] kinds = { "Birch1_aut", "Birch2_aut", "Birch1_aut", "Oak1", "Birch2_aut" };
             for (int i = 0; i < trees.Length; i++)
@@ -699,6 +699,23 @@ namespace IslandsOfValheim
                 Vector2 t = trees[i];
                 if (!OnRock(t.x, t.y, 12f)) continue;
                 SkyPlant(kinds[i % kinds.Length], t.x, t.y, i * 67f, 0.1f);
+            }
+            // a loose grove round the einherjar's yard, on its open sides (the ring is north of it): each tree
+            // a different kind, green against the golden birches, a few metres off the yard's floor
+            Vector3[] grove =
+            {
+                new Vector3(Yard.x + 15f, 0f, Yard.y + 6f),  // east, by its north corner
+                new Vector3(Yard.x + 16f, 0f, Yard.y - 5f),  // east
+                new Vector3(Yard.x + 7f, 0f, Yard.y - 13f),  // south
+                new Vector3(Yard.x - 6f, 0f, Yard.y - 13.5f),// south
+                new Vector3(Yard.x - 15f, 0f, Yard.y - 8f),  // west, toward the way
+            };
+            string[] groveKinds = { "Oak1", "Beech1", "Birch1", "Beech_small1", "Beech_small2" };
+            for (int i = 0; i < grove.Length; i++)
+            {
+                Vector3 g = grove[i];
+                if (!OnRock(g.x, g.z, 10f) || NearMemorial(g.x, g.z, 4f)) continue;
+                SkyPlant(groveKinds[i], g.x, g.z, i * 113f + 20f, 0.1f);
             }
             // flowers in drifts, west and round the feast
             for (int i = 0; i < 160; i++)
