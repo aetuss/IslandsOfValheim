@@ -68,17 +68,23 @@ namespace IslandsOfValheim
         // ---- the rock ----
 
         // Its outline: wandering, so it doesn't read as a circle.
+        // The rock's noise, on its own fixed seed: the shared one (seed) is set by whatever islet was built last,
+        // and the rock's shape is asked for again while the game runs (its grass, its ground).
+        static float VNoise(float x, float z) { return Mathf.PerlinNoise(x + 911f, z + 911f * 0.7f) * 2f - 1f; }
+
+        internal static float RockEdgeAt(float x, float z) { return RockEdge(Mathf.Atan2(z, x)); }
+
         static float RockEdge(float angle)
         {
             float c = Mathf.Cos(angle), s = Mathf.Sin(angle);
-            return ValhallaEdge * (1f + 0.11f * Noise(c * 1.4f + 3f, s * 1.4f + 3f) + 0.05f * Noise(c * 3.5f + 9f, s * 3.5f + 9f));
+            return ValhallaEdge * (1f + 0.11f * VNoise(c * 1.4f + 3f, s * 1.4f + 3f) + 0.05f * VNoise(c * 3.5f + 9f, s * 3.5f + 9f));
         }
 
         // Its meadow: rolling gently, a metre or two.
         internal static float RockMeadow(float x, float z)
         {
-            float rolling = 1.1f * Noise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * Noise(x * 0.05f + 15f, z * 0.05f + 15f)
-                + 0.08f * Noise(x * 0.4f + 25f, z * 0.4f + 25f);
+            float rolling = 1.1f * VNoise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * VNoise(x * 0.05f + 15f, z * 0.05f + 15f)
+                + 0.08f * VNoise(x * 0.4f + 25f, z * 0.4f + 25f);
             return rolling * (1f - ValhallaPads(x, z)); // level where the hall, the way and the ring stand
         }
 
@@ -236,8 +242,7 @@ namespace IslandsOfValheim
         // by these colours).
         static Color32 MeadowColour(float x, float z, Color32 grass, Color32 golden)
         {
-            float n = Mathf.PerlinNoise(x * 0.025f + 71f, z * 0.025f + 13f) * 0.7f + Mathf.PerlinNoise(x * 0.08f + 5f, z * 0.08f + 91f) * 0.3f;
-            return Color32.Lerp(grass, golden, Mathf.SmoothStep(0f, 1f, (n - 0.45f) / 0.25f) * 0.85f);
+            return Color32.Lerp(grass, golden, GoldenAt(x, z) * 0.85f);
         }
 
         // The meadow's paint (what the hoe and the pickaxe leave on the game's terrain): paved stone under the
@@ -248,26 +253,55 @@ namespace IslandsOfValheim
             Texture2D mask = new Texture2D(size, size, TextureFormat.RGBA32, false);
             mask.name = "IoV_ValhallaPaint";
             mask.wrapMode = TextureWrapMode.Clamp;
-            List<Vector2> path = new List<Vector2>();
-            for (int i = 0; i <= 40; i++) path.Add(MemorialAt(i / 40f));
             Color[] px = new Color[size * size];
             for (int j = 0; j < size; j++)
                 for (int i = 0; i < size; i++)
                 {
                     float x = ((i + 0.5f) / size - 0.5f) * span, z = ((j + 0.5f) / size - 0.5f) * span;
-                    float paved = Mathf.Max(Soft(Box(x, z, 0f, (ValhallaArrival.z + HallStart) * 0.5f, 2.6f, (HallStart - ValhallaArrival.z) * 0.5f + 1f)),
-                        Mathf.Max(Soft(Box(x, z, 0f, ValhallaArrival.z, 5.5f, 4.5f)), Soft(Box(x, z, 0f, (HallStart + HallEnd) * 0.5f, HallHalfWidth + 2f, (HallEnd - HallStart) * 0.5f + 2f))));
-                    paved = Mathf.Max(paved, Soft(new Vector2(x, z - LookoutZ).magnitude - 6.5f));
-                    float earth = Soft(new Vector2(x - DuelRing.x, z - DuelRing.y).magnitude - (DuelRadius - 0.5f)) * 0.9f;
-                    earth = Mathf.Max(earth, Soft(new Vector2(x - Feast.x, z - Feast.y).magnitude - 9f) * 0.7f);
-                    float near = float.MaxValue;
-                    foreach (Vector2 p in path) near = Mathf.Min(near, (new Vector2(x, z) - p).sqrMagnitude);
-                    earth = Mathf.Max(earth, Soft(Mathf.Sqrt(near) - 1.4f) * 0.75f);
-                    px[j * size + i] = new Color(earth, 0f, paved, 1f);
+                    Vector2 paint = PaintAt(x, z);
+                    px[j * size + i] = new Color(paint.x, 0f, paint.y, 1f);
                 }
             mask.SetPixels(px);
             mask.Apply();
             return mask;
+        }
+
+        // How much the ground at (x, z) is trodden earth (x) and paved (y).
+        internal static Vector2 PaintAt(float x, float z)
+        {
+            if (memorialPoints == null)
+            {
+                memorialPoints = new List<Vector2>();
+                for (int i = 0; i <= 40; i++) memorialPoints.Add(MemorialAt(i / 40f));
+            }
+            float paved = Mathf.Max(Soft(Box(x, z, 0f, (ValhallaArrival.z + HallStart) * 0.5f, 2.6f, (HallStart - ValhallaArrival.z) * 0.5f + 1f)),
+                Mathf.Max(Soft(Box(x, z, 0f, ValhallaArrival.z, 5.5f, 4.5f)), Soft(Box(x, z, 0f, (HallStart + HallEnd) * 0.5f, HallHalfWidth + 2f, (HallEnd - HallStart) * 0.5f + 2f))));
+            paved = Mathf.Max(paved, Soft(new Vector2(x, z - LookoutZ).magnitude - 6.5f));
+            float earth = Soft(new Vector2(x - DuelRing.x, z - DuelRing.y).magnitude - (DuelRadius - 0.5f)) * 0.9f;
+            earth = Mathf.Max(earth, Soft(new Vector2(x - Feast.x, z - Feast.y).magnitude - 9f) * 0.7f);
+            float near = float.MaxValue;
+            foreach (Vector2 p in memorialPoints) near = Mathf.Min(near, (new Vector2(x, z) - p).sqrMagnitude);
+            earth = Mathf.Max(earth, Soft(Mathf.Sqrt(near) - 1.4f) * 0.75f);
+            return new Vector2(earth, paved);
+        }
+
+        static List<Vector2> memorialPoints;
+
+        // The height of the rock's ground at (x, z), as its mesh has it: the meadow, and the lip rounding down
+        // at the rim.
+        internal static float SkyGround(float x, float z)
+        {
+            float r = Mathf.Sqrt(x * x + z * z);
+            float t = r / Mathf.Max(1f, RockEdge(Mathf.Atan2(z, x)));
+            float lip = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.9f) / 0.1f));
+            return RockMeadow(x, z) - lip * 1.6f;
+        }
+
+        // True where golden plains grass drifts through the meadow (as MeadowColour paints it).
+        internal static float GoldenAt(float x, float z)
+        {
+            float n = Mathf.PerlinNoise(x * 0.025f + 71f, z * 0.025f + 13f) * 0.7f + Mathf.PerlinNoise(x * 0.08f + 5f, z * 0.08f + 91f) * 0.3f;
+            return Mathf.SmoothStep(0f, 1f, (n - 0.45f) / 0.25f);
         }
 
         // 1 inside (distance under 0), fading to 0 a metre out.
@@ -584,6 +618,74 @@ namespace IslandsOfValheim
                 Transform t = transform.Find(name);
                 if (t != null) clouds.Add(t);
             }
+            Grass();
+        }
+
+        // ---- grass ----
+
+        // The game only grows its grass and wild flowers on its own terrain (ClutterSystem), never on a mesh
+        // like the rock's. So the rock gets them the same way, with the game's own grass: for each kind the
+        // meadows have (and, where golden drifts run, the plains'), patches of instanced blades and flowers as
+        // thick as the game sets them, in the same patchy spread, off the paved and trodden ground and the
+        // level places where things stand. Each client grows its own; nothing of it is saved.
+        void Grass()
+        {
+            ClutterSystem system = ClutterSystem.instance;
+            if (system == null || system.m_clutter == null) return;
+            float patch = Mathf.Max(4f, system.m_grassPatchSize);
+            int kinds = 0, blades = 0;
+            foreach (ClutterSystem.Clutter c in system.m_clutter)
+            {
+                if (c == null || !c.m_enabled || !c.m_instanced || c.m_prefab == null || !c.m_onUncleared) continue;
+                bool meadow = (c.m_biome & Heightmap.Biome.Meadows) != 0, plains = (c.m_biome & Heightmap.Biome.Plains) != 0;
+                if (!meadow && !plains) continue;
+                if (c.m_prefab.GetComponent<InstanceRenderer>() == null) continue;
+                kinds++;
+                int perPatch = Mathf.Max(1, Mathf.RoundToInt(c.m_amount * Mathf.Max(0.25f, system.m_amountScale)));
+                Random.State saved = Random.state;
+                Random.InitState(c.m_name.GetStableHashCode());
+                for (float px = -96f; px < 96f; px += patch)
+                    for (float pz = -96f; pz < 96f; pz += patch)
+                    {
+                        Vector3 centre = transform.TransformPoint(new Vector3(px + patch * 0.5f, 0f, pz + patch * 0.5f));
+                        InstanceRenderer drawn = null;
+                        for (int i = 0; i < perPatch; i++)
+                        {
+                            float x = Random.Range(px, px + patch), z = Random.Range(pz, pz + patch);
+                            float yaw = Random.Range(0f, 360f), size = Random.Range(c.m_scaleMin, c.m_scaleMax);
+                            if (!Grows(c, x, z, meadow, plains)) continue;
+                            if (drawn == null)
+                            {
+                                GameObject go = Object.Instantiate(c.m_prefab, centre, Quaternion.identity, transform);
+                                drawn = go.GetComponent<InstanceRenderer>();
+                                if (drawn.m_lodMaxDistance > system.m_distance - patch * 0.5f) drawn.m_lodMaxDistance = system.m_distance - patch * 0.5f;
+                            }
+                            drawn.AddInstance(transform.TransformPoint(new Vector3(x, IsletBuilder.SkyGround(x, z), z)), Quaternion.Euler(0f, yaw, 0f), size);
+                            blades++;
+                        }
+                    }
+                Random.state = saved;
+            }
+            Plugin.Debug("Valhalla: " + blades + " blades and flowers of " + kinds + " of the game's grass kinds on the rock");
+        }
+
+        // Whether a kind of grass grows at (x, z) on the rock: on it and off its edge, not where it's paved,
+        // trodden or levelled for something to stand, in its biome (golden drifts are the plains'), and in the
+        // game's own patchy spread for it.
+        static bool Grows(ClutterSystem.Clutter c, float x, float z, bool meadow, bool plains)
+        {
+            float r = Mathf.Sqrt(x * x + z * z);
+            if (r > IsletBuilder.RockEdgeAt(x, z) - 1.5f) return false;
+            Vector2 paint = IsletBuilder.PaintAt(x, z);
+            if (paint.x > 0.3f || paint.y > 0.2f || IsletBuilder.ValhallaPads(x, z) > 0.6f) return false;
+            bool golden = IsletBuilder.GoldenAt(x, z) > 0.5f;
+            if (golden ? !plains : !meadow) return false;
+            if (c.m_fractalScale > 0f)
+            {
+                float f = Utils.Fbm(new Vector3(x, 0f, z) * 0.01f * c.m_fractalScale + new Vector3(c.m_fractalOffset, 0f, 0f), 3, 1.6f, 0.7f);
+                if (f < c.m_fractalTresholdMin || f > c.m_fractalTresholdMax) return false;
+            }
+            return true;
         }
 
         // ---- the World-tree ----

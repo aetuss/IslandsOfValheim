@@ -72,7 +72,14 @@ namespace IslandsOfValheim
         }
 
         // The meadow's height there (0 on the level places).
-        static float G(float x, float z) { return RockMeadow(x, z); }
+        static float G(float x, float z) { return SkyGround(x, z); }
+
+        // A plant, tree or stone of the game's set on the ground as the game sets them: by its own origin (its
+        // bounds reach below, into the ground, where its roots and far-off looks are).
+        static GameObject SkyPlant(string name, float x, float z, float yaw, float sink)
+        {
+            return SkyPivot(name, new Vector3(x, G(x, z) - sink, z), Quaternion.Euler(0f, yaw, 0f));
+        }
 
         static bool OnRock(float x, float z, float margin)
         {
@@ -399,22 +406,22 @@ namespace IslandsOfValheim
             {
                 Vector2 t = trees[i];
                 if (!OnRock(t.x, t.y, 12f)) continue;
-                SkyProp(kinds[i % kinds.Length], new Vector3(t.x, G(t.x, t.y) - 1f, t.y), new Vector3(0f, i * 67f, 0f));
+                SkyPlant(kinds[i % kinds.Length], t.x, t.y, i * 67f, 0.1f);
             }
             // flowers in drifts, west and round the feast
-            for (int i = 0; i < 90; i++)
+            for (int i = 0; i < 160; i++)
             {
                 float a = i * 2.39996f; // golden angle: spread without rows
                 float r = 12f + (i % 13) * 4f + 3f * Noise(i * 0.7f, 2f);
                 float x = -36f + Mathf.Cos(a) * r * 0.9f, z = 2f + Mathf.Sin(a) * r;
                 if (ValhallaPads(x, z) > 0.2f || !OnRock(x, z, 6f)) continue;
-                SkyProp("Pickable_Dandelion", new Vector3(x, G(x, z), z), new Vector3(0f, i * 41f, 0f));
+                SkyPlant("Pickable_Dandelion", x, z, i * 41f, 0f);
             }
             // over the whole meadow, in drifts, off the level places and the paths: bushes, wild flax,
             // thistles, mushrooms, dandelions and a few half-buried stones
             string[] bushes = { "Bush01", "Bush02_en", "shrub_2" };
-            for (float gx = -90f; gx <= 90f; gx += 7f)
-                for (float gz = -90f; gz <= 90f; gz += 7f)
+            for (float gx = -90f; gx <= 90f; gx += 6f)
+                for (float gz = -90f; gz <= 90f; gz += 6f)
                 {
                     float x = gx + 3f * Noise(gx * 0.31f, gz * 0.17f), z = gz + 3f * Noise(gz * 0.23f, gx * 0.29f);
                     if (!OnRock(x, z, 5f) || ValhallaPads(x, z) > 0.1f || NearMemorial(x, z, 3f)) continue;
@@ -422,21 +429,21 @@ namespace IslandsOfValheim
                     float jitter = Mathf.PerlinNoise(x * 0.9f + 11f, z * 0.9f + 3f);
                     if (jitter < 0.35f) continue; // the gaps between drifts
                     string name;
-                    float sink = 0.05f;
-                    if (pick < 0.32f) { name = bushes[(int)(jitter * 10f) % bushes.Length]; sink = 0.2f; }
+                    float sink = 0f;
+                    if (pick < 0.32f) { name = bushes[(int)(jitter * 10f) % bushes.Length]; sink = 0.1f; }
                     else if (pick < 0.5f) name = "Pickable_Flax_Wild";
                     else if (pick < 0.58f) name = "Pickable_Thistle";
-                    else if (pick < 0.65f) { name = jitter > 0.6f ? "Rock_4" : "Rock_7_meadows"; sink = 0.5f; }
+                    else if (pick < 0.65f) { name = jitter > 0.6f ? "Rock_4" : "Rock_7_meadows"; sink = 0.15f; }
                     else if (pick < 0.72f) name = "Pickable_Mushroom";
                     else name = "Pickable_Dandelion";
-                    SkyProp(name, new Vector3(x, G(x, z) - sink, z), new Vector3(0f, Mathf.Repeat(x * 37f + z * 11f, 360f), 0f));
+                    SkyPlant(name, x, z, Mathf.Repeat(x * 37f + z * 11f, 360f), sink);
                     // flax and dandelions grow in little clumps
                     if (name == "Pickable_Flax_Wild" || name == "Pickable_Dandelion")
                         for (int k = 0; k < 3; k++)
                         {
                             float cx = x + 1.3f * Mathf.Cos(k * 2.1f + jitter * 6f), cz = z + 1.3f * Mathf.Sin(k * 2.1f + jitter * 6f);
                             if (ValhallaPads(cx, cz) > 0.1f) continue;
-                            SkyProp(name, new Vector3(cx, G(cx, cz) - sink, cz), new Vector3(0f, k * 97f, 0f));
+                            SkyPlant(name, cx, cz, k * 97f, sink);
                         }
                 }
         }
@@ -460,24 +467,23 @@ namespace IslandsOfValheim
         static void Lookout()
         {
             float z0 = LookoutZ;
-            float top = Block(new Vector3(0f, 0f, z0), 10f, 0.5f, 10f);
-            top = Block(new Vector3(0f, top, z0), 7.6f, 0.5f, 7.6f);
-            top = Block(new Vector3(0f, top, z0), 5.2f, 0.5f, 5.2f);
+            float first = Block(new Vector3(0f, 0f, z0), 10f, 0.5f, 10f);
+            float second = Block(new Vector3(0f, first, z0), 7.6f, 0.5f, 7.6f);
+            float top = Block(new Vector3(0f, second, z0), 5.2f, 0.5f, 5.2f);
             SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
             foreach (float x in new[] { -2f, 2f })
             {
+                // The raven carving is a board 3.2 m long, its mount at its origin, the bird 2.76 m along it (its
+                // own z) on top. Here the bird stands right over the post by the throne, the board running back
+                // to a second post at its mount end: a perch.
+                const float birdAlong = 2.76f, boardUnder = 0.24f;
                 GameObject post = Pillar(new Vector3(x, top, z0 - 2f), 5f);
                 if (post != null)
                 {
-                    // the carving's board runs front to back, so from the throne the raven sits right on its post
-                    GameObject raven = SkyProp("darkwood_raven", Vector3.zero, Vector3.zero);
-                    if (raven != null)
-                    {
-                        raven.transform.localScale *= 1.4f;
-                        Vector3 on = new Vector3(x, SkyBounds(post).max.y - 0.05f, z0 - 2f);
-                        AlongZ(raven, on);
-                        Put(raven, on, false);
-                    }
+                    float postTop = SkyBounds(post).max.y;
+                    // (4.76 m back from the middle: past the top tier and the second, on the first)
+                    Pillar(new Vector3(x, first, z0 - 2f - birdAlong), postTop - first);
+                    SkyPivot("darkwood_raven", new Vector3(x, postTop + boardUnder, z0 - 2f - birdAlong), Quaternion.identity);
                 }
                 SkyProp("piece_brazierfloor01", new Vector3(x, top, z0 + 2f), Vector3.zero);
             }
