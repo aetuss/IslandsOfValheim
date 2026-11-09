@@ -24,7 +24,7 @@ namespace IslandsOfValheim
         static readonly Vector2 DuelRing = new Vector2(40f, 6f);
         const float DuelRadius = 10f;
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
-        static readonly Vector2 Yard = new Vector2(52f, -16f);
+        static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
         static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
 
         // 1 where the ground is level (the hall, the way, the ring, the yard, the feast, the lookout), fading
@@ -459,6 +459,16 @@ namespace IslandsOfValheim
                     Lamp(ends ? "piece_brazierfloor01" : "piece_groundtorch", "piece_brazierfloor01", new Vector3(side * 3.2f, 0f, z));
                     if (z + 4f >= HallStart - 4f) continue;
                     Planted(new Vector3(side * 4.6f, 0f, z + 4f), new Vector3(-side, 0f, 0f), n++);
+                }
+            // and beyond them an avenue of golden birches, one by each torch, their crowns over the way; none by
+            // the hall's front (their crowns would reach its roof) or on the memorial path
+            int k = 0;
+            for (float z = ValhallaArrival.z + 6f; z <= HallStart - 14f; z += 8f)
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    float x = side * 7.5f;
+                    if (NearMemorial(x, z, 3f)) continue;
+                    SkyPlant(k++ % 3 == 1 ? "Birch2_aut" : "Birch1_aut", x, z, k * 71f, 0.1f);
                 }
         }
 
