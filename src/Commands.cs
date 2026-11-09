@@ -126,7 +126,9 @@ namespace IslandsOfValheim
                     // Work in progress: Valhalla's bare rock, high over the sea, to lay out its draft on.
                     if (args.Length > 1 && string.Equals(args[1], "draft_valhalla", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        TerrainIsletTest.Goto(args.Context, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1.5f, 150f, 900f, 0f);
+                        // you come out where Odin's light will set you down, at the foot of the way
+                        TerrainIsletTest.Goto(args.Context, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1f, 150f, 900f, 0f,
+                            IsletBuilder.ValhallaArrival.x, IsletBuilder.ValhallaArrival.z);
                         return;
                     }
                     // Work in progress: one small islet design on its own, unturned (iov_goto small_meadows_2).

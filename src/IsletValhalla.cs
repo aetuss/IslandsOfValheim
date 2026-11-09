@@ -43,6 +43,7 @@ namespace IslandsOfValheim
 
             BuildFloatingRock(sky.transform);
             UnderRocks();
+            BuildValhallaLayout();
             ValhallaClouds.Build(sky.transform);
             ValhallaClouds.Motes(sky.transform);
             sky.AddComponent<ValhallaSky>();
@@ -76,8 +77,9 @@ namespace IslandsOfValheim
         // Its meadow: rolling gently, a metre or two.
         internal static float RockMeadow(float x, float z)
         {
-            return 1.1f * Noise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * Noise(x * 0.05f + 15f, z * 0.05f + 15f)
+            float rolling = 1.1f * Noise(x * 0.018f + 5f, z * 0.018f + 5f) + 0.45f * Noise(x * 0.05f + 15f, z * 0.05f + 15f)
                 + 0.08f * Noise(x * 0.4f + 25f, z * 0.4f + 25f);
+            return rolling * (1f - ValhallaPads(x, z)); // level where the hall, the way and the ring stand
         }
 
         // One mesh, two parts: the meadow on top (the game's terrain look: grass, and rock where it's steep),
@@ -119,7 +121,8 @@ namespace IslandsOfValheim
                     float c = Mathf.Cos(a), s = Mathf.Sin(a);
                     float edge = RockEdge(a);
                     // a little overhang under the lip, then narrowing faster and faster
-                    float bulge = 1f + 0.05f * Mathf.Sin(Mathf.PI * Mathf.Clamp01(d * 5f));
+                    // tucked in under the lip at once, so the rim's rocks (not this) are what's seen from the side
+                    float bulge = 0.92f;
                     float narrow = Mathf.Pow(1f - d, 0.75f);
                     float jag = 1f + 0.16f * Noise(c * 2.2f + d * 3f + 51f, s * 2.2f + d * 3f + 51f) * Mathf.Clamp01(d * 4f)
                         + 0.07f * Noise(c * 7f + d * 9f + 71f, s * 7f + d * 9f + 71f);
@@ -718,7 +721,7 @@ namespace IslandsOfValheim
         // Stepped off the edge: back onto the rock, near where Odin's light sets you down, unhurt.
         void Catch(Player player)
         {
-            Vector3 back = transform.position + new Vector3(0f, 3f, 0f);
+            Vector3 back = transform.TransformPoint(IsletBuilder.ValhallaArrival + new Vector3(0f, 3f, 0f));
             player.TeleportTo(back, player.transform.rotation, false);
             Traverse.Create(player).Field("m_maxAirAltitude").SetValue(back.y);
             Plugin.Debug("Valhalla: caught a fall, set back on the rock");
