@@ -58,6 +58,7 @@ namespace IslandsOfValheim
         static void BuildValhallaLayout()
         {
             int before = built;
+            meals = 0;
             Hall();
             Way();
             Ring();
@@ -91,7 +92,7 @@ namespace IslandsOfValheim
         static void Hall()
         {
             // A floor of black marble, 4 m tiles; where its front edge really is, measured, for the steps.
-            float floorTop = 0f, floorFront = HallStart;
+            float floorTop = 0f, floorFront = HallStart, floorBack = HallEnd;
             for (float x = -HallHalfWidth + 2f; x < HallHalfWidth; x += 4f)
                 for (float z = HallStart + 2f; z < HallEnd; z += 4f)
                 {
@@ -103,6 +104,7 @@ namespace IslandsOfValheim
                     Bounds tb = SkyBounds(tile);
                     floorTop = Mathf.Max(floorTop, tb.max.y);
                     floorFront = Mathf.Min(floorFront, tb.min.z);
+                    floorBack = Mathf.Max(floorBack, tb.max.z);
                 }
             // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out.
             int n = 0;
@@ -136,12 +138,15 @@ namespace IslandsOfValheim
                 for (float z = HallStart + 8f; z <= HallEnd - 10f; z += 6f)
                 {
                     Vector3 table = new Vector3(side * 4.4f, floorTop, z);
-                    AlongZ(SkyProp("piece_table_oak", table, Vector3.zero), table);
+                    GameObject t = SkyProp("piece_table_oak", table, Vector3.zero);
+                    AlongZ(t, table);
                     foreach (float off in new[] { -1.4f, 1.4f })
                         SkySeat("piece_bench01", new Vector3(side * 4.4f + off, floorTop, z), new Vector3(-Mathf.Sign(off), 0f, 0f));
+                    Laid(t, meals++);
                 }
+            // on each fire an iron spit, its meat roasting
             foreach (float z in new[] { HallStart + 9f, HallStart + 17f, HallStart + 25f })
-                SkyProp("hearth", new Vector3(0f, floorTop, z), Vector3.zero);
+                Spit(SkyProp("hearth", new Vector3(0f, floorTop, z), Vector3.zero), floorTop, meals++);
             // Braziers hung on chains from the beams, between the pillars (on the floor if the hanging kind's missing).
             foreach (float x in new[] { -HallHalfWidth, HallHalfWidth })
                 for (float z = HallStart + 2f; z <= HallEnd - 6f; z += 8f)
@@ -150,6 +155,8 @@ namespace IslandsOfValheim
                     else SkyProp("piece_brazierfloor01", new Vector3(x - Mathf.Sign(x), floorTop, z), Vector3.zero);
                 }
             Steps(floorTop, floorFront);
+            // and out at the back, across the hall's width between the corner pillars
+            Stair(0f, 0f, floorTop, floorBack, 1f, HallHalfWidth * 2f - 1f);
             // The throne at the far end, on a dais, its seat looking south down the hall to the door, a tall
             // torch either side of it.
             float dais = Block(new Vector3(0f, floorTop, HallEnd - 3f), 6f, 0.6f, 4f);
@@ -161,16 +168,24 @@ namespace IslandsOfValheim
         // Steps of black marble from the ground up to the hall's floor, in front of its measured edge.
         static void Steps(float top, float front)
         {
-            if (top < 0.15f) return;
-            int count = Mathf.Max(2, Mathf.CeilToInt(top / 0.25f));
+            Stair(0f, 0f, top, front, -1f, 7f);
+        }
+
+        // Steps of black marble up from below (at height from) to a raised edge at z edge (and height to),
+        // running out from it the way out (-1: toward the south, +1: toward the north), width wide, middle at x.
+        static void Stair(float x, float from, float to, float edge, float way, float width)
+        {
+            float rise = to - from;
+            if (rise < 0.15f) return;
+            int count = Mathf.Max(2, Mathf.CeilToInt(rise / 0.25f));
             const float depth = 0.45f;
             for (int i = 1; i <= count; i++)
             {
-                float height = top * i / (count + 1f);
-                float z = front - depth * (count - i) - depth * 0.5f;
-                Block(new Vector3(0f, 0f, z), 7f, height, depth);
+                float height = rise * i / (count + 1f);
+                float z = edge + way * (depth * (count - i) + depth * 0.5f);
+                Block(new Vector3(x, from, z), width, height, depth);
             }
-            Plugin.Debug("Valhalla: " + count + " steps up to the hall floor at " + top.ToString("F2") + " m, its edge at z " + front.ToString("F2"));
+            Plugin.Debug("Valhalla: " + count + " steps from " + from.ToString("F2") + " up to " + to.ToString("F2") + " m at z " + edge.ToString("F2"));
         }
 
         // A solid block of black marble, sized to fit (any of the game's blocks, stretched): its foot at
@@ -332,6 +347,90 @@ namespace IslandsOfValheim
             Put(go, at, false);
         }
 
+        // ---- the feast: food and drink ----
+
+        static int meals;
+        static readonly string[] FeastNames = { "FeastMeadows", "FeastBlackforest", "FeastOceans", "FeastMountains", "FeastPlains", "FeastSwamps", "FeastMistlands", "FeastAshlands" };
+        static readonly string[] CookedNames = { "CookedMeat", "CookedDeerMeat", "CookedLoxMeat", "CookedWolfMeat", "CookedMooseMeat", "CookedBjornMeat", "CookedChickenMeat", "CookedHareMeat" };
+        static readonly string[] TankardNames = { "Tankard", "TankardAnniversary" };
+
+        // A table laid: one of the game's feasts in the middle (as full as it comes), a tankard at each end.
+        static void Laid(GameObject table, int k)
+        {
+            if (table == null) return;
+            Bounds tb = SkyBounds(table);
+            Vector3 middle = new Vector3(tb.center.x, tb.max.y, tb.center.z);
+            string feast = FeastNames[k % FeastNames.Length];
+            if (PrefabManager.Instance.GetPrefab(feast) == null) feast = FeastNames[0];
+            GameObject dish = SkyProp(feast, middle, Vector3.zero, false, FullFeast);
+            AlongZ(dish, middle);
+            float along = Mathf.Max(0.3f, tb.size.z * 0.5f - 0.35f), across = Mathf.Max(0f, tb.size.x * 0.5f - 0.25f);
+            int i = 0;
+            foreach (float dz in new[] { -along, along })
+            {
+                float dx = (i++ % 2 == 0 ? across : -across);
+                Vector3 at = new Vector3(tb.center.x + dx, tb.max.y, tb.center.z + dz);
+                // standing: its long side up, the end away from where it's held at the top
+                SkyItem(TankardNames[(k + i) % TankardNames.Length], at, Quaternion.Euler(0f, k * 47f + i * 90f, 0f) * Vector3.forward, Vector3.up, false);
+            }
+        }
+
+        // A feast as it's first set down: every part of it showing that shows when it's full.
+        static void FullFeast(GameObject go)
+        {
+            global::Feast feast = go.GetComponent<global::Feast>();
+            if (feast == null) { Plugin.Debug("Valhalla: " + go.name + " has no feast in it"); return; }
+            System.Collections.IList parts = HarmonyLib.Traverse.Create(feast).Field("m_feastParts").GetValue() as System.Collections.IList;
+            if (parts == null) return;
+            foreach (object part in parts)
+            {
+                HarmonyLib.Traverse t = HarmonyLib.Traverse.Create(part);
+                GameObject above = t.Field("m_onAboveEquals").GetValue<GameObject>();
+                GameObject below = t.Field("m_onBelow").GetValue<GameObject>();
+                if (above != null) above.SetActive(true);
+                if (below != null) below.SetActive(false);
+            }
+        }
+
+        // An iron spit over a hearth, along its length, with meat on every place it has for some, as the game
+        // shows meat cooking on one (the cooked meat's own look for it, on each slot).
+        static void Spit(GameObject hearth, float floor, int k)
+        {
+            if (hearth == null) return;
+            Bounds hb = SkyBounds(hearth);
+            Vector3 at = new Vector3(hb.center.x, floor, hb.center.z);
+            GameObject spit = SkyProp("piece_cookingstation_iron", at, Vector3.zero, false, go => Meat(go, k));
+            if (spit == null) return;
+            Bounds sb = SkyBounds(spit);
+            if ((sb.size.x > sb.size.z) != (hb.size.x > hb.size.z))
+            {
+                spit.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * spit.transform.localRotation;
+                Put(spit, at, false);
+            }
+        }
+
+        static void Meat(GameObject station, int k)
+        {
+            CookingStation cooking = station.GetComponent<CookingStation>();
+            if (cooking == null || cooking.m_slots == null) { Plugin.Debug("Valhalla: " + station.name + " has no places for meat"); return; }
+            int shown = 0;
+            for (int i = 0; i < cooking.m_slots.Length; i++)
+            {
+                Transform slot = cooking.m_slots[i];
+                GameObject item = PrefabManager.Instance.GetPrefab(CookedNames[(k + i) % CookedNames.Length]);
+                if (slot == null || item == null) continue;
+                Transform look = item.transform.Find("attach_cook");
+                if (look == null) look = item.transform.Find("attach");
+                if (look == null) continue;
+                GameObject meat = Object.Instantiate(look.gameObject, slot, false);
+                meat.transform.localPosition = Vector3.zero;
+                meat.transform.localRotation = Quaternion.identity;
+                meat.SetActive(true);
+                shown++;
+            }
+            Plugin.Debug("Valhalla: " + shown + " of " + cooking.m_slots.Length + " places on " + station.name + " with meat");
+        }
+
         // ---- the way ----
 
         static void Way()
@@ -369,7 +468,11 @@ namespace IslandsOfValheim
             Vector3 leaning = (face + Vector3.up * 0.26f).normalized; // about 15 degrees back
             Vector3 shieldAt = at + new Vector3(0f, -0.05f, 0f);
             // its top resting on the shaft: roughly by their solid boxes first, then exactly by their drawn shapes
-            GameObject shield = SkyItem(ShieldNames[(n * 3 + 1) % ShieldNames.Length], shieldAt, leaning, Vector3.up, false);
+            // only shields whose shape can be read: the others are curved, and from their size alone their top
+            // can't be told to within the 10-15 cm that shows as a gap
+            string shieldName = ShieldNames[(n * 3 + 1) % ShieldNames.Length];
+            for (int i = 0; i < ShieldNames.Length && !Readable(shieldName); i++) shieldName = ShieldNames[(n * 3 + 2 + i) % ShieldNames.Length];
+            GameObject shield = SkyItem(shieldName, shieldAt, leaning, Vector3.up, false);
             PutAgainst(shield, shieldAt, -face, shaft + face.x * 0.04f);
             if (shield != null && spear != null) RestOn(shield, spear, -face);
         }
@@ -428,6 +531,27 @@ namespace IslandsOfValheim
             if (shift.magnitude > 0.6f) { checks.Add(leaning.name + ": would have to move " + shift.magnitude.ToString("F2") + " m to rest on " + support.name + " (by " + how + "); left by its box"); return; }
             leaning.transform.localPosition += shift;
             Plugin.Debug("Valhalla: " + leaning.name + " rests on " + support.name + " at " + tip.y.ToString("F2") + " m up, by " + how + " (moved " + shift.ToString("F3") + ")");
+        }
+
+        // Whether every mesh of a thing can be read (the exact way of resting it needs all its points).
+        static readonly Dictionary<string, bool> readable = new Dictionary<string, bool>();
+        static bool Readable(string name)
+        {
+            bool all;
+            if (readable.TryGetValue(name, out all)) return all;
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            int count = 0;
+            all = prefab != null;
+            if (prefab != null)
+                foreach (MeshFilter f in prefab.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    if (f.sharedMesh == null || !ActiveBelow(f.transform, prefab.transform)) continue;
+                    count++;
+                    if (!f.sharedMesh.isReadable) all = false;
+                }
+            all = all && count > 0;
+            readable[name] = all;
+            return all;
         }
 
         // An item's far end (as SkyItem stood it up): the middle of its top edge, on the side toward toward.
@@ -597,6 +721,10 @@ namespace IslandsOfValheim
             float first = Block(new Vector3(0f, 0f, z0), 10f, 0.5f, 10f);
             float second = Block(new Vector3(0f, first, z0), 7.6f, 0.5f, 7.6f);
             float top = Block(new Vector3(0f, second, z0), 5.2f, 0.5f, 5.2f);
+            // steps up each tier on the south, the hall's side (between the ravens' posts)
+            Stair(0f, 0f, first, z0 - 5f, -1f, 3f);
+            Stair(0f, first, second, z0 - 3.8f, -1f, 3f);
+            Stair(0f, second, top, z0 - 2.6f, -1f, 3f);
             SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
             foreach (float x in new[] { -2f, 2f })
             {
@@ -624,9 +752,11 @@ namespace IslandsOfValheim
                 for (float z = Feast.y - 6f; z <= Feast.y + 6.01f; z += 6f)
                 {
                     Vector3 table = new Vector3(x, 0f, z);
-                    AlongZ(SkyProp("piece_table_oak", table, Vector3.zero), table);
+                    GameObject t = SkyProp("piece_table_oak", table, Vector3.zero);
+                    AlongZ(t, table);
                     foreach (float off in new[] { -1.4f, 1.4f })
                         SkySeat("piece_bench01", new Vector3(x + off, 0f, z), new Vector3(-Mathf.Sign(off), 0f, 0f));
+                    Laid(t, meals++);
                 }
             SkyProp("fire_pit_iron", new Vector3(Feast.x, 0f, Feast.y), Vector3.zero);
             // torches round the tables
@@ -935,7 +1065,8 @@ namespace IslandsOfValheim
 
         // A still copy of one of the game's things in Valhalla: its flames lit, its scripts out, turned, then put
         // with the middle of its footprint at (at.x, at.z) and its foot (or, byTop, its top) at at.y.
-        static GameObject SkyProp(string name, Vector3 at, Vector3 euler, bool byTop = false)
+        // (first, before its workings are taken out, whatever it needs set up from them)
+        static GameObject SkyProp(string name, Vector3 at, Vector3 euler, bool byTop = false, System.Action<GameObject> first = null)
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             if (prefab == null) { missing++; Plugin.Debug("Valhalla: no " + name); return null; }
@@ -943,6 +1074,7 @@ namespace IslandsOfValheim
             GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
             go.transform.localRotation = Quaternion.Euler(euler);
+            if (first != null) first(go);
             LightFires(go);
             Strip(go);
             // An item (a shield) as decoration: without the glint the game puts on things lying to be picked up.
