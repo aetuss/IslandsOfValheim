@@ -188,7 +188,7 @@ namespace IslandsOfValheim
             // ring: how many, how far in (part of the edge), how big, how deep their tops hang
             float[][] rings =
             {
-                new[] { 46f, 0.97f, 13f, -1.1f }, // right under the lip, sticking out: the rock's face from the side, no bare band
+                new[] { 46f, 0.95f, 10.5f, -1.1f }, // right under the lip, sticking out: the rock's face from the side, no bare band
                 new[] { 22f, 0.75f, 22f, 12f },
                 new[] { 12f, 0.5f, 32f, 30f },
                 new[] { 5f, 0.2f, 42f, 58f },

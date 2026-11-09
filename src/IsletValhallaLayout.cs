@@ -21,7 +21,7 @@ namespace IslandsOfValheim
     static partial class IsletBuilder
     {
         internal static readonly Vector3 ValhallaArrival = new Vector3(0f, 0f, -64f);
-        const float HallHalfWidth = 8f, HallStart = 4f, HallEnd = 40f, PillarHeight = 6f;
+        const float HallHalfWidth = 8f, HallStart = 4f, HallEnd = 40f, PillarHeight = 6f, FloorRise = 0.6f;
         static readonly Vector2 DuelRing = new Vector2(40f, 6f);
         const float DuelRadius = 10f;
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
@@ -90,26 +90,31 @@ namespace IslandsOfValheim
                 {
                     GameObject tile = SkyProp("blackmarble_floor_large", new Vector3(x, 0f, z), Vector3.zero);
                     if (tile == null) continue;
+                    // the tiles are thick blocks: most of each sunk, so the floor stands a little over the meadow
+                    float thick = SkyBounds(tile).size.y;
+                    if (thick > FloorRise) Put(tile, new Vector3(x, FloorRise - thick, z), false);
                     Bounds tb = SkyBounds(tile);
                     floorTop = Mathf.Max(floorTop, tb.max.y);
                     floorFront = Mathf.Min(floorFront, tb.min.z);
                 }
-            // Pillars along both sides, every 4 m.
+            // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out.
+            int n = 0;
             for (float z = HallStart; z <= HallEnd + 0.01f; z += 4f)
                 foreach (float side in new[] { -1f, 1f })
-                    Pillar(new Vector3(side * HallHalfWidth, floorTop, z), PillarHeight);
+                {
+                    GameObject pillar = Pillar(new Vector3(side * HallHalfWidth, floorTop, z), PillarHeight);
+                    if (pillar == null) continue;
+                    Bounds pb = SkyBounds(pillar);
+                    Vector3 at = new Vector3(side * (HallHalfWidth + 0.6f), floorTop + 2.2f, z);
+                    PutAgainst(SkyItem(ShieldNames[(n++ * 5 + 3) % ShieldNames.Length], at, new Vector3(side, 0f, 0f), Vector3.up, false), at,
+                        new Vector3(-side, 0f, 0f), side > 0f ? pb.max.x : pb.min.x);
+                }
             float wallTop = floorTop + PillarHeight;
             // Beams along the tops of the pillars.
             for (float z = HallStart + 2f; z < HallEnd; z += 4f)
                 foreach (float side in new[] { -1f, 1f })
                     AlongZ(SkyProp("darkwood_beam4x4", new Vector3(side * HallHalfWidth, wallTop, z), Vector3.zero), new Vector3(side * HallHalfWidth, wallTop, z));
             Roof(wallTop + 0.3f);
-            // Shields hung all along the outside of the beams, facing out.
-            int n = 0;
-            for (float z = HallStart + 1f; z < HallEnd; z += 2f)
-                foreach (float side in new[] { -1f, 1f })
-                    SkyItem(ShieldNames[(n++ * 5 + 3) % ShieldNames.Length], new Vector3(side * (HallHalfWidth + 0.5f), wallTop - 0.1f, z),
-                        new Vector3(side, 0f, 0f), Vector3.up, true);
             // The feast: two long tables, their benches facing them, and down the middle a long fire.
             foreach (float side in new[] { -1f, 1f })
                 for (float z = HallStart + 8f; z <= HallEnd - 10f; z += 6f)
@@ -187,19 +192,21 @@ namespace IslandsOfValheim
             GameObject capProbe = SkyProp("darkwood_roof_top_45", Vector3.zero, new Vector3(0f, yawL, 0f));
             float cap = 0f;
             if (capProbe != null) { cap = SkyBounds(capProbe).size.x; Object.DestroyImmediate(capProbe); built--; }
-            float across = pb.size.x, up = pb.size.y, along = pb.size.z;
+            // The game fits these on its 2 m grid; what they measure past that is the lip where one overlaps the next.
+            float across = Grid(pb.size.x), up = Grid(pb.size.y), along = Grid(pb.size.z);
+            float capGrid = cap > 0f ? Grid(cap) : 0f;
             Plugin.Debug("Valhalla: roof shingle runs downhill along " + down.ToString("F2") + " in its own space; turned " + yawL.ToString("F0") + "/" + yawR.ToString("F0") +
                 "; it spans " + across.ToString("F2") + " across, " + up.ToString("F2") + " up, " + along.ToString("F2") + " along; the cap " + cap.ToString("F2"));
             if (across < 0.2f || up < 0.2f || along < 0.2f) return;
             int rows = Mathf.Max(1, Mathf.RoundToInt(HallHalfWidth / across));
-            float half = rows * across + cap * 0.5f;
+            float half = rows * across + capGrid * 0.5f;
             for (int k = 0; k < rows; k++)
                 for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
                     foreach (float side in new[] { -1f, 1f })
                         SkyProp("darkwood_roof_45", new Vector3(side * (half - across * (k + 0.5f)), eave + up * k, z), new Vector3(0f, side < 0f ? yawL : yawR, 0f));
             if (cap <= 0f) return;
             for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
-                SkyProp("darkwood_roof_top_45", new Vector3(0f, eave + up * rows - 0.05f, z), new Vector3(0f, yawL, 0f));
+                SkyProp("darkwood_roof_top_45", new Vector3(0f, eave + up * rows - 0.4f, z), new Vector3(0f, yawL, 0f));
         }
 
         // Turned to lie along the hall (z) if it came out lying across it, and put back in place.
@@ -241,9 +248,14 @@ namespace IslandsOfValheim
         // A spear stuck upright in the ground and a shield leaning back against it, its face looking along face.
         static void Planted(Vector3 at, Vector3 face, int n)
         {
-            SkyItem(SpearNames[n % SpearNames.Length], at + new Vector3(0f, -0.5f, 0f) - face * 0.25f, face, Vector3.up, false);
+            // (face is along x here: the way runs north)
+            Vector3 spearAt = at + new Vector3(0f, -0.5f, 0f) - face * 0.3f;
+            GameObject spear = SkyItem(SpearNames[n % SpearNames.Length], spearAt, face, Vector3.up, false, true);
+            float shaft = spear != null ? SkyBounds(spear).center.x : spearAt.x;
             Vector3 leaning = (face + Vector3.up * 0.26f).normalized; // about 15 degrees back
-            SkyItem(ShieldNames[(n * 3 + 1) % ShieldNames.Length], at + face * 0.15f + new Vector3(0f, -0.05f, 0f), leaning, Vector3.up, false);
+            Vector3 shieldAt = at + new Vector3(0f, -0.05f, 0f);
+            // its top resting on the shaft
+            PutAgainst(SkyItem(ShieldNames[(n * 3 + 1) % ShieldNames.Length], shieldAt, leaning, Vector3.up, false), shieldAt, -face, shaft + face.x * 0.04f);
         }
 
         // ---- the duel ring ----
@@ -316,12 +328,14 @@ namespace IslandsOfValheim
                 GameObject post = Pillar(new Vector3(x, top, z0 - 2f), 5f);
                 if (post != null)
                 {
+                    // the carving's board runs front to back, so from the throne the raven sits right on its post
                     GameObject raven = SkyProp("darkwood_raven", Vector3.zero, Vector3.zero);
                     if (raven != null)
                     {
-                        raven.transform.localScale *= 2.2f;
-                        raven.transform.localRotation = Quaternion.Euler(0f, x < 0f ? 20f : -20f, 0f);
-                        Put(raven, new Vector3(x, SkyBounds(post).max.y - 0.1f, z0 - 2f), false);
+                        raven.transform.localScale *= 1.4f;
+                        Vector3 on = new Vector3(x, SkyBounds(post).max.y - 0.05f, z0 - 2f);
+                        AlongZ(raven, on);
+                        Put(raven, on, false);
                     }
                 }
                 SkyProp("piece_brazierfloor01", new Vector3(x, top, z0 + 2f), Vector3.zero);
@@ -354,9 +368,14 @@ namespace IslandsOfValheim
             float floor = Block(new Vector3(Yard.x, 0f, Yard.y), 18f, 0.25f, 14f);
             // a low wall along the south side, shields leaning on it
             float wall = Block(new Vector3(Yard.x, floor, Yard.y - 6.4f), 15f, 1.1f, 0.5f);
+            float wallFront = Yard.y - 6.4f + 0.25f;
             for (int i = 0; i < 6; i++)
-                SkyItem(ShieldNames[(i * 3 + 2) % ShieldNames.Length], new Vector3(Yard.x - 6f + i * 2.4f, floor, Yard.y - 5.75f),
-                    (Vector3.forward + Vector3.up * 0.27f).normalized, Vector3.up, false);
+            {
+                Vector3 at = new Vector3(Yard.x - 6f + i * 2.4f, floor, Yard.y - 5.6f);
+                // its top resting on the wall
+                PutAgainst(SkyItem(ShieldNames[(i * 3 + 2) % ShieldNames.Length], at, (Vector3.forward + Vector3.up * 0.27f).normalized, Vector3.up, false),
+                    at, Vector3.back, wallFront);
+            }
             // dummies to fight
             for (int i = 0; i < 4; i++)
                 SkyProp(i % 2 == 0 ? "Morkhalla_Trainingdummy1" : "Morkhalla_Trainingdummy2", new Vector3(Yard.x - 6f + i * 4f, floor, Yard.y + 4f), new Vector3(0f, 180f + i * 12f, 0f));
@@ -367,10 +386,16 @@ namespace IslandsOfValheim
             foreach (float dx in new[] { -3f, 3f })
                 SkyProp("darkwood_pole", new Vector3(Yard.x + dx, floor, Yard.y - 1f), Vector3.zero);
             Vector3 beam = new Vector3(Yard.x, floor + 1.4f, Yard.y - 1f);
-            AlongX(SkyProp("darkwood_beam4x4", beam, Vector3.zero), beam);
+            GameObject beamGo = SkyProp("darkwood_beam4x4", beam, Vector3.zero);
+            AlongX(beamGo, beam);
+            float beamFront = beamGo != null ? SkyBounds(beamGo).max.z : beam.z + 0.15f;
             for (int i = 0; i < 5; i++)
-                SkyItem(SpearNames[i % SpearNames.Length], new Vector3(Yard.x - 2.4f + i * 1.2f, floor, Yard.y - 0.75f),
-                    Vector3.forward, (Vector3.up + Vector3.back * 0.12f).normalized, false);
+            {
+                Vector3 at = new Vector3(Yard.x - 2.4f + i * 1.2f, floor, Yard.y - 0.4f);
+                // head up, leaning back on the beam
+                PutAgainst(SkyItem(SpearNames[i % SpearNames.Length], at, Vector3.forward, (Vector3.up + Vector3.back * 0.12f).normalized, false, true),
+                    at, Vector3.back, beamFront);
+            }
             Plugin.Debug("Valhalla: the yard's wall top at " + wall.ToString("F2"));
         }
 
@@ -510,7 +535,7 @@ namespace IslandsOfValheim
 
         // An item (a shield, a spear) turned so its flat face looks along face and its long side, from its grip
         // to its far end, runs along up; its foot (or, byTop, its top) at at.y.
-        static GameObject SkyItem(string name, Vector3 at, Vector3 face, Vector3 up, bool byTop)
+        static GameObject SkyItem(string name, Vector3 at, Vector3 face, Vector3 up, bool byTop, bool otherEndUp = false)
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             if (prefab == null) { missing++; return null; }
@@ -522,7 +547,8 @@ namespace IslandsOfValheim
             Vector3 thinAxis = Vector3.zero, longAxis = Vector3.zero;
             thinAxis[thin] = 1f;
             // the far end is the side that reaches further from where it's held
-            longAxis[along] = Mathf.Abs(b.max[along]) >= Mathf.Abs(b.min[along]) ? 1f : -1f;
+            // (a spear is held near its head, so for it the rule comes out the other way round: otherEndUp)
+            longAxis[along] = (Mathf.Abs(b.max[along]) >= Mathf.Abs(b.min[along])) != otherEndUp ? 1f : -1f;
             Vector3 u = Vector3.ProjectOnPlane(up, face);
             if (u.sqrMagnitude < 0.001f) u = Vector3.ProjectOnPlane(Vector3.forward, face);
             Quaternion turn = Quaternion.LookRotation(face, u) * Quaternion.Inverse(Quaternion.LookRotation(thinAxis, longAxis));
@@ -573,6 +599,25 @@ namespace IslandsOfValheim
             Vector3 flat = new Vector3(n.x, 0f, n.z);
             // a sloped face's upward normal leans the way it runs down
             return flat.magnitude > 0.2f && n.y > 0.2f ? flat.normalized : Vector3.zero;
+        }
+
+        // Put so its side towards toward (one of the flat axes) just touches contact on that axis: something
+        // leaning on something else.
+        static void PutAgainst(GameObject go, Vector3 at, Vector3 toward, float contact)
+        {
+            if (go == null) return;
+            Put(go, at, false);
+            Bounds b = SkyBounds(go);
+            Vector3 p = go.transform.localPosition;
+            if (Mathf.Abs(toward.x) > 0.5f) p.x += contact - (toward.x > 0f ? b.max.x : b.min.x);
+            else p.z += contact - (toward.z > 0f ? b.max.z : b.min.z);
+            go.transform.localPosition = p;
+        }
+
+        // A size on the game's 2 m building grid (what's past it overlaps the next piece).
+        static float Grid(float size)
+        {
+            return Mathf.Max(1f, Mathf.Floor(size / 2f + 0.05f) * 2f);
         }
 
         // ---- putting things ----
