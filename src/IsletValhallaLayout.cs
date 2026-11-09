@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // Valhalla's layout (work in progress, corrected in the game together). North is +z.
     // - the way from where Odin's light sets you down, lined with braziers and the shields of the fallen, up to
     //   the long hall (open pillars, a shingle roof edged with shields, the feast, a long fire, and at its far
-    //   end the throne on a dais, turned away);
+    //   end the throne on a dais, looking down the hall at whoever comes in);
     // - behind the hall, at the north rim, Hlidskjalf, Odin's high seat, looking out over the clouds;
     // - east, the duel ring of stone columns, and by it the einherjar's yard;
     // - west, under golden birches, the Brim Folk's own feast;
@@ -147,9 +147,9 @@ namespace IslandsOfValheim
                 for (float z = HallStart + 2f; z <= HallEnd - 6f; z += 8f)
                     SkyProp("piece_brazierfloor01", new Vector3(x, floorTop, z), Vector3.zero);
             Steps(floorTop, floorFront);
-            // The throne at the far end, on a dais, its seat looking north: its back to the hall.
+            // The throne at the far end, on a dais, its seat looking south down the hall to the door.
             float dais = Block(new Vector3(0f, floorTop, HallEnd - 3f), 6f, 0.6f, 4f);
-            SkySeat("piece_throne01", new Vector3(0f, dais, HallEnd - 3f), Vector3.forward);
+            SkySeat("piece_throne01", new Vector3(0f, dais, HallEnd - 3f), Vector3.back);
         }
 
         // Steps of black marble from the ground up to the hall's floor, in front of its measured edge.
