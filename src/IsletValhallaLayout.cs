@@ -78,29 +78,58 @@ namespace IslandsOfValheim
                     string shield = ShieldNames[(n++ * 5 + 3) % ShieldNames.Length];
                     SkyProp(shield, new Vector3(side * (HallHalfWidth + 0.45f), wallTop - 0.2f, z), new Vector3(0f, side * 90f, 0f), true);
                 }
-            // The feast: two long tables with benches either side, the hearth between them.
+            // The feast: two long tables with benches either side, and down the middle a long fire of three
+            // hearths between them.
             foreach (float side in new[] { -1f, 1f })
             {
                 for (float z = HallStart + 8f; z <= HallEnd - 10f; z += 6f)
                 {
-                    Vector3 table = new Vector3(side * 3.6f, floorTop, z);
+                    Vector3 table = new Vector3(side * 4.4f, floorTop, z);
                     AlongZ(SkyProp("piece_table_oak", table, Vector3.zero), table);
                     foreach (float off in new[] { -1.4f, 1.4f })
                     {
-                        Vector3 bench = new Vector3(side * 3.6f + off, floorTop, z);
+                        Vector3 bench = new Vector3(side * 4.4f + off, floorTop, z);
                         AlongZ(SkyProp("piece_bench01", bench, Vector3.zero), bench);
                     }
                 }
             }
-            SkyProp("hearth", new Vector3(0f, floorTop, (HallStart + HallEnd) * 0.5f - 2f), Vector3.zero);
-            // Braziers in the corners.
-            foreach (float x in new[] { -HallHalfWidth + 1.5f, HallHalfWidth - 1.5f })
-                foreach (float z in new[] { HallStart + 1.5f, HallEnd - 1.5f })
+            foreach (float z in new[] { HallStart + 9f, HallStart + 17f, HallStart + 25f })
+                SkyProp("hearth", new Vector3(0f, floorTop, z), Vector3.zero);
+            // Braziers along the walls, inside.
+            foreach (float x in new[] { -HallHalfWidth + 1f, HallHalfWidth - 1f })
+                for (float z = HallStart + 2f; z <= HallEnd - 6f; z += 8f)
                     SkyProp("piece_brazierfloor01", new Vector3(x, floorTop, z), Vector3.zero);
-            // The throne at the far end, on a plinth, turned away from the hall.
-            GameObject plinth = SkyProp("blackmarble_base_2", new Vector3(0f, floorTop, HallEnd - 3f), Vector3.zero);
-            float seatFloor = plinth != null ? SkyBounds(plinth).max.y : floorTop;
-            SkyProp("piece_throne01", new Vector3(0f, seatFloor, HallEnd - 3f), new Vector3(0f, 180f, 0f));
+            // Steps up to the floor at the door.
+            Steps(floorTop);
+            // The throne at the far end, on a dais, turned away from the hall.
+            float dais = Block(new Vector3(0f, floorTop, HallEnd - 3f), 6f, 0.6f, 4f);
+            SkyProp("piece_throne01", new Vector3(0f, dais, HallEnd - 3f), new Vector3(0f, 180f, 0f));
+        }
+
+        // Steps of black marble from the ground up to the hall's floor, as wide as the way and more.
+        static void Steps(float top)
+        {
+            if (top < 0.15f) return;
+            int count = Mathf.Max(2, Mathf.CeilToInt(top / 0.3f));
+            const float depth = 0.6f;
+            for (int i = 1; i <= count; i++)
+            {
+                float height = top * i / (count + 1f);
+                float z = HallStart - depth * (count - i) - depth * 0.5f;
+                Block(new Vector3(0f, 0f, z), 7f, height, depth);
+            }
+        }
+
+        // A solid block of black marble, sized to fit (any of the game's blocks, stretched): its foot at
+        // at.y, its middle at (at.x, at.z). Gives back its top.
+        static float Block(Vector3 at, float width, float height, float depth)
+        {
+            GameObject go = SkyProp("blackmarble_2x2x1", at, Vector3.zero);
+            if (go == null) return at.y + height;
+            Bounds b = SkyBounds(go);
+            go.transform.localScale = new Vector3(width / Mathf.Max(0.1f, b.size.x), height / Mathf.Max(0.05f, b.size.y), depth / Mathf.Max(0.1f, b.size.z));
+            Put(go, at, false);
+            return SkyBounds(go).max.y;
         }
 
         static void Pillar(Vector3 foot)
@@ -114,10 +143,10 @@ namespace IslandsOfValheim
             Put(pole, foot, false);
         }
 
-        // The roof: shingles at 45 degrees from the beams on both sides up to the ridge, along the whole hall.
-        // (Which way a shingle piece slopes is the game's; RoofFlip turns both sides round if they come out
-        // upside down.)
-        const bool RoofFlip = false;
+        // The roof: shingles at 45 degrees from past the pillars on both sides up to the ridge cap, along the
+        // whole hall. (Which way a shingle piece slopes is the game's: the first try had them all the wrong
+        // way round, so they're turned; RoofFlip turns them back.)
+        const bool RoofFlip = true;
 
         static void Roof(float eave)
         {
@@ -126,21 +155,26 @@ namespace IslandsOfValheim
             Bounds pb = SkyBounds(probe);
             Object.DestroyImmediate(probe);
             built--;
+            GameObject capProbe = SkyProp("darkwood_roof_top_45", Vector3.zero, new Vector3(0f, 90f, 0f));
+            float cap = 0f;
+            if (capProbe != null) { cap = SkyBounds(capProbe).size.x; Object.DestroyImmediate(capProbe); built--; }
             // after the turn: along the hall (z) its 2 m, across (x) and up its slope
             float across = pb.size.x, up = pb.size.y, along = pb.size.z;
             if (across < 0.2f || up < 0.2f || along < 0.2f) return;
-            int rows = Mathf.CeilToInt((HallHalfWidth + 0.8f) / across);
+            // whole shingles from the eave in, the cap covering what's left in the middle
+            int rows = Mathf.Max(1, Mathf.RoundToInt(HallHalfWidth / across));
+            float half = rows * across + cap * 0.5f;
             for (int k = 0; k < rows; k++)
                 for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
                     foreach (float side in new[] { -1f, 1f })
                     {
-                        float x = side * (HallHalfWidth + 0.8f - across * (k + 0.5f));
+                        float x = side * (half - across * (k + 0.5f));
                         float yaw = (side < 0f ? 90f : -90f) + (RoofFlip ? 180f : 0f);
                         SkyProp("darkwood_roof_45", new Vector3(x, eave + up * k, z), new Vector3(0f, yaw, 0f));
                     }
-            float ridge = eave + up * rows;
+            if (cap <= 0f) return;
             for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
-                SkyProp("darkwood_roof_top_45", new Vector3(0f, ridge - up * 0.5f, z), new Vector3(0f, 90f, 0f));
+                SkyProp("darkwood_roof_top_45", new Vector3(0f, eave + up * rows - 0.05f, z), new Vector3(0f, 90f, 0f));
         }
 
         // Turned to lie along the hall (z) if it came out lying across it, and put back in place.
@@ -187,7 +221,7 @@ namespace IslandsOfValheim
             {
                 float a = i * Mathf.PI * 2f / 10f;
                 Vector3 at = new Vector3(DuelRing.x + Mathf.Cos(a) * DuelRadius, 0f, DuelRing.y + Mathf.Sin(a) * DuelRadius);
-                SkyProp(i % 2 == 0 ? "blackmarble_column_3" : "blackmarble_column_1", at, new Vector3(0f, -a * Mathf.Rad2Deg, 0f));
+                SkyProp("blackmarble_column_3", at, new Vector3(0f, -a * Mathf.Rad2Deg, 0f));
             }
             for (int i = 0; i < 4; i++)
             {
@@ -219,7 +253,7 @@ namespace IslandsOfValheim
             {
                 Vector2 t = trees[i];
                 if (new Vector2(t.x, t.y).magnitude > RockEdge(Mathf.Atan2(t.y, t.x)) - 12f) continue;
-                SkyProp(kinds[i % kinds.Length], new Vector3(t.x, RockMeadow(t.x, t.y) - 0.2f, t.y), new Vector3(0f, i * 67f, 0f));
+                SkyProp(kinds[i % kinds.Length], new Vector3(t.x, RockMeadow(t.x, t.y) - 1f, t.y), new Vector3(0f, i * 67f, 0f));
             }
             // flowers in drifts
             for (int i = 0; i < 70; i++)
@@ -245,6 +279,18 @@ namespace IslandsOfValheim
             go.transform.localRotation = Quaternion.Euler(euler);
             LightFires(go);
             Strip(go);
+            // An item (a shield) as decoration: without the glint the game puts on things lying to be picked up.
+            if (prefab.GetComponent<ItemDrop>() != null)
+                foreach (ParticleSystem shine in go.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    if (shine.gameObject != go) { shine.gameObject.SetActive(false); continue; }
+                    ParticleSystem.MainModule main = shine.main;
+                    main.playOnAwake = false;
+                    ParticleSystem.EmissionModule emission = shine.emission;
+                    emission.enabled = false;
+                    ParticleSystemRenderer drawn = shine.GetComponent<ParticleSystemRenderer>();
+                    if (drawn != null) drawn.enabled = false;
+                }
             Put(go, at, byTop);
             built++;
             return go;
