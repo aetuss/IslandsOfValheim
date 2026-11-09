@@ -447,7 +447,7 @@ namespace IslandsOfValheim
             renderer.receiveShadows = false;
         }
 
-        static Texture2D Dot()
+        internal static Texture2D Dot()
         {
             const int size = 32;
             Texture2D t = new Texture2D(size, size, TextureFormat.RGBA32, false);
