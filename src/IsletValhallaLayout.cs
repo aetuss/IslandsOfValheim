@@ -1078,6 +1078,10 @@ namespace IslandsOfValheim
             LightFires(go);
             Strip(go);
             // An item (a shield) as decoration: without the glint the game puts on things lying to be picked up.
+            // And solid: the game keeps things lying about on a layer you walk through.
+            if (prefab.GetComponent<ItemDrop>() != null)
+                foreach (Collider solid in go.GetComponentsInChildren<Collider>(true))
+                    if (!solid.isTrigger) solid.gameObject.layer = LayerMask.NameToLayer("static_solid");
             if (prefab.GetComponent<ItemDrop>() != null)
                 foreach (ParticleSystem shine in go.GetComponentsInChildren<ParticleSystem>(true))
                 {
