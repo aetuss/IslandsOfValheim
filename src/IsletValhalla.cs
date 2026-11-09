@@ -93,6 +93,7 @@ namespace IslandsOfValheim
             List<Color32> colors = new List<Color32>();
             List<int> top = new List<int>(), under = new List<int>();
             Color32 grass = Heightmap.GetBiomeColor(Heightmap.Biome.Meadows);
+            Color32 golden = Heightmap.GetBiomeColor(Heightmap.Biome.Plains);
             float span = ValhallaEdge * 2.6f;
 
             // The meadow: rings out from the middle, each following the outline.
@@ -107,7 +108,7 @@ namespace IslandsOfValheim
                     float lip = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.9f) / 0.1f));
                     verts.Add(new Vector3(x, RockMeadow(x, z) - lip * 1.6f, z));
                     uvs.Add(new Vector2(x / span + 0.5f, z / span + 0.5f));
-                    colors.Add(grass);
+                    colors.Add(MeadowColour(x, z, grass, golden));
                 }
             }
             // The underside: on from the rim, down and in, ragged, to the tip.
@@ -226,14 +227,57 @@ namespace IslandsOfValheim
             if (terrain == null || terrain.m_material == null) return UndersideMaterial();
             Material material = new Material(terrain.m_material);
             material.name = "IoV_ValhallaMeadow";
-            Texture2D mask = new Texture2D(2, 2);
-            mask.wrapMode = TextureWrapMode.Clamp;
-            Color nothing = new Color(0f, 0f, 0f, 1f);
-            mask.SetPixels(new Color[] { nothing, nothing, nothing, nothing });
-            mask.Apply();
-            material.SetTexture("_ClearedMaskTex", mask);
+            material.SetTexture("_ClearedMaskTex", ValhallaPaint(ValhallaEdge * 2.6f, 512));
             material.SetFloat("_LodHideDistance", 10000f);
             return material;
+        }
+
+        // The meadow isn't one green: drifts of the plains' golden grass run through it (the terrain shader paints
+        // by these colours).
+        static Color32 MeadowColour(float x, float z, Color32 grass, Color32 golden)
+        {
+            float n = Mathf.PerlinNoise(x * 0.025f + 71f, z * 0.025f + 13f) * 0.7f + Mathf.PerlinNoise(x * 0.08f + 5f, z * 0.08f + 91f) * 0.3f;
+            return Color32.Lerp(grass, golden, Mathf.SmoothStep(0f, 1f, (n - 0.45f) / 0.25f) * 0.85f);
+        }
+
+        // The meadow's paint (what the hoe and the pickaxe leave on the game's terrain): paved stone under the
+        // way, the landing and round the hall and the high seat; trodden earth in the duel ring, round the
+        // feast and along the memorial path. Red is earth, blue is paving; alpha stays 1 (plain ground).
+        static Texture2D ValhallaPaint(float span, int size)
+        {
+            Texture2D mask = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            mask.name = "IoV_ValhallaPaint";
+            mask.wrapMode = TextureWrapMode.Clamp;
+            List<Vector2> path = new List<Vector2>();
+            for (int i = 0; i <= 40; i++) path.Add(MemorialAt(i / 40f));
+            Color[] px = new Color[size * size];
+            for (int j = 0; j < size; j++)
+                for (int i = 0; i < size; i++)
+                {
+                    float x = ((i + 0.5f) / size - 0.5f) * span, z = ((j + 0.5f) / size - 0.5f) * span;
+                    float paved = Mathf.Max(Soft(Box(x, z, 0f, (ValhallaArrival.z + HallStart) * 0.5f, 2.6f, (HallStart - ValhallaArrival.z) * 0.5f + 1f)),
+                        Mathf.Max(Soft(Box(x, z, 0f, ValhallaArrival.z, 5.5f, 4.5f)), Soft(Box(x, z, 0f, (HallStart + HallEnd) * 0.5f, HallHalfWidth + 2f, (HallEnd - HallStart) * 0.5f + 2f))));
+                    paved = Mathf.Max(paved, Soft(new Vector2(x, z - LookoutZ).magnitude - 6.5f));
+                    float earth = Soft(new Vector2(x - DuelRing.x, z - DuelRing.y).magnitude - (DuelRadius - 0.5f)) * 0.9f;
+                    earth = Mathf.Max(earth, Soft(new Vector2(x - Feast.x, z - Feast.y).magnitude - 9f) * 0.7f);
+                    float near = float.MaxValue;
+                    foreach (Vector2 p in path) near = Mathf.Min(near, (new Vector2(x, z) - p).sqrMagnitude);
+                    earth = Mathf.Max(earth, Soft(Mathf.Sqrt(near) - 1.4f) * 0.75f);
+                    px[j * size + i] = new Color(earth, 0f, paved, 1f);
+                }
+            mask.SetPixels(px);
+            mask.Apply();
+            return mask;
+        }
+
+        // 1 inside (distance under 0), fading to 0 a metre out.
+        static float Soft(float distance) { return 1f - Mathf.SmoothStep(0f, 1f, distance); }
+
+        // How far outside a box a point is (negative inside).
+        static float Box(float x, float z, float cx, float cz, float hx, float hz)
+        {
+            float dx = Mathf.Abs(x - cx) - hx, dz = Mathf.Abs(z - cz) - hz;
+            return Mathf.Max(dx, dz);
         }
 
         // A big rock's own material, for the underside.

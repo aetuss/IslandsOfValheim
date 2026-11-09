@@ -12,7 +12,6 @@ namespace IslandsOfValheim
     // - behind the hall, at the north rim, Hlidskjalf, Odin's high seat, looking out over the clouds;
     // - east, the duel ring of stone columns, and by it the einherjar's yard;
     // - west, under golden birches, the Brim Folk's own feast;
-    // - south-east, the Brim Folk's longship drawn up on the meadow;
     // - south-west, a path of memorial stones from where you arrive to the feast.
     //
     // Everything is a still copy of the game's own pieces (their scripts taken out, so nothing breaks or
@@ -65,10 +64,11 @@ namespace IslandsOfValheim
             Lookout();
             BrimFeast();
             EinherjarYard();
-            Longship();
             MemorialPath();
             Meadow();
             Plugin.Debug("Valhalla: layout of " + (built - before) + " pieces, " + missing + " not found");
+            LogCatalogue();
+            LogChecks();
         }
 
         // The meadow's height there (0 on the level places).
@@ -111,10 +111,19 @@ namespace IslandsOfValheim
                 }
             float wallTop = floorTop + PillarHeight;
             // Beams along the tops of the pillars.
+            float beamTop = wallTop + 0.3f, beamOuter = HallHalfWidth + 0.15f;
             for (float z = HallStart + 2f; z < HallEnd; z += 4f)
                 foreach (float side in new[] { -1f, 1f })
-                    AlongZ(SkyProp("darkwood_beam4x4", new Vector3(side * HallHalfWidth, wallTop, z), Vector3.zero), new Vector3(side * HallHalfWidth, wallTop, z));
-            Roof(wallTop + 0.3f);
+                {
+                    Vector3 at = new Vector3(side * HallHalfWidth, wallTop, z);
+                    GameObject beam = SkyProp("darkwood_beam4x4", at, Vector3.zero);
+                    AlongZ(beam, at);
+                    if (beam == null || side < 0f) continue;
+                    Bounds bb = SkyBounds(beam);
+                    beamTop = bb.max.y;
+                    beamOuter = bb.max.x;
+                }
+            Roof(beamTop, beamOuter);
             // The feast: two long tables, their benches facing them, and down the middle a long fire.
             foreach (float side in new[] { -1f, 1f })
                 for (float z = HallStart + 8f; z <= HallEnd - 10f; z += 6f)
@@ -174,39 +183,130 @@ namespace IslandsOfValheim
             return pole;
         }
 
-        // The roof: shingles at 45 degrees from past the pillars on both sides up to the ridge cap, along the
-        // whole hall. Which way a shingle runs downhill is read from the piece itself (the tilt of its
-        // collider), so each side is turned to run down and out.
-        static void Roof(float eave)
+        // The roof: shingles at 45 degrees from the beams on both sides up to the ridge cap, along the whole
+        // hall, put together the way the hammer does it: by the pieces' own snap points (each row's lower
+        // edge on the one below's upper edge, the first row's on the beam's top outer edge). Which way a
+        // shingle runs downhill is read from its collider's tilt. Without snap points it falls back to
+        // stacking by the 2 m grid.
+        static void Roof(float beamTop, float beamOuter)
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab("darkwood_roof_45");
+            GameObject capPrefab = PrefabManager.Instance.GetPrefab("darkwood_roof_top_45");
             if (prefab == null) return;
             Vector3 down = Downhill(prefab);
             float yawL = down != Vector3.zero ? YawFor(down, Vector3.left) : 90f;
             float yawR = down != Vector3.zero ? YawFor(down, Vector3.right) : -90f;
+            List<Vector3> snaps = SnapPoints(prefab);
+            if (snaps.Count < 4) { Plugin.Log.LogWarning("Valhalla: the shingle has " + snaps.Count + " snap points; roof by the grid"); RoofByGrid(beamTop + 0.3f, yawL, yawR); return; }
+            int rows = 0;
+            float slope = 1f, along = 2f, rise = 2f, run = 2f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Quaternion turn = Quaternion.Euler(0f, side < 0f ? yawL : yawR, 0f);
+                Vector3 lower, upper;
+                float width;
+                Edges(snaps, turn, out lower, out upper, out width);
+                Vector3 step = upper - lower; // one row: in and up
+                run = Mathf.Abs(step.x);
+                rise = step.y;
+                along = width;
+                if (run < 0.2f || rise < 0.2f || along < 0.2f) { Plugin.Log.LogWarning("Valhalla: the shingle's snap points don't make a slope"); return; }
+                slope = rise / run;
+                rows = Mathf.Max(1, Mathf.RoundToInt(beamOuter / run));
+                for (int k = 0; k < rows; k++)
+                    for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
+                    {
+                        Vector3 edge = new Vector3(side * beamOuter, beamTop, z) + new Vector3(-side * run, rise, 0f) * k;
+                        SkyPivot("darkwood_roof_45", edge - turn * Mid(snaps, true), turn);
+                    }
+            }
+            Plugin.Debug("Valhalla: roof by snap points: " + rows + " rows a side, each " + run.ToString("F2") + " in and " + rise.ToString("F2") + " up, " +
+                along.ToString("F2") + " along; from the beams' top outer edge at " + beamOuter.ToString("F2") + ", " + beamTop.ToString("F2"));
+            // The ridge cap, its lower edges on the slope either side.
+            List<Vector3> capSnaps = capPrefab != null ? SnapPoints(capPrefab) : new List<Vector3>();
+            if (capSnaps.Count < 2) return;
+            Quaternion capTurn = Quaternion.Euler(0f, yawL, 0f);
+            Vector3 capLow = Mid(capSnaps, true);
+            float capHalf = 0f;
+            foreach (Vector3 s in capSnaps) capHalf = Mathf.Max(capHalf, Mathf.Abs((capTurn * s).x - (capTurn * capLow).x));
+            float capY = beamTop + (beamOuter - capHalf) * slope;
+            for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
+                SkyPivot("darkwood_roof_top_45", new Vector3(0f, capY, z) - capTurn * capLow, capTurn);
+        }
+
+        // A turned piece's lower and upper snap edges (the middles of its lowest and highest snap points)
+        // and how far its lower ones spread along z (its width along the hall).
+        static void Edges(List<Vector3> snaps, Quaternion turn, out Vector3 lower, out Vector3 upper, out float width)
+        {
+            float lo = float.MaxValue, hi = float.MinValue;
+            foreach (Vector3 s in snaps) { float y = (turn * s).y; lo = Mathf.Min(lo, y); hi = Mathf.Max(hi, y); }
+            Vector3 l = Vector3.zero, u = Vector3.zero;
+            int nl = 0, nu = 0;
+            float zMin = float.MaxValue, zMax = float.MinValue;
+            foreach (Vector3 s in snaps)
+            {
+                Vector3 t = turn * s;
+                if (t.y < lo + 0.1f) { l += t; nl++; zMin = Mathf.Min(zMin, t.z); zMax = Mathf.Max(zMax, t.z); }
+                if (t.y > hi - 0.1f) { u += t; nu++; }
+            }
+            lower = nl > 0 ? l / nl : Vector3.zero;
+            upper = nu > 0 ? u / nu : Vector3.zero;
+            width = zMax - zMin;
+        }
+
+        // The middle of a piece's lowest (or highest) snap points, in its own space.
+        static Vector3 Mid(List<Vector3> snaps, bool lowest)
+        {
+            float edge = lowest ? float.MaxValue : float.MinValue;
+            foreach (Vector3 s in snaps) edge = lowest ? Mathf.Min(edge, s.y) : Mathf.Max(edge, s.y);
+            Vector3 sum = Vector3.zero;
+            int n = 0;
+            foreach (Vector3 s in snaps) if (Mathf.Abs(s.y - edge) < 0.1f) { sum += s; n++; }
+            return n > 0 ? sum / n : Vector3.zero;
+        }
+
+        // A piece's snap points (where the hammer joins it to others), in its own space.
+        static List<Vector3> SnapPoints(GameObject prefab)
+        {
+            List<Vector3> points = new List<Vector3>();
+            foreach (Transform t in prefab.GetComponentsInChildren<Transform>(true))
+                if (t != prefab.transform && t.CompareTag("snappoint")) points.Add(prefab.transform.InverseTransformPoint(t.position));
+            return points;
+        }
+
+        // The old way, when a piece has no snap points: stacked on the game's 2 m grid.
+        static void RoofByGrid(float eave, float yawL, float yawR)
+        {
             GameObject probe = SkyProp("darkwood_roof_45", Vector3.zero, new Vector3(0f, yawL, 0f));
             if (probe == null) return;
             Bounds pb = SkyBounds(probe);
             Object.DestroyImmediate(probe);
             built--;
-            GameObject capProbe = SkyProp("darkwood_roof_top_45", Vector3.zero, new Vector3(0f, yawL, 0f));
-            float cap = 0f;
-            if (capProbe != null) { cap = SkyBounds(capProbe).size.x; Object.DestroyImmediate(capProbe); built--; }
-            // The game fits these on its 2 m grid; what they measure past that is the lip where one overlaps the next.
             float across = Grid(pb.size.x), up = Grid(pb.size.y), along = Grid(pb.size.z);
-            float capGrid = cap > 0f ? Grid(cap) : 0f;
-            Plugin.Debug("Valhalla: roof shingle runs downhill along " + down.ToString("F2") + " in its own space; turned " + yawL.ToString("F0") + "/" + yawR.ToString("F0") +
-                "; it spans " + across.ToString("F2") + " across, " + up.ToString("F2") + " up, " + along.ToString("F2") + " along; the cap " + cap.ToString("F2"));
-            if (across < 0.2f || up < 0.2f || along < 0.2f) return;
             int rows = Mathf.Max(1, Mathf.RoundToInt(HallHalfWidth / across));
-            float half = rows * across + capGrid * 0.5f;
+            float half = rows * across + 1f;
             for (int k = 0; k < rows; k++)
                 for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
                     foreach (float side in new[] { -1f, 1f })
                         SkyProp("darkwood_roof_45", new Vector3(side * (half - across * (k + 0.5f)), eave + up * k, z), new Vector3(0f, side < 0f ? yawL : yawR, 0f));
-            if (cap <= 0f) return;
             for (float z = HallStart - 1f + along * 0.5f; z < HallEnd + 1f; z += along)
                 SkyProp("darkwood_roof_top_45", new Vector3(0f, eave + up * rows - 0.4f, z), new Vector3(0f, yawL, 0f));
+        }
+
+        // A still copy put by its own origin (as the hammer puts a piece), not by its size.
+        static GameObject SkyPivot(string name, Vector3 origin, Quaternion turn)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            if (prefab == null) { missing++; return null; }
+            usedNames.Add(name);
+            GameObject go = Object.Instantiate(prefab, parent, false);
+            go.name = prefab.name;
+            go.transform.localRotation = turn;
+            go.transform.localPosition = origin;
+            LightFires(go);
+            Strip(go);
+            built++;
+            return go;
         }
 
         // Turned to lie along the hall (z) if it came out lying across it, and put back in place.
@@ -251,7 +351,7 @@ namespace IslandsOfValheim
             // (face is along x here: the way runs north)
             Vector3 spearAt = at + new Vector3(0f, -0.5f, 0f) - face * 0.3f;
             GameObject spear = SkyItem(SpearNames[n % SpearNames.Length], spearAt, face, Vector3.up, false, true);
-            float shaft = spear != null ? SkyBounds(spear).center.x : spearAt.x;
+            float shaft = spear != null ? SkySolid(spear).center.x : spearAt.x;
             Vector3 leaning = (face + Vector3.up * 0.26f).normalized; // about 15 degrees back
             Vector3 shieldAt = at + new Vector3(0f, -0.05f, 0f);
             // its top resting on the shaft
@@ -310,6 +410,47 @@ namespace IslandsOfValheim
                 if (ValhallaPads(x, z) > 0.2f || !OnRock(x, z, 6f)) continue;
                 SkyProp("Pickable_Dandelion", new Vector3(x, G(x, z), z), new Vector3(0f, i * 41f, 0f));
             }
+            // over the whole meadow, in drifts, off the level places and the paths: bushes, wild flax,
+            // thistles, mushrooms, dandelions and a few half-buried stones
+            string[] bushes = { "Bush01", "Bush02_en", "shrub_2" };
+            for (float gx = -90f; gx <= 90f; gx += 7f)
+                for (float gz = -90f; gz <= 90f; gz += 7f)
+                {
+                    float x = gx + 3f * Noise(gx * 0.31f, gz * 0.17f), z = gz + 3f * Noise(gz * 0.23f, gx * 0.29f);
+                    if (!OnRock(x, z, 5f) || ValhallaPads(x, z) > 0.1f || NearMemorial(x, z, 3f)) continue;
+                    float pick = Mathf.PerlinNoise(x * 0.05f + 300f, z * 0.05f + 77f);
+                    float jitter = Mathf.PerlinNoise(x * 0.9f + 11f, z * 0.9f + 3f);
+                    if (jitter < 0.35f) continue; // the gaps between drifts
+                    string name;
+                    float sink = 0.05f;
+                    if (pick < 0.32f) { name = bushes[(int)(jitter * 10f) % bushes.Length]; sink = 0.2f; }
+                    else if (pick < 0.5f) name = "Pickable_Flax_Wild";
+                    else if (pick < 0.58f) name = "Pickable_Thistle";
+                    else if (pick < 0.65f) { name = jitter > 0.6f ? "Rock_4" : "Rock_7_meadows"; sink = 0.5f; }
+                    else if (pick < 0.72f) name = "Pickable_Mushroom";
+                    else name = "Pickable_Dandelion";
+                    SkyProp(name, new Vector3(x, G(x, z) - sink, z), new Vector3(0f, Mathf.Repeat(x * 37f + z * 11f, 360f), 0f));
+                    // flax and dandelions grow in little clumps
+                    if (name == "Pickable_Flax_Wild" || name == "Pickable_Dandelion")
+                        for (int k = 0; k < 3; k++)
+                        {
+                            float cx = x + 1.3f * Mathf.Cos(k * 2.1f + jitter * 6f), cz = z + 1.3f * Mathf.Sin(k * 2.1f + jitter * 6f);
+                            if (ValhallaPads(cx, cz) > 0.1f) continue;
+                            SkyProp(name, new Vector3(cx, G(cx, cz) - sink, cz), new Vector3(0f, k * 97f, 0f));
+                        }
+                }
+        }
+
+        static bool NearMemorial(float x, float z, float within)
+        {
+            for (int i = 0; i <= 40; i++)
+                if ((MemorialAt(i / 40f) - new Vector2(x, z)).sqrMagnitude < within * within) return true;
+            return false;
+        }
+
+        internal static Vector2 MemorialAt(float t)
+        {
+            return Bezier(new Vector2(-6f, ValhallaArrival.z + 4f), new Vector2(-34f, -46f), new Vector2(Feast.x + 9f, Feast.y - 12f), t);
         }
 
         // ---- Hliðskjálf, Odin's high seat, behind the hall at the north rim ----
@@ -383,38 +524,20 @@ namespace IslandsOfValheim
             foreach (float dx in new[] { -8f, 8f })
                 SkyProp("ArmorStand_Male", new Vector3(Yard.x + dx, floor, Yard.y), new Vector3(0f, dx < 0f ? 90f : -90f, 0f));
             // a spear rack: a beam on two posts, spears standing against it
-            foreach (float dx in new[] { -3f, 3f })
+            foreach (float dx in new[] { -2.15f, 2.15f })
                 SkyProp("darkwood_pole", new Vector3(Yard.x + dx, floor, Yard.y - 1f), Vector3.zero);
             Vector3 beam = new Vector3(Yard.x, floor + 1.4f, Yard.y - 1f);
             GameObject beamGo = SkyProp("darkwood_beam4x4", beam, Vector3.zero);
             AlongX(beamGo, beam);
             float beamFront = beamGo != null ? SkyBounds(beamGo).max.z : beam.z + 0.15f;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
-                Vector3 at = new Vector3(Yard.x - 2.4f + i * 1.2f, floor, Yard.y - 0.4f);
+                Vector3 at = new Vector3(Yard.x - 1.5f + i * 1f, floor, Yard.y - 0.4f);
                 // head up, leaning back on the beam
                 PutAgainst(SkyItem(SpearNames[i % SpearNames.Length], at, Vector3.forward, (Vector3.up + Vector3.back * 0.12f).normalized, false, true),
                     at, Vector3.back, beamFront);
             }
             Plugin.Debug("Valhalla: the yard's wall top at " + wall.ToString("F2"));
-        }
-
-        // ---- the Brim Folk's longship, south-east, drawn up on the meadow, its bow towards the clouds ----
-
-        static void Longship()
-        {
-            float a = -42f * Mathf.Deg2Rad;
-            float edge = RockEdge(a);
-            Vector2 dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-            Vector2 at = dir * (edge - 16f);
-            float yaw = 90f - a * Mathf.Rad2Deg; // its bow (+z) towards the rim
-            GameObject ship = SkyProp("VikingShip", Vector3.zero, new Vector3(0f, yaw, 0f)) ?? SkyProp("Karve", Vector3.zero, new Vector3(0f, yaw, 0f));
-            if (ship == null) return;
-            // no wake: it's on land
-            foreach (ParticleSystem p in ship.GetComponentsInChildren<ParticleSystem>(true))
-                if (p != null && p.gameObject != ship) Object.DestroyImmediate(p.gameObject);
-            // its keel sunk in the turf, so it rests on it instead of hanging over it
-            Put(ship, new Vector3(at.x, G(at.x, at.y) - 1.3f, at.y), false);
         }
 
         // ---- memorial stones, from where you arrive to the Brim Folk's feast ----
@@ -607,17 +730,75 @@ namespace IslandsOfValheim
         {
             if (go == null) return;
             Put(go, at, false);
-            Bounds b = SkyBounds(go);
+            // by its solid shape (its drawn bounds can reach past what's seen)
+            Bounds b = SkySolid(go);
             Vector3 p = go.transform.localPosition;
-            if (Mathf.Abs(toward.x) > 0.5f) p.x += contact - (toward.x > 0f ? b.max.x : b.min.x);
-            else p.z += contact - (toward.z > 0f ? b.max.z : b.min.z);
+            bool alongX = Mathf.Abs(toward.x) > 0.5f;
+            float sign = alongX ? Mathf.Sign(toward.x) : Mathf.Sign(toward.z);
+            float reach = alongX ? (sign > 0f ? b.max.x : b.min.x) : (sign > 0f ? b.max.z : b.min.z);
+            if (alongX) p.x += contact - reach; else p.z += contact - reach;
             go.transform.localPosition = p;
+            Bounds d = SkyBounds(go);
+            float drawn = alongX ? (sign > 0f ? d.max.x : d.min.x) : (sign > 0f ? d.max.z : d.min.z);
+            float gap = (contact - drawn) * sign;
+            if (Mathf.Abs(gap) > 0.08f)
+                checks.Add(go.name + " at " + p.ToString("F1") + ": its solid side touches; its drawn side " + (gap > 0f ? "stops " + gap.ToString("F2") + " m short" : "reaches " + (-gap).ToString("F2") + " m past"));
         }
 
         // A size on the game's 2 m building grid (what's past it overlaps the next piece).
         static float Grid(float size)
         {
             return Mathf.Max(1f, Mathf.Floor(size / 2f + 0.05f) * 2f);
+        }
+
+        // ---- measuring and checking (so the next round isn't guessed) ----
+
+        static readonly HashSet<string> usedNames = new HashSet<string>();
+        static readonly List<string> checks = new List<string>();
+
+        // Collider bounds (what touches), in the sky floor's space.
+        static Bounds SkySolid(GameObject go)
+        {
+            Bounds b = SolidBounds(go);
+            b.center -= new Vector3(0f, SkyHeight, 0f);
+            return b;
+        }
+
+        // Every kind of piece the layout used, as the game made it: its drawn size and its solid size, where
+        // its origin sits in them, which way its seat looks, how it runs downhill, its snap points.
+        static void LogCatalogue()
+        {
+            List<string> names = new List<string>(usedNames);
+            names.Sort();
+            foreach (string name in names)
+            {
+                GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+                if (prefab == null) continue;
+                Bounds drawn = OwnBounds(prefab);
+                List<Vector3> snaps = SnapPoints(prefab);
+                string snapText = "";
+                for (int i = 0; i < snaps.Count && i < 8; i++) snapText += (i > 0 ? " " : "") + snaps[i].ToString("F2");
+                List<string> colliders = new List<string>();
+                foreach (Collider c in prefab.GetComponentsInChildren<Collider>(true))
+                {
+                    if (c.isTrigger || colliders.Count >= 3) continue;
+                    BoxCollider box = c as BoxCollider;
+                    colliders.Add(c.GetType().Name + (box != null ? " " + Vector3.Scale(box.size, box.transform.lossyScale).ToString("F2") + " at " +
+                        prefab.transform.InverseTransformPoint(box.transform.TransformPoint(box.center)).ToString("F2") + " turned " + box.transform.rotation.eulerAngles.ToString("F0") : ""));
+                }
+                Vector3 seat = SeatFacing(prefab), down = Downhill(prefab);
+                Plugin.Log.LogInfo("Valhalla piece " + name + ": drawn " + drawn.size.ToString("F2") + " from " + drawn.min.ToString("F2") + " to " + drawn.max.ToString("F2") +
+                    (colliders.Count > 0 ? "; solid " + string.Join(", ", colliders.ToArray()) : "; nothing solid") +
+                    (seat != Vector3.zero ? "; seat looks " + seat.ToString("F2") : "") + (down != Vector3.zero ? "; runs down " + down.ToString("F2") : "") +
+                    (snaps.Count > 0 ? "; " + snaps.Count + " snap points " + snapText : ""));
+            }
+        }
+
+        static void LogChecks()
+        {
+            if (checks.Count == 0) { Plugin.Log.LogInfo("Valhalla check: everything that leans touches what it leans on"); return; }
+            Plugin.Log.LogInfo("Valhalla check: " + checks.Count + " to look at");
+            foreach (string line in checks) Plugin.Log.LogInfo("Valhalla check: " + line);
         }
 
         // ---- putting things ----
@@ -628,6 +809,7 @@ namespace IslandsOfValheim
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             if (prefab == null) { missing++; Plugin.Debug("Valhalla: no " + name); return null; }
+            usedNames.Add(name);
             GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
             go.transform.localRotation = Quaternion.Euler(euler);
