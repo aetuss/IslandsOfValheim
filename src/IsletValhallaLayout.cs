@@ -6,7 +6,7 @@ using UnityEngine;
 namespace IslandsOfValheim
 {
     // Valhalla's layout (work in progress, corrected in the game together). North is +z.
-    // - the way from where Odin's light sets you down, lined with braziers and the shields of the fallen, up to
+    // - the way from where Odin's light sets you down, lined with iron torches and the shields of the fallen, up to
     //   the long hall (open pillars, a shingle roof edged with shields, the feast, a long fire, and at its far
     //   end the throne on a dais, looking down the hall at whoever comes in);
     // - behind the hall, at the north rim, Hlidskjalf, Odin's high seat, looking out over the clouds;
@@ -142,14 +142,20 @@ namespace IslandsOfValheim
                 }
             foreach (float z in new[] { HallStart + 9f, HallStart + 17f, HallStart + 25f })
                 SkyProp("hearth", new Vector3(0f, floorTop, z), Vector3.zero);
-            // Braziers along the walls, inside.
-            foreach (float x in new[] { -HallHalfWidth + 1f, HallHalfWidth - 1f })
+            // Braziers hung on chains from the beams, between the pillars (on the floor if the hanging kind's missing).
+            foreach (float x in new[] { -HallHalfWidth, HallHalfWidth })
                 for (float z = HallStart + 2f; z <= HallEnd - 6f; z += 8f)
-                    SkyProp("piece_brazierfloor01", new Vector3(x, floorTop, z), Vector3.zero);
+                {
+                    if (PrefabManager.Instance.GetPrefab("piece_brazierceiling01") != null) SkyProp("piece_brazierceiling01", new Vector3(x, wallTop, z), Vector3.zero, true);
+                    else SkyProp("piece_brazierfloor01", new Vector3(x - Mathf.Sign(x), floorTop, z), Vector3.zero);
+                }
             Steps(floorTop, floorFront);
-            // The throne at the far end, on a dais, its seat looking south down the hall to the door.
+            // The throne at the far end, on a dais, its seat looking south down the hall to the door, a tall
+            // torch either side of it.
             float dais = Block(new Vector3(0f, floorTop, HallEnd - 3f), 6f, 0.6f, 4f);
             SkySeat("piece_throne01", new Vector3(0f, dais, HallEnd - 3f), Vector3.back);
+            foreach (float x in new[] { -2.3f, 2.3f })
+                Lamp("CastleKit_groundtorch", "piece_brazierfloor02", new Vector3(x, dais, HallEnd - 3.4f));
         }
 
         // Steps of black marble from the ground up to the hall's floor, in front of its measured edge.
@@ -338,13 +344,14 @@ namespace IslandsOfValheim
             foreach (float x in new[] { -3f, 3f })
                 foreach (float z in new[] { ValhallaArrival.z - 2f, ValhallaArrival.z + 2f })
                     SkyProp("blackmarble_tile_floor_2x2", new Vector3(x, 0f, z), Vector3.zero);
-            // braziers either side, every 8 m, and between them a fallen warrior's spear planted upright with
-            // his shield leaning on it, facing the way
+            // tall iron torches either side, every 8 m (braziers where you arrive and before the hall's steps),
+            // and between them a fallen warrior's spear planted upright with his shield leaning on it, facing the way
             int n = 0;
             for (float z = ValhallaArrival.z + 6f; z < HallStart - 4f; z += 8f)
                 foreach (float side in new[] { -1f, 1f })
                 {
-                    SkyProp("piece_brazierfloor01", new Vector3(side * 3.2f, 0f, z), Vector3.zero);
+                    bool ends = z == ValhallaArrival.z + 6f || z + 8f >= HallStart - 4f;
+                    Lamp(ends ? "piece_brazierfloor01" : "piece_groundtorch", "piece_brazierfloor01", new Vector3(side * 3.2f, 0f, z));
                     if (z + 4f >= HallStart - 4f) continue;
                     Planted(new Vector3(side * 4.6f, 0f, z + 4f), new Vector3(-side, 0f, 0f), n++);
                 }
@@ -368,33 +375,91 @@ namespace IslandsOfValheim
         }
 
         // Slide a leaning thing (level, so its foot stays on the ground) until the furthest point of its drawn
-        // shape toward its support touches the support's drawn surface at that height, and sideways until that
-        // point is right on the support's middle there. Boxes can't do this for a round shield on a thin shaft:
-        // its corner reaches where the shield doesn't, and a shaft's box is wider than the shaft.
+        // shape toward its support touches the support at that height, and sideways until that point is right
+        // on the support's middle there. Boxes can't do this for a round shield on a thin shaft: its corner
+        // reaches where the shield doesn't, and a shaft's box is wider than the shaft.
+        // The exact way needs the meshes' points, and the game keeps most of them unreadable. Then: the
+        // shield's tip is the middle of its top edge on its back (from its own size, the way SkyItem stood it
+        // up), and a spear's shaft is the middle of its drawn size (it stands straight); the tip is set on the
+        // shaft's middle, so it sinks a little into the shaft rather than ever stopping short of it.
         static void RestOn(GameObject leaning, GameObject support, Vector3 toward)
         {
             toward = new Vector3(toward.x, 0f, toward.z).normalized;
+            Vector3 across = Vector3.Cross(Vector3.up, toward);
+            string how;
             List<Vector3> points = SkyPoints(leaning, null);
-            if (points.Count == 0) { checks.Add(leaning.name + ": its shape can't be read; left by its box"); return; }
-            float best = float.MinValue;
-            foreach (Vector3 p in points) best = Mathf.Max(best, Vector3.Dot(p, toward));
-            // the tip: the middle of what reaches that far (a flat top edge, or a round top's one point)
-            Vector3 tip = Vector3.zero;
-            int n = 0;
-            foreach (Vector3 p in points) if (Vector3.Dot(p, toward) > best - 0.01f) { tip += p; n++; }
-            tip /= n;
+            Vector3 tip;
+            if (points.Count > 0)
+            {
+                float best = float.MinValue;
+                foreach (Vector3 p in points) best = Mathf.Max(best, Vector3.Dot(p, toward));
+                // the middle of what reaches that far (a flat top edge, or a round top's one point)
+                tip = Vector3.zero;
+                int n = 0;
+                foreach (Vector3 p in points) if (Vector3.Dot(p, toward) > best - 0.01f) { tip += p; n++; }
+                tip /= n;
+                how = "its shape";
+            }
+            else
+            {
+                tip = ItemTip(leaning, toward);
+                how = "its size";
+            }
             List<Vector3> section = new List<Vector3>();
             SkyPoints(support, section, tip.y);
-            if (section.Count == 0) { checks.Add(leaning.name + ": " + support.name + " has nothing at the height of its top (" + tip.y.ToString("F2") + "); left by its box"); return; }
-            float near = float.MaxValue;
-            Vector3 middle = Vector3.zero;
-            foreach (Vector3 p in section) { near = Mathf.Min(near, Vector3.Dot(p, toward)); middle += p; }
-            middle /= section.Count;
-            Vector3 across = Vector3.Cross(Vector3.up, toward);
-            Vector3 shift = toward * (near - best - 0.005f) + across * Vector3.Dot(middle - tip, across);
-            if (shift.magnitude > 0.5f) { checks.Add(leaning.name + ": would have to move " + shift.magnitude.ToString("F2") + " m to rest on " + support.name + "; left by its box"); return; }
+            float contact;
+            Vector3 middle;
+            if (section.Count > 0)
+            {
+                contact = float.MaxValue;
+                middle = Vector3.zero;
+                foreach (Vector3 p in section) { contact = Mathf.Min(contact, Vector3.Dot(p, toward)); middle += p; }
+                middle /= section.Count;
+                contact += 0.008f; // just into the surface, never short of it
+                how += ", the shaft's shape";
+            }
+            else
+            {
+                middle = SkyBounds(support).center;
+                contact = Vector3.Dot(middle, toward);
+                how += ", the shaft's middle";
+            }
+            Vector3 shift = toward * (contact - Vector3.Dot(tip, toward)) + across * Vector3.Dot(middle - tip, across);
+            if (shift.magnitude > 0.6f) { checks.Add(leaning.name + ": would have to move " + shift.magnitude.ToString("F2") + " m to rest on " + support.name + " (by " + how + "); left by its box"); return; }
             leaning.transform.localPosition += shift;
-            Plugin.Debug("Valhalla: " + leaning.name + " rests on " + support.name + " at " + tip.y.ToString("F2") + " m up (moved " + shift.ToString("F3") + ")");
+            Plugin.Debug("Valhalla: " + leaning.name + " rests on " + support.name + " at " + tip.y.ToString("F2") + " m up, by " + how + " (moved " + shift.ToString("F3") + ")");
+        }
+
+        // An item's far end (as SkyItem stood it up): the middle of its top edge, on the side toward toward.
+        static Vector3 ItemTip(GameObject go, Vector3 toward)
+        {
+            Bounds b = OwnBounds(go);
+            int thin, along;
+            float sign;
+            ItemAxes(b, false, out thin, out along, out sign);
+            Vector3 best = Vector3.zero;
+            float reach = float.MinValue;
+            foreach (float t in new[] { b.min[thin], b.max[thin] })
+            {
+                Vector3 own = b.center;
+                own[along] = sign > 0f ? b.max[along] : b.min[along];
+                own[thin] = t;
+                Vector3 sky = root.transform.InverseTransformPoint(go.transform.TransformPoint(own));
+                sky.y -= SkyHeight;
+                if (Vector3.Dot(sky, toward) > reach) { reach = Vector3.Dot(sky, toward); best = sky; }
+            }
+            return best;
+        }
+
+        // An item's thinnest axis (its face), its long one, and which way along that is its far end (the side
+        // that reaches further from where it's held; a spear is held near its head: otherEndUp).
+        static void ItemAxes(Bounds b, bool otherEndUp, out int thin, out int along, out float sign)
+        {
+            Vector3 s = b.size;
+            thin = s.x <= s.y && s.x <= s.z ? 0 : s.y <= s.z ? 1 : 2;
+            int a1 = (thin + 1) % 3, a2 = (thin + 2) % 3;
+            along = s[a1] >= s[a2] ? a1 : a2;
+            sign = (Mathf.Abs(b.max[along]) >= Mathf.Abs(b.min[along])) != otherEndUp ? 1f : -1f;
         }
 
         // A thing's drawn shape in the sky floor's space: with no section list, its corners (every vertex); with
@@ -436,10 +501,11 @@ namespace IslandsOfValheim
                 Vector3 at = new Vector3(DuelRing.x + Mathf.Cos(a) * DuelRadius, 0f, DuelRing.y + Mathf.Sin(a) * DuelRadius);
                 SkyProp("blackmarble_column_3", at, new Vector3(0f, -a * Mathf.Rad2Deg, 0f));
             }
-            for (int i = 0; i < 4; i++)
+            // cold blue fire round the ring, between the columns
+            for (int i = 0; i < 5; i++)
             {
-                float a = (i + 0.5f) * Mathf.PI / 2f;
-                SkyProp("MountainKit_brazier", new Vector3(DuelRing.x + Mathf.Cos(a) * (DuelRadius + 2.5f), 0f, DuelRing.y + Mathf.Sin(a) * (DuelRadius + 2.5f)), Vector3.zero);
+                float a = (i * 4 + 1) * Mathf.PI / 10f; // halfway between two columns, every other gap
+                Lamp("piece_groundtorch_blue", "MountainKit_brazier", new Vector3(DuelRing.x + Mathf.Cos(a) * (DuelRadius + 1.5f), 0f, DuelRing.y + Mathf.Sin(a) * (DuelRadius + 1.5f)));
             }
             // shields of those who fought here, leaning on the columns, facing in
             for (int i = 0; i < 3; i++)
@@ -730,15 +796,12 @@ namespace IslandsOfValheim
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             if (prefab == null) { missing++; return null; }
             Bounds b = OwnBounds(prefab);
-            Vector3 s = b.size;
-            int thin = s.x <= s.y && s.x <= s.z ? 0 : s.y <= s.z ? 1 : 2;
-            int a1 = (thin + 1) % 3, a2 = (thin + 2) % 3;
-            int along = s[a1] >= s[a2] ? a1 : a2;
+            int thin, along;
+            float sign;
+            ItemAxes(b, otherEndUp, out thin, out along, out sign);
             Vector3 thinAxis = Vector3.zero, longAxis = Vector3.zero;
             thinAxis[thin] = 1f;
-            // the far end is the side that reaches further from where it's held
-            // (a spear is held near its head, so for it the rule comes out the other way round: otherEndUp)
-            longAxis[along] = (Mathf.Abs(b.max[along]) >= Mathf.Abs(b.min[along])) != otherEndUp ? 1f : -1f;
+            longAxis[along] = sign;
             Vector3 u = Vector3.ProjectOnPlane(up, face);
             if (u.sqrMagnitude < 0.001f) u = Vector3.ProjectOnPlane(Vector3.forward, face);
             Quaternion turn = Quaternion.LookRotation(face, u) * Quaternion.Inverse(Quaternion.LookRotation(thinAxis, longAxis));
@@ -897,6 +960,12 @@ namespace IslandsOfValheim
             Put(go, at, byTop);
             built++;
             return go;
+        }
+
+        // A light standing on the ground, of the kind wanted, or another if the game hasn't that one.
+        static GameObject Lamp(string name, string otherwise, Vector3 at)
+        {
+            return SkyProp(PrefabManager.Instance.GetPrefab(name) != null ? name : otherwise, at, Vector3.zero);
         }
 
         // (Measured where it stands now, so first back to the middle: Move takes the bounds of a thing at 0.)
