@@ -354,25 +354,31 @@ namespace IslandsOfValheim
         static readonly string[] CookedNames = { "CookedMeat", "CookedDeerMeat", "CookedLoxMeat", "CookedWolfMeat", "CookedMooseMeat", "CookedBjornMeat", "CookedChickenMeat", "CookedHareMeat" };
         static readonly string[] TankardNames = { "Tankard", "TankardAnniversary" };
 
-        // A table laid: one of the game's feasts in the middle (as full as it comes), a tankard at each end.
+        // A table laid: one of the game's feasts in the middle (as full as it comes), and drink at both ends
+        // within it: three tankards and a horn, a place apart for each sitter across. On its board (its solid
+        // top: the studs drawn on it stand a little higher).
+        // A tankard stands as the game makes it (its solid box upright: 0.18 across, 0.25 tall); the horn lies on
+        // its side as made. Turned only about the upright, each its own way.
         static void Laid(GameObject table, int k)
         {
             if (table == null) return;
             Bounds tb = SkyBounds(table);
-            Vector3 middle = new Vector3(tb.center.x, tb.max.y, tb.center.z);
+            float board = SkySolid(table).max.y;
+            Vector3 middle = new Vector3(tb.center.x, board, tb.center.z);
             string feast = FeastNames[k % FeastNames.Length];
             if (PrefabManager.Instance.GetPrefab(feast) == null) feast = FeastNames[0];
             GameObject dish = SkyProp(feast, middle, Vector3.zero, false, FullFeast);
             AlongZ(dish, middle);
-            float along = Mathf.Max(0.3f, tb.size.z * 0.5f - 0.35f), across = Mathf.Max(0f, tb.size.x * 0.5f - 0.25f);
+            // past the longest feast (3.5 m), short of the legs at the ends
+            float along = Mathf.Min(2.2f, tb.size.z * 0.5f - 0.6f), across = Mathf.Min(0.45f, tb.size.x * 0.5f - 0.35f);
             int i = 0;
             foreach (float dz in new[] { -along, along })
-            {
-                float dx = (i++ % 2 == 0 ? across : -across);
-                Vector3 at = new Vector3(tb.center.x + dx, tb.max.y, tb.center.z + dz);
-                // standing: its long side up, the end away from where it's held at the top
-                SkyItem(TankardNames[(k + i) % TankardNames.Length], at, Quaternion.Euler(0f, k * 47f + i * 90f, 0f) * Vector3.forward, Vector3.up, false);
-            }
+                foreach (float dx in new[] { -across, across })
+                {
+                    string drink = (i + k) % 4 == 3 ? TankardNames[1] : TankardNames[0];
+                    SkyProp(drink, new Vector3(tb.center.x + dx, board, tb.center.z + dz), new Vector3(0f, k * 47f + i * 83f, 0f));
+                    i++;
+                }
         }
 
         // A feast as it's first set down: every part of it showing that shows when it's full.
@@ -462,7 +468,10 @@ namespace IslandsOfValheim
         static void Planted(Vector3 at, Vector3 face, int n)
         {
             // (face is along x here: the way runs north)
+            // (on the meadow's own height there: beside the paved way it rolls away from level)
+            at.y = G(at.x, at.z);
             Vector3 spearAt = at + new Vector3(0f, -0.5f, 0f) - face * 0.3f;
+            spearAt.y = G(spearAt.x, spearAt.z) - 0.5f;
             GameObject spear = SkyItem(SpearNames[n % SpearNames.Length], spearAt, face, Vector3.up, false, true);
             float shaft = spear != null ? SkySolid(spear).center.x : spearAt.x;
             Vector3 leaning = (face + Vector3.up * 0.26f).normalized; // about 15 degrees back
@@ -475,6 +484,28 @@ namespace IslandsOfValheim
             GameObject shield = SkyItem(shieldName, shieldAt, leaning, Vector3.up, false);
             PutAgainst(shield, shieldAt, -face, shaft + face.x * 0.04f);
             if (shield != null && spear != null) RestOn(shield, spear, -face);
+            if (shield != null) Settle(shield);
+        }
+
+        // Down (or up) until its lowest point is just in the ground under it: a leaning thing's foot. Straight
+        // up and down, so whatever it leans on (upright) still holds its top.
+        static void Settle(GameObject go)
+        {
+            List<Vector3> points = SkyPoints(go, null);
+            Vector3 foot;
+            if (points.Count > 0)
+            {
+                foot = points[0];
+                foreach (Vector3 p in points) if (p.y < foot.y) foot = p;
+            }
+            else
+            {
+                Bounds b = SkyBounds(go);
+                foot = new Vector3(b.center.x, b.min.y, b.center.z);
+            }
+            float down = G(foot.x, foot.z) - 0.02f - foot.y;
+            go.transform.localPosition += new Vector3(0f, down, 0f);
+            if (Mathf.Abs(down) > 0.05f) Plugin.Debug("Valhalla: " + go.name + " set down " + (-down).ToString("F2") + " m onto the ground");
         }
 
         // Slide a leaning thing (level, so its foot stays on the ground) until the furthest point of its drawn
