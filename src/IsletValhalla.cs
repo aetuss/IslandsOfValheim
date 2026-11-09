@@ -128,7 +128,7 @@ namespace IslandsOfValheim
                     float y = rimY - 2f - Mathf.Pow(d, 1.25f) * RockDepth + 6f * Noise(c * 3f + d * 5f + 91f, s * 3f + d * 5f + 91f) * d;
                     verts.Add(new Vector3(c * r, y, s * r));
                     // the rock's picture: around by distance, down by height
-                    uvs.Add(new Vector2(a * edge / 9f, y / 9f));
+                    uvs.Add(new Vector2(a * edge / 24f, y / 24f));
                     colors.Add(new Color32(255, 255, 255, 255));
                 }
             }
@@ -185,10 +185,10 @@ namespace IslandsOfValheim
             // ring: how many, how far in (part of the edge), how big, how deep their tops hang
             float[][] rings =
             {
-                new[] { 30f, 0.86f, 15f, 3f },
-                new[] { 18f, 0.62f, 24f, 14f },
-                new[] { 9f, 0.36f, 34f, 34f },
-                new[] { 3f, 0.12f, 42f, 62f },
+                new[] { 34f, 0.95f, 14f, 2.5f }, // just under the lip, sticking out a little: the rock's face from the side
+                new[] { 22f, 0.75f, 22f, 12f },
+                new[] { 12f, 0.5f, 32f, 30f },
+                new[] { 5f, 0.2f, 42f, 58f },
             };
             for (int k = 0; k < rings.Length; k++)
             {
@@ -260,9 +260,9 @@ namespace IslandsOfValheim
             Texture2D puffs = CloudTexture(256, 4f, 0.42f, 7.3f);
             Texture2D wisps = CloudTexture(256, 6f, 0.55f, 19.1f);
             // depth below the floor, how thick, tint, metres per tile of the picture
-            Layer(sky, Layers[0], -24f, 0.97f, new Color(0.78f, 0.64f, 0.74f), 300f, puffs, shader, 2980, 0.62f, true);
-            Layer(sky, Layers[1], -17f, 0.8f, new Color(1f, 0.85f, 0.78f), 190f, puffs, shader, 2981, 0.0f, false);
-            Layer(sky, Layers[2], -9f, 0.38f, new Color(1f, 0.93f, 0.86f), 110f, wisps, shader, 2982, 0.0f, false);
+            Layer(sky, Layers[0], -72f, 0.97f, new Color(0.78f, 0.64f, 0.74f), 300f, puffs, shader, 2980, 0.62f, true);
+            Layer(sky, Layers[1], -56f, 0.8f, new Color(1f, 0.85f, 0.78f), 190f, puffs, shader, 2981, 0.0f, false);
+            Layer(sky, Layers[2], -38f, 0.38f, new Color(1f, 0.93f, 0.86f), 110f, wisps, shader, 2982, 0.0f, false);
         }
 
         // floor: the least the layer covers anywhere (the deck is never quite clear, so no hole shows the world).
@@ -520,10 +520,10 @@ namespace IslandsOfValheim
     {
         const float Reach = 600f;      // across, from the rock's middle
         const float Below = 300f;      // how far under the floor still counts as there
-        const float FallLimit = 45f;   // under the floor: caught and set back
-        const float CanopyClearance = 260f; // the branch's lowest part near the rock, above its floor
-        const float CanopyNear = 350f;      // how near counts
-        bool inside, heldTime, previousDebugTime, hidTree;
+        const float FallLimit = 75f;   // under the floor (in the cloud deck): caught and set back
+        const float CanopyClearance = 200f; // the branch's lowest part in sight, above the rock's floor
+        const float CanopyNear = 1000f;     // how far "in sight" reaches
+        bool inside, heldTime, previousDebugTime;
         float previousTime;
         float nextCheck;
         readonly List<Transform> clouds = new List<Transform>();
@@ -548,22 +548,39 @@ namespace IslandsOfValheim
             return null;
         }
 
+        // The game's own is only made unseen (its renderers off), so it keeps following the player and is
+        // where it should be when it's shown again, and when it's copied.
         void Canopy(bool on)
         {
             if (on)
             {
                 if (tree == null) tree = FindTree();
                 if (tree == null) return;
-                if (canopy == null) MakeCanopy();
-                if (tree.activeSelf) { tree.SetActive(false); hidTree = true; }
+                foreach (Renderer r in tree.GetComponentsInChildren<Renderer>(true))
+                    if (r.enabled) { r.enabled = false; hiddenTree.Add(r); }
                 if (canopy != null) canopy.SetActive(true);
             }
             else
             {
-                if (hidTree && tree != null) tree.SetActive(true);
-                hidTree = false;
+                foreach (Renderer r in hiddenTree) if (r != null) r.enabled = true;
+                hiddenTree.Clear();
                 if (canopy != null) canopy.SetActive(false);
             }
+        }
+
+        readonly List<Renderer> hiddenTree = new List<Renderer>();
+        float onRockSince = -1f;
+
+        // Copied once the player has stood on the rock a moment: right after a teleport the game's branch
+        // hasn't caught up with them yet.
+        void WatchForCanopy(Player player)
+        {
+            if (canopy != null || tree == null) return;
+            Vector3 p = player.transform.position;
+            bool onRock = !player.IsTeleporting() && Utils.DistanceXZ(p, transform.position) < 120f && p.y > transform.position.y - 20f;
+            if (!onRock) { onRockSince = -1f; return; }
+            if (onRockSince < 0f) onRockSince = Time.time;
+            if (Time.time - onRockSince > 2f) MakeCanopy();
         }
 
         void MakeCanopy()
@@ -574,14 +591,22 @@ namespace IslandsOfValheim
             canopy = Object.Instantiate(tree);
             canopy.name = "IoV_WorldTreeCanopy";
             foreach (FollowPlayer follow in canopy.GetComponentsInChildren<FollowPlayer>(true)) Object.Destroy(follow);
+            foreach (Renderer r in canopy.GetComponentsInChildren<Renderer>(true))
+            {
+                r.enabled = true;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // no hard shadow of it across the meadow
+            }
             canopy.transform.localScale = tree.transform.lossyScale;
             canopy.transform.rotation = tree.transform.rotation;
             canopy.transform.position = new Vector3(transform.position.x + offset.x, tree.transform.position.y, transform.position.z + offset.z);
+            // Lifted until nothing of it comes nearer the rock's floor than the clearance, anywhere in sight.
             float low = Lowest(canopy, transform.position, CanopyNear);
             if (!float.IsNaN(low)) canopy.transform.position += Vector3.up * (transform.position.y + CanopyClearance - low);
             canopy.transform.SetParent(transform, true);
+            float overhead = Lowest(canopy, transform.position, 150f);
             Plugin.Debug("Valhalla: the World-tree's branch held over the rock" + (float.IsNaN(low) ? " (none of it near)" : ", lifted " +
-                (transform.position.y + CanopyClearance - low).ToString("F0") + " m"));
+                (transform.position.y + CanopyClearance - low).ToString("F0") + " m") +
+                (float.IsNaN(overhead) ? "; none of it right overhead" : "; right overhead it's " + (overhead - transform.position.y).ToString("F0") + " m up"));
         }
 
         // The lowest point of a thing's meshes within reach metres of a spot (NaN: none there, or not readable).
@@ -634,6 +659,7 @@ namespace IslandsOfValheim
                 Plugin.Debug(here ? "Valhalla: here (its weather, dusk and branch)" : "Valhalla: left");
             }
             if (!inside) return;
+            WatchForCanopy(player);
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
             {
@@ -702,7 +728,7 @@ namespace IslandsOfValheim
         {
             if (!inside) return;
             Apply(false);
-            if (hidTree && tree != null) tree.SetActive(true);
+            Canopy(false);
         }
     }
 }
