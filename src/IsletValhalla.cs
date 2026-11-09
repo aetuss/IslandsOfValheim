@@ -551,42 +551,124 @@ namespace IslandsOfValheim
         }
     }
 
-    // Valhalla's own weather: an eternal dusk, golden light, a soft violet haze, a calm wind, no rain.
+    // Valhalla's own weather: never rain or storm, a calm wind, and a slow day of its own. A long golden dusk,
+    // a violet night under the northern lights, a rosy dawn, a short golden day, and round again (about 34
+    // minutes in all), every change soft. Some days are clear, some hazy: a warm mist, the clouds thicker,
+    // the northern lights fainter through it. Everyone there sees the same, by the world's own clock.
     [HarmonyPatch(typeof(EnvMan), "Awake")]
     static class ValhallaWeather
     {
         internal const string Name = "IoV_Valhalla";
-        internal const float Dusk = 0.70f; // where the sun holds there (0.5 is noon, 0.75 sunset)
+        internal const string Hazy = "IoV_Valhalla_Haze";
+
+        // The day: the sun's place (0.5 noon, 0.75 sunset, 1 midnight, 1.25 sunrise) at each turn, and how
+        // long (seconds) the way to the next takes.
+        static readonly float[] Turns = { 0.70f, 0.745f, 0.90f, 1.08f, 1.25f, 1.30f, 1.70f };
+        static readonly float[] Takes = { 420f, 240f, 480f, 240f, 360f, 300f };
+        internal static readonly string[] TurnNames = { "golden dusk", "sunset", "night, northern lights", "before dawn", "rosy dawn", "the day" };
+
+        // Set by iov_sky (development): a fixed time of day and weather to look at; -1 / null: the day runs.
+        internal static float heldTime = -1f;
+        internal static string heldWeather;
 
         static void Postfix(EnvMan __instance)
         {
-            EnvSetup clear = null;
-            foreach (EnvSetup e in __instance.m_environments) if (e != null && e.m_name == "Clear") { clear = e; break; }
+            EnvSetup clear = null, north = null;
+            foreach (EnvSetup e in __instance.m_environments)
+            {
+                if (e == null) continue;
+                if (e.m_name == "Clear") clear = e;
+                if (e.m_name == "Twilight_Clear") north = e;
+            }
             if (clear == null) { Plugin.Log.LogWarning("Valhalla: the game's Clear weather wasn't found"); return; }
+            __instance.AppendEnvironment(Make(clear, north, Name, false));
+            __instance.AppendEnvironment(Make(clear, north, Hazy, true));
+            Plugin.Debug("Valhalla: weathers " + Name + " and " + Hazy + " added (from Clear" + (north != null ? "; the northern lights' colours from Twilight_Clear, whose lights are " +
+                north.m_auroraIntensityNight.ToString("F2") + " at night, " + north.m_auroraIntensityEvening.ToString("F2") + " at dusk" : "; Twilight_Clear not found, the northern lights' colours are its own") + ")");
+        }
+
+        static EnvSetup Make(EnvSetup clear, EnvSetup north, string name, bool hazy)
+        {
             EnvSetup env = clear.Clone();
-            env.m_name = Name;
+            env.m_name = name;
             env.m_default = false;
             env.m_isWet = env.m_isFreezing = env.m_isFreezingAtNight = env.m_isCold = env.m_isColdAtNight = env.m_alwaysDark = false;
-            Color ambient = new Color(0.55f, 0.48f, 0.56f);
-            env.m_ambColorDay = env.m_ambColorNight = ambient;
-            Color haze = new Color(0.8f, 0.64f, 0.68f);
-            env.m_fogColorMorning = env.m_fogColorDay = env.m_fogColorEvening = env.m_fogColorNight = haze;
-            Color sunHaze = new Color(1f, 0.8f, 0.56f);
-            env.m_fogColorSunMorning = env.m_fogColorSunDay = env.m_fogColorSunEvening = env.m_fogColorSunNight = sunHaze;
-            env.m_fogDensityMorning = env.m_fogDensityDay = env.m_fogDensityEvening = env.m_fogDensityNight = 0.0012f; // the far clouds and the branch still show
-            Color sun = new Color(1f, 0.82f, 0.6f);
-            env.m_sunColorMorning = env.m_sunColorDay = env.m_sunColorEvening = env.m_sunColorNight = sun;
-            env.m_lightIntensityDay = env.m_lightIntensityNight = 1.15f;
+            env.m_snowBuildup = 0f;
+            // the light on things, by day and by night
+            env.m_ambColorDay = hazy ? new Color(0.6f, 0.53f, 0.55f) : new Color(0.55f, 0.48f, 0.56f);
+            env.m_ambColorNight = hazy ? new Color(0.3f, 0.29f, 0.4f) : new Color(0.26f, 0.28f, 0.44f);
+            // the sun (the moon at night)
+            env.m_sunColorMorning = new Color(1f, 0.72f, 0.66f);  // rose
+            env.m_sunColorDay = new Color(1f, 0.9f, 0.72f);       // warm gold
+            env.m_sunColorEvening = new Color(1f, 0.82f, 0.6f);   // amber
+            env.m_sunColorNight = new Color(0.55f, 0.62f, 0.9f);  // pale blue moon
+            env.m_lightIntensityDay = hazy ? 0.95f : 1.15f;
+            env.m_lightIntensityNight = hazy ? 0.5f : 0.6f;
+            // the haze, and its glow toward the sun
+            env.m_fogColorMorning = new Color(0.86f, 0.66f, 0.72f);
+            env.m_fogColorDay = new Color(0.82f, 0.72f, 0.66f);
+            env.m_fogColorEvening = new Color(0.8f, 0.64f, 0.68f);
+            env.m_fogColorNight = new Color(0.17f, 0.18f, 0.32f);
+            env.m_fogColorSunMorning = new Color(1f, 0.72f, 0.66f);
+            env.m_fogColorSunDay = new Color(1f, 0.88f, 0.7f);
+            env.m_fogColorSunEvening = new Color(1f, 0.8f, 0.56f);
+            env.m_fogColorSunNight = new Color(0.32f, 0.38f, 0.6f);
+            // thin, so the far clouds and the branch still show (thick fog washes the cloud deck white)
+            env.m_fogDensityMorning = env.m_fogDensityEvening = hazy ? 0.0021f : 0.0012f;
+            env.m_fogDensityDay = hazy ? 0.0018f : 0.0011f;
+            env.m_fogDensityNight = hazy ? 0.0016f : 0.001f;
             env.m_windMin = 0.05f;
-            env.m_windMax = 0.22f;
-            env.m_cloudOpacityMorning = env.m_cloudOpacityDay = env.m_cloudOpacityEvening = env.m_cloudOpacityNight = 0.45f;
-            env.m_auroraIntensityMorning = env.m_auroraIntensityDay = env.m_auroraIntensityEvening = env.m_auroraIntensityNight = 0f;
+            env.m_windMax = hazy ? 0.15f : 0.22f;
+            env.m_cloudOpacityMorning = env.m_cloudOpacityDay = env.m_cloudOpacityEvening = env.m_cloudOpacityNight = hazy ? 0.7f : 0.45f;
+            // the northern lights: the game's own, in its sky, as in the far north
+            if (north != null && north.m_auroraColors != null) env.m_auroraColors = north.m_auroraColors;
+            else env.m_auroraColors = Lights();
+            env.m_auroraIntensityNight = hazy ? 0.55f : 1f;
+            env.m_auroraIntensityEvening = hazy ? 0.1f : 0.25f;
+            env.m_auroraIntensityMorning = hazy ? 0.05f : 0.15f;
+            env.m_auroraIntensityDay = 0f;
             env.m_psystems = new GameObject[0];
             env.m_envObject = null;
             env.m_rainCloudAlpha = 0f;
             env.m_musicMorning = env.m_musicDay = env.m_musicEvening = env.m_musicNight = "morning";
-            __instance.AppendEnvironment(env);
-            Plugin.Debug("Valhalla: weather " + Name + " added (from Clear)");
+            return env;
+        }
+
+        // Northern lights' colours of our own, if the far north's aren't there: green into teal into violet.
+        static Gradient Lights()
+        {
+            Gradient g = new Gradient();
+            g.SetKeys(
+                new[] { new GradientColorKey(new Color(0.2f, 1f, 0.55f), 0f), new GradientColorKey(new Color(0.2f, 0.85f, 0.9f), 0.5f), new GradientColorKey(new Color(0.65f, 0.35f, 1f), 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
+            return g;
+        }
+
+        internal static bool Mine(string name) { return name == Name || name == Hazy; }
+
+        // Where Valhalla's day is now: the sun's place (0..1) and which weather, and (for iov_sky) which part.
+        internal static void Now(out float time, out string weather, out string part)
+        {
+            double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
+            float total = 0f;
+            foreach (float s in Takes) total += s;
+            long round = (long)System.Math.Floor(now / total);
+            float into = (float)(now - round * (double)total);
+            float at = Turns[Turns.Length - 1];
+            part = TurnNames[TurnNames.Length - 1];
+            for (int i = 0; i < Takes.Length; i++)
+            {
+                if (into < Takes[i]) { at = Mathf.Lerp(Turns[i], Turns[i + 1], into / Takes[i]); part = TurnNames[i]; break; }
+                into -= Takes[i];
+            }
+            // a day runs noon to noon, so the weather only changes in the bright middle of the day
+            long day = round + (at >= 1.5f ? 1 : 0);
+            uint h = (uint)(day * 2654435761L);
+            bool haze = ((h >> 13) % 100) < 40;
+            time = at - Mathf.Floor(at);
+            weather = haze ? Hazy : Name;
+            if (heldTime >= 0f) { time = heldTime; part = "held by iov_sky"; }
+            if (heldWeather != null) weather = heldWeather;
         }
     }
     // On each client, while its own player is at Valhalla: the weather and the held dusk, the meadow's birds
@@ -605,7 +687,8 @@ namespace IslandsOfValheim
         const float CanopyClearance = 200f; // the branch's lowest part in sight, above the rock's floor
         const float CanopyNear = 1000f;     // how far "in sight" reaches
         bool inside, heldTime, previousDebugTime;
-        float previousTime;
+        float previousTime, previousTransition, arrived;
+        string lastPart, lastWeather;
         float nextCheck;
         readonly List<Transform> clouds = new List<Transform>();
         GameObject tree, canopy;
@@ -808,6 +891,7 @@ namespace IslandsOfValheim
                 Plugin.Debug(here ? "Valhalla: here (its weather, dusk and branch)" : "Valhalla: left");
             }
             if (!inside) return;
+            Clock();
             WatchForCanopy(player);
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
@@ -824,15 +908,15 @@ namespace IslandsOfValheim
             if (on)
             {
                 Ambients();
-                env.SetForceEnvironment(ValhallaWeather.Name);
                 if (!heldTime)
                 {
                     heldTime = true;
                     previousDebugTime = env.m_debugTimeOfDay;
                     previousTime = env.m_debugTime;
+                    previousTransition = env.m_transitionDuration;
+                    arrived = Time.time;
                 }
-                env.m_debugTimeOfDay = true;
-                env.m_debugTime = ValhallaWeather.Dusk;
+                Clock();
             }
             else
             {
@@ -841,8 +925,31 @@ namespace IslandsOfValheim
                 {
                     env.m_debugTimeOfDay = previousDebugTime;
                     env.m_debugTime = previousTime;
+                    env.m_transitionDuration = previousTransition;
                     heldTime = false;
                 }
+            }
+        }
+
+        // Valhalla's own day, every frame (the sun moves smoothly) and its weather. On arrival the sea's weather
+        // gives way at the game's usual pace (no rain carried in); after that one Valhalla weather melts
+        // into the other over a minute.
+        void Clock()
+        {
+            EnvMan env = EnvMan.instance;
+            if (env == null || !heldTime) return;
+            float time;
+            string weather, part;
+            ValhallaWeather.Now(out time, out weather, out part);
+            if (Time.time > arrived + 15f) env.m_transitionDuration = 60f;
+            env.SetForceEnvironment(weather);
+            env.m_debugTimeOfDay = true;
+            env.m_debugTime = time;
+            if (part != lastPart || weather != lastWeather)
+            {
+                Plugin.Debug("Valhalla: " + part + " (" + time.ToString("F3") + "), " + weather);
+                lastPart = part;
+                lastWeather = weather;
             }
         }
 
@@ -860,7 +967,7 @@ namespace IslandsOfValheim
                 if (meadow && meadowAmbients == "") meadowAmbients = a.m_name;
             }
             foreach (EnvSetup e in EnvMan.instance.m_environments)
-                if (e != null && e.m_name == ValhallaWeather.Name) e.m_ambientList = meadowAmbients;
+                if (e != null && ValhallaWeather.Mine(e.m_name)) e.m_ambientList = meadowAmbients;
             Plugin.Debug("Valhalla: random sounds from " + (meadowAmbients == "" ? "nothing" : meadowAmbients) + "; the game has " + string.Join(", ", names.ToArray()));
         }
 

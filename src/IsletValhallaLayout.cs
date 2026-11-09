@@ -361,8 +361,69 @@ namespace IslandsOfValheim
             float shaft = spear != null ? SkySolid(spear).center.x : spearAt.x;
             Vector3 leaning = (face + Vector3.up * 0.26f).normalized; // about 15 degrees back
             Vector3 shieldAt = at + new Vector3(0f, -0.05f, 0f);
-            // its top resting on the shaft
-            PutAgainst(SkyItem(ShieldNames[(n * 3 + 1) % ShieldNames.Length], shieldAt, leaning, Vector3.up, false), shieldAt, -face, shaft + face.x * 0.04f);
+            // its top resting on the shaft: roughly by their solid boxes first, then exactly by their drawn shapes
+            GameObject shield = SkyItem(ShieldNames[(n * 3 + 1) % ShieldNames.Length], shieldAt, leaning, Vector3.up, false);
+            PutAgainst(shield, shieldAt, -face, shaft + face.x * 0.04f);
+            if (shield != null && spear != null) RestOn(shield, spear, -face);
+        }
+
+        // Slide a leaning thing (level, so its foot stays on the ground) until the furthest point of its drawn
+        // shape toward its support touches the support's drawn surface at that height, and sideways until that
+        // point is right on the support's middle there. Boxes can't do this for a round shield on a thin shaft:
+        // its corner reaches where the shield doesn't, and a shaft's box is wider than the shaft.
+        static void RestOn(GameObject leaning, GameObject support, Vector3 toward)
+        {
+            toward = new Vector3(toward.x, 0f, toward.z).normalized;
+            List<Vector3> points = SkyPoints(leaning, null);
+            if (points.Count == 0) { checks.Add(leaning.name + ": its shape can't be read; left by its box"); return; }
+            float best = float.MinValue;
+            foreach (Vector3 p in points) best = Mathf.Max(best, Vector3.Dot(p, toward));
+            // the tip: the middle of what reaches that far (a flat top edge, or a round top's one point)
+            Vector3 tip = Vector3.zero;
+            int n = 0;
+            foreach (Vector3 p in points) if (Vector3.Dot(p, toward) > best - 0.01f) { tip += p; n++; }
+            tip /= n;
+            List<Vector3> section = new List<Vector3>();
+            SkyPoints(support, section, tip.y);
+            if (section.Count == 0) { checks.Add(leaning.name + ": " + support.name + " has nothing at the height of its top (" + tip.y.ToString("F2") + "); left by its box"); return; }
+            float near = float.MaxValue;
+            Vector3 middle = Vector3.zero;
+            foreach (Vector3 p in section) { near = Mathf.Min(near, Vector3.Dot(p, toward)); middle += p; }
+            middle /= section.Count;
+            Vector3 across = Vector3.Cross(Vector3.up, toward);
+            Vector3 shift = toward * (near - best - 0.005f) + across * Vector3.Dot(middle - tip, across);
+            if (shift.magnitude > 0.5f) { checks.Add(leaning.name + ": would have to move " + shift.magnitude.ToString("F2") + " m to rest on " + support.name + "; left by its box"); return; }
+            leaning.transform.localPosition += shift;
+            Plugin.Debug("Valhalla: " + leaning.name + " rests on " + support.name + " at " + tip.y.ToString("F2") + " m up (moved " + shift.ToString("F3") + ")");
+        }
+
+        // A thing's drawn shape in the sky floor's space: with no section list, its corners (every vertex); with
+        // one, where its surface crosses the height at (each triangle edge across it). Only meshes the game left
+        // readable; others are skipped.
+        static List<Vector3> SkyPoints(GameObject go, List<Vector3> section, float at = 0f)
+        {
+            List<Vector3> points = new List<Vector3>();
+            foreach (MeshFilter f in go.GetComponentsInChildren<MeshFilter>(true))
+            {
+                Mesh mesh = f.sharedMesh;
+                if (mesh == null || !mesh.isReadable || !ActiveBelow(f.transform, go.transform)) continue;
+                Vector3[] v = mesh.vertices;
+                for (int i = 0; i < v.Length; i++)
+                {
+                    v[i] = root.transform.InverseTransformPoint(f.transform.TransformPoint(v[i]));
+                    v[i].y -= SkyHeight;
+                }
+                if (section == null) { points.AddRange(v); continue; }
+                int[] t = mesh.triangles;
+                for (int i = 0; i + 2 < t.Length; i += 3)
+                    for (int e = 0; e < 3; e++)
+                    {
+                        Vector3 a = v[t[i + e]], b = v[t[i + (e + 1) % 3]];
+                        if ((a.y - at) * (b.y - at) > 0f || Mathf.Approximately(a.y, b.y)) continue;
+                        section.Add(Vector3.Lerp(a, b, (at - a.y) / (b.y - a.y)));
+                    }
+            }
+            return section ?? points;
         }
 
         // ---- the duel ring ----

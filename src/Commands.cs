@@ -77,6 +77,32 @@ namespace IslandsOfValheim
                     }
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_sky",
+                "[dusk|sunset|night|dawn|day|auto] [clear|haze|auto] - IslandsOfValheim (development): holds Valhalla's sky at a time and weather to look at; auto lets its day run again",
+                args =>
+                {
+                    float time = ValhallaWeather.heldTime;
+                    string weather = ValhallaWeather.heldWeather;
+                    for (int i = 1; i < args.Length; i++)
+                        switch (args[i].ToLowerInvariant())
+                        {
+                            case "dusk": time = 0.70f; break;
+                            case "sunset": time = 0.76f; break;
+                            case "night": time = 0.97f; break;
+                            case "dawn": time = 0.27f; break;
+                            case "day": time = 0.5f; break;
+                            case "clear": weather = ValhallaWeather.Name; break;
+                            case "haze": weather = ValhallaWeather.Hazy; break;
+                            case "auto": time = -1f; weather = null; break;
+                        }
+                    ValhallaWeather.heldTime = time;
+                    ValhallaWeather.heldWeather = weather;
+                    float now;
+                    string w, part;
+                    ValhallaWeather.Now(out now, out w, out part);
+                    args.Context.AddString("Valhalla's sky: " + part + " (" + now.ToString("F2") + "), " + (w == ValhallaWeather.Hazy ? "haze" : "clear") + " (it shows while you're there)");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_spirits",
                 "- IslandsOfValheim (development): a standing ghost, a seated one and a solid one around you, to see the spirits",
                 args => SpiritHuman.SpawnTest(args.Context), true);
