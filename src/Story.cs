@@ -613,27 +613,30 @@ namespace IslandsOfValheim
         static int fishCaught;
 
         // A fish from the ground around Sigrún's islet: one of them swallowed her fragment long ago. Called
-        // as the fish is landed; the fisher keeps the fish too.
-        internal static void FromFish(Fish fish, Humanoid fisher)
+        // as the fish is landed; the fisher keeps the fish too. True if something was found in it (then it's
+        // not a pouch as well: one find, one line).
+        internal static bool FromFish(Fish fish, Humanoid fisher)
         {
             Player player = fisher as Player;
-            if (player == null || player != Player.m_localPlayer) return;
+            if (player == null || player != Player.m_localPlayer) return false;
             bool there = SigrunWatersMarker.Near(fish.transform.position) || InLocation(player.transform.position, SigrunIslet) ||
                 InLocation(fish.transform.position, SigrunIslet);
-            if (!there) return;
-            if (SigrunsNecklace.Caught(fish, player)) return; // T2: her sister's necklace (TaleCaptainsIslets)
+            if (!there) return false;
+            bool necklace;
+            if (SigrunsNecklace.Caught(fish, player, out necklace)) return necklace; // T2: her sister's necklace (TaleCaptainsIslets)
             if (Key(SigrunDone) || Has(player, Piece2))
             {
                 Plugin.Debug("Story: a fish from Sigrún's waters, but her fragment " + (Key(SigrunDone) ? "is already with Sævar" : "is already in your bag"));
-                return;
+                return false;
             }
             fishCaught++;
             Plugin.Debug("Story: fish " + fishCaught + " from Sigrún's waters");
-            if (fishCaught < FishAtMost && Random.value >= FishChance) return;
+            if (fishCaught < FishAtMost && Random.value >= FishChance) return false;
             fishCaught = 0;
             string name = Hand(player, Piece2);
             if (name != null) IsletFishing.Say(player, Texts.Get("iov_story_swallowed", name));
             Plugin.Debug("Story: the fish had Sigrún's fragment");
+            return true;
         }
 
         // ---- torn maps ----

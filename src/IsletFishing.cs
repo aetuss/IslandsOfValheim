@@ -175,7 +175,7 @@ namespace IslandsOfValheim
             if (nview.GetZDO().m_uid == lastTaken) return false; // (the same fish asked for twice)
             lastTaken = nview.GetZDO().m_uid;
             Plugin.Debug("Fishing: " + fish.name + " from a " + IsletTier.All[ground - 1].Name + " ground picked up at " + fish.transform.position.ToString("F0"));
-            Story.FromFish(fish, character);
+            if (Story.FromFish(fish, character)) return false; // (something of the tale's in it: no pouch too)
             if (Random.value >= PouchChance) return false;
             string text = GivePouch(IsletTier.All[ground - 1], character);
             Say(character, text);

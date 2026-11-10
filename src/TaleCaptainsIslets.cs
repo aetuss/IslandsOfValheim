@@ -79,8 +79,7 @@ namespace IslandsOfValheim
             foreach (ParticleSystem p in wolf.GetComponentsInChildren<ParticleSystem>(true))
                 if (p.gameObject != wolf) p.gameObject.SetActive(false);
             // Carved wood: its own materials (the wood_beam's whole material came out pale and frosty on it), with
-            // the wood_beam's grain for its fur and a warm tint (tinted fur alone read as a real dark wolf), with no
-            // glow of their own.
+            // a wood grain of ours for its fur (tinted fur alone read as a real dark wolf), with no glow of their own.
             Texture grainTex = WoodGrain();
             int tinted = 0;
             foreach (Renderer r in wolf.GetComponentsInChildren<Renderer>(true))
@@ -125,22 +124,35 @@ namespace IslandsOfValheim
             Plugin.Debug("T2: Grímr's toy (" + wolf.name + ", " + tinted + " materials tinted wood) at " + at.ToString("F1") + ", " + b.size.ToString("F2") + " m");
         }
 
-        static readonly Color WoodBrown = new Color(0.55f, 0.36f, 0.2f), WoodTint = new Color(1f, 0.85f, 0.66f);
+        static readonly Color WoodBrown = new Color(0.55f, 0.36f, 0.2f), WoodTint = Color.white;
 
-        // The grain of a wooden piece (its texture only).
+        // A wood grain of our own, light carved wood with darker rings (the game's wooden pieces gave none:
+        // their textures aren't the material's main one). Made once.
+        static Texture2D woodGrain;
+
         static Texture WoodGrain()
         {
-            foreach (string name in new[] { "wood_beam", "wood_pole", "woodwall" })
-            {
-                GameObject prefab = PrefabManager.Instance.GetPrefab(name);
-                MeshRenderer r = prefab != null ? prefab.GetComponentInChildren<MeshRenderer>(true) : null;
-                if (r != null && r.sharedMaterial != null && r.sharedMaterial.mainTexture != null)
+            if (woodGrain != null) return woodGrain;
+            const int Size = 128;
+            woodGrain = new Texture2D(Size, Size, TextureFormat.RGB24, true);
+            woodGrain.name = "IoV_WoodGrain";
+            woodGrain.wrapMode = TextureWrapMode.Repeat;
+            Color light = new Color(0.86f, 0.64f, 0.40f), dark = new Color(0.56f, 0.36f, 0.19f);
+            Color[] pixels = new Color[Size * Size];
+            for (int y = 0; y < Size; y++)
+                for (int x = 0; x < Size; x++)
                 {
-                    Plugin.Debug("T2: wood grain from " + name + " (" + r.sharedMaterial.mainTexture.name + ")");
-                    return r.sharedMaterial.mainTexture;
+                    // rings across, bent by noise; a little fine streaking along
+                    float bend = Mathf.PerlinNoise(x * 0.03f, y * 0.08f) * 4f;
+                    float ring = Mathf.Repeat(y * 0.09f + bend, 1f);
+                    float k = Mathf.SmoothStep(0f, 1f, Mathf.Abs(ring - 0.5f) * 2f);
+                    float streak = (Mathf.PerlinNoise(x * 0.5f, y * 0.04f) - 0.5f) * 0.12f;
+                    pixels[y * Size + x] = Color.Lerp(dark, light, Mathf.Clamp01(k * 0.85f + 0.15f + streak));
                 }
-            }
-            return null;
+            woodGrain.SetPixels(pixels);
+            woodGrain.Apply(true);
+            Plugin.Debug("T2: wood grain made");
+            return woodGrain;
         }
 
         // What's drawn under t (skinned or not), in t's own space: a skinned mesh as it lies at rest.
@@ -373,14 +385,17 @@ namespace IslandsOfValheim
         const int AtMost = 3;
         static int caught;
 
-        // Whether the task has this fish (then the tale's own fragment hunt doesn't look at it).
-        internal static bool Caught(Fish fish, Player player)
+        // Whether the task has this fish (then the tale's own fragment hunt doesn't look at it); found: the
+        // necklace was in it.
+        internal static bool Caught(Fish fish, Player player, out bool found)
         {
+            found = false;
             if (!TaleCaptains.Begun || TaleCaptains.Found(TaleCaptains.Sigrun)) return false;
             caught++;
             Plugin.Debug("T2: fish " + caught + " from Sigrún's waters");
             if (caught < AtMost && Random.value >= Chance) return true;
             caught = 0;
+            found = true;
             Story.Set(TaleCaptains.FoundKey(TaleCaptains.Sigrun));
             IsletFishing.Say(player, "$iov_t2_sigrun_caught");
             Plugin.Debug("T2: Sigrún's necklace caught");
