@@ -1063,7 +1063,17 @@ namespace IslandsOfValheim
             if (call != null && want != HallMusic && want != FeastMusic) Play(call, null);           // dawn's or dusk's call, once
             else if (want != playlist && !(playlist == null && playing != null && Time.time < playingUntil)) Play(Next(want), want);
             else if (Time.time >= playingUntil) Play(Next(want), want);                                     // this one's done: the next
-            music.LocationMusic(playing);
+            WeatherMusic(playing);
+        }
+
+        // Valhalla's weathers carry the piece as their music (the game plays a land's music so, and that holds:
+        // asked as a location's it was stopped at once, the weather having none).
+        static void WeatherMusic(string name)
+        {
+            if (EnvMan.instance == null) return;
+            foreach (EnvSetup e in EnvMan.instance.m_environments)
+                if (e != null && ValhallaWeather.Mine(e.m_name) && e.m_musicDay != name)
+                    e.m_musicMorning = e.m_musicDay = e.m_musicEvening = e.m_musicNight = name ?? "";
         }
 
         string Next(string[] list)
@@ -1099,7 +1109,8 @@ namespace IslandsOfValheim
             return null;
         }
 
-        // Slow fades while here (the game's are quick), put back as they were on leaving.
+        // While here: slow fades (the game's are quick), and every piece of ours looped (a weather's music that
+        // isn't looped only comes now and then; ours change when their time is up). Put back on leaving.
         void SlowFades(MusicMan music, bool on)
         {
             Traverse fade = Traverse.Create(music).Field("m_musicFadeTime");
@@ -1113,26 +1124,29 @@ namespace IslandsOfValheim
                         MusicMan.NamedMusic piece = Piece(name);
                         if (piece == null || savedFadeIn.ContainsKey(piece)) continue;
                         savedFadeIn[piece] = piece.m_fadeInTime;
+                        savedLoop[piece] = piece.m_loop;
                         piece.m_fadeInTime = Mathf.Max(piece.m_fadeInTime, Fade);
+                        piece.m_loop = true;
                     }
             }
             else if (!on && savedFade >= 0f)
             {
                 fade.SetValue(savedFade);
                 foreach (KeyValuePair<MusicMan.NamedMusic, float> kv in savedFadeIn) if (kv.Key != null) kv.Key.m_fadeInTime = kv.Value;
+                foreach (KeyValuePair<MusicMan.NamedMusic, bool> kv in savedLoop) if (kv.Key != null) kv.Key.m_loop = kv.Value;
                 savedFadeIn.Clear();
+                savedLoop.Clear();
                 savedFade = -1f;
             }
         }
 
+        readonly Dictionary<MusicMan.NamedMusic, bool> savedLoop = new Dictionary<MusicMan.NamedMusic, bool>();
+
         void MusicOff()
         {
             MusicMan music = MusicMan.instance;
-            if (music != null)
-            {
-                if (playing != null) music.LocationMusic(null);
-                SlowFades(music, false);
-            }
+            if (music != null) SlowFades(music, false);
+            WeatherMusic(null);
             playing = null;
             playlist = null;
             lastTimeOfDay = null;
