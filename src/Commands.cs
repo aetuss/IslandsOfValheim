@@ -75,6 +75,65 @@ namespace IslandsOfValheim
                     else args.Context.AddString("iov_call now | reset");
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_music",
+                "[list|stop|name] - IslandsOfValheim (development): the game's music: list writes every piece (its clips, looped or not) to the log; a name plays that piece; stop stops it",
+                args =>
+                {
+                    MusicMan music = MusicMan.instance;
+                    if (music == null) return;
+                    string what = args.Length > 1 ? args[1] : "list";
+                    if (what.ToLowerInvariant() == "list")
+                    {
+                        int count = 0;
+                        foreach (MusicMan.NamedMusic m in music.m_music)
+                        {
+                            if (m == null) continue;
+                            List<string> clips = new List<string>();
+                            if (m.m_clips != null) foreach (AudioClip c in m.m_clips) if (c != null) clips.Add(c.name + " " + c.length.ToString("F0") + "s");
+                            Plugin.Log.LogInfo("iov_music: " + m.m_name + (m.m_loop ? " (loop)" : "") + (m.m_ambientMusic ? " (ambient)" : "") +
+                                " vol " + m.m_volume.ToString("F2") + ": " + string.Join(", ", clips.ToArray()));
+                            count++;
+                        }
+                        args.Context.AddString(count + " pieces of music written to the log (iov_music <name> plays one)");
+                    }
+                    else if (what.ToLowerInvariant() == "stop")
+                    {
+                        AccessTools.Method(typeof(MusicMan), "StopMusic").Invoke(music, null);
+                        args.Context.AddString("Music stopped.");
+                    }
+                    else
+                    {
+                        AccessTools.Method(typeof(MusicMan), "TriggerMusic").Invoke(music, new object[] { what });
+                        args.Context.AddString("Playing " + what + " (if the game has it: iov_music list).");
+                    }
+                }, true);
+
+            new Terminal.ConsoleCommand("iov_sfx",
+                "[word] | play <name> - IslandsOfValheim (development): the game's sound effects: writes those whose name has the word to the log; play plays one where you stand",
+                args =>
+                {
+                    if (ZNetScene.instance == null) return;
+                    if (args.Length > 2 && args[1].ToLowerInvariant() == "play")
+                    {
+                        GameObject sound = ZNetScene.instance.GetPrefab(args[2]);
+                        if (sound == null || Player.m_localPlayer == null) { args.Context.AddString("No sound " + args[2] + "."); return; }
+                        Object.Instantiate(sound, Player.m_localPlayer.transform.position + Vector3.up, Quaternion.identity);
+                        args.Context.AddString("Playing " + args[2] + ".");
+                        return;
+                    }
+                    string word = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    List<string> names = new List<string>();
+                    foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+                    {
+                        if (prefab == null) continue;
+                        string n = prefab.name.ToLowerInvariant();
+                        if ((n.StartsWith("sfx_") || n.StartsWith("amb_")) && n.Contains(word)) names.Add(prefab.name);
+                    }
+                    names.Sort();
+                    foreach (string n in names) Plugin.Log.LogInfo("iov_sfx: " + n);
+                    args.Context.AddString(names.Count + " sounds written to the log (iov_sfx play <name> plays one)");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_gate",
                 "[open|close|here] - IslandsOfValheim (development): wakes the stone gate at Sævar's harbour (as Odin's call will), or lets it go dark again; here: moves it to where you stand, its front the way you look",
                 args =>
