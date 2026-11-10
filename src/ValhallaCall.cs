@@ -47,8 +47,19 @@ namespace IslandsOfValheim
             if (!told && !player.HaveSeenTutorial(CallKey))
             {
                 told = true;
-                Raven.AddTempText(CallKey, "$iov_call_topic", "$iov_call_text", "", false);
-                Plugin.Debug("Odin's call: Hugin has it for you");
+                if (Raven.m_tutorialsEnabled)
+                {
+                    Raven.AddTempText(CallKey, "$iov_call_topic", "$iov_call_text", "", false);
+                    Plugin.Debug("Odin's call: Hugin has it for you");
+                }
+                else if (TextViewer.instance != null)
+                {
+                    // Hugin's tips turned off in the settings: he doesn't come at all, so his words come the way
+                    // he'd show them, without him
+                    TextViewer.instance.ShowText(TextViewer.Style.Raven, "$iov_call_topic", "$iov_call_text", false);
+                    player.SetSeenTutorial(CallKey);
+                    Plugin.Debug("Odin's call: shown without Hugin (his tips are off)");
+                }
             }
             Light(!player.HaveSeenTutorial(EnteredKey), player);
         }
