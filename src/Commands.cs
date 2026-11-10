@@ -66,14 +66,15 @@ namespace IslandsOfValheim
 
 #if IOV_DEV
             new Terminal.ConsoleCommand("iov_gate",
-                "[open|close] - IslandsOfValheim (development): wakes the stone gate at Sævar's harbour (as Odin's call will), or lets it go dark again",
+                "[open|close|here] - IslandsOfValheim (development): wakes the stone gate at Sævar's harbour (as Odin's call will), or lets it go dark again; here: moves it to where you stand, its front the way you look",
                 args =>
                 {
                     if (ZoneSystem.instance == null) return;
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    if (what == "here") { ValhallaGate.MoveHere(args.Context); return; }
                     if (what == "open") ZoneSystem.instance.SetGlobalKey(ValhallaGate.OpenKey);
                     else if (what == "close") ZoneSystem.instance.RemoveGlobalKey(ValhallaGate.OpenKey);
-                    else { args.Context.AddString("iov_gate open | close"); return; }
+                    else { args.Context.AddString("iov_gate open | close | here"); return; }
                     args.Context.AddString("The harbour's gate " + (what == "open" ? "wakes: step through it to Valhalla." : "goes dark."));
                 }, true);
 

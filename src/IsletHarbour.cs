@@ -97,6 +97,14 @@ namespace IslandsOfValheim
         // A point in the harbour's frame: lx across, lz towards the jetty.
         static Vector2 H(float lx, float lz) { return hc + hs * lx + hf * lz; }
 
+        // And back: a point (and a direction) in the location's space, in the harbour's frame.
+        internal static void HarbourFrame(Vector2 local, Vector2 dir, out Vector2 h, out Vector2 hDir)
+        {
+            Vector2 d = local - hc;
+            h = new Vector2(Vector2.Dot(d, hs), Vector2.Dot(d, hf));
+            hDir = new Vector2(Vector2.Dot(dir, hs), Vector2.Dot(dir, hf)).normalized;
+        }
+
         static void PlaceHarbour(float j)
         {
             hf = Polar(j, 1f);

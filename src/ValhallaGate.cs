@@ -88,10 +88,31 @@ namespace IslandsOfValheim
             {
                 arriving = 0;
                 arrivedAt = Time.time;
-                Vector3 front = transform.position + transform.forward * 3f + Vector3.up * 0.5f;
-                player.TeleportTo(front, Quaternion.LookRotation(transform.forward), false);
-                Plugin.Debug("Gate: came out of " + (valhallaSide ? "Valhalla's" : "the harbour's") + " gate");
+                // Set straight down there: the game refuses a second teleport within two seconds of the last
+                // (which is why the first try left everyone where the long jump put them).
+                Vector3 front = transform.position + transform.forward * 3f;
+                front.y = GroundY(front) + 0.1f;
+                Place(player, front, Quaternion.LookRotation(transform.forward));
+                Plugin.Debug("Gate: came out of " + (valhallaSide ? "Valhalla's" : "the harbour's") + " gate at " + front.ToString("F1"));
             }
+        }
+
+        // The ground (or paving) under a point: the first thing solid below from a little above it.
+        static float GroundY(Vector3 p)
+        {
+            RaycastHit hit;
+            int mask = LayerMask.GetMask("Default", "static_solid", "piece", "terrain");
+            if (Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out hit, 10f, mask, QueryTriggerInteraction.Ignore)) return hit.point.y;
+            return p.y;
+        }
+
+        // A player moved a short way at once, still, and not counted as falling from wherever they were.
+        static void Place(Player player, Vector3 at, Quaternion facing)
+        {
+            player.transform.SetPositionAndRotation(at, facing);
+            Rigidbody body = player.GetComponent<Rigidbody>();
+            if (body != null) { body.position = at; body.velocity = Vector3.zero; }
+            HarmonyLib.Traverse.Create(player).Field("m_maxAirAltitude").SetValue(at.y);
         }
 
         internal void Enter(Player player)
@@ -108,12 +129,45 @@ namespace IslandsOfValheim
             }
             else
             {
-                // up to Valhalla's rock (placed there first, if it isn't yet), then out in front of its gate
+                // up to Valhalla's rock, right onto the ground in front of its gate (the rock isn't turned, and
+                // its ground's height is known before it's there); placed there first, if it isn't yet
                 arriving = ToValhalla;
-                TerrainIsletTest.Goto(Console.instance, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1f, 150f, 900f, 0f,
-                    IsletBuilder.ValhallaArrival.x, IsletBuilder.ValhallaArrival.z);
+                ZoneSystem.LocationInstance rock;
+                if (Find(IsletBuilder.ValhallaBase, out rock))
+                {
+                    float z = IsletBuilder.ValhallaGateZ + 3f;
+                    Vector3 target = new Vector3(rock.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SkyHeight + IsletBuilder.SkyGround(0f, z) + 0.3f, rock.m_position.z + z);
+                    player.TeleportTo(target, Quaternion.identity, true);
+                }
+                else
+                    TerrainIsletTest.Goto(Console.instance, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1f, 150f, 900f, 0f,
+                        IsletBuilder.ValhallaArrival.x, IsletBuilder.ValhallaArrival.z);
             }
             Plugin.Debug("Gate: through " + (valhallaSide ? "Valhalla's gate to the harbour" : "the harbour's gate to Valhalla"));
+        }
+
+        // iov_gate here (development): the harbour's gate moved, now, to where you stand, its front the way you
+        // look; and where that is in the harbour's own frame, to build it there for good.
+        internal static void MoveHere(Terminal context)
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null) return;
+            ValhallaGate near = null;
+            foreach (ValhallaGate g in Object.FindObjectsOfType<ValhallaGate>())
+                if (!g.valhallaSide && Vector3.Distance(g.transform.position, player.transform.position) < 60f) near = g;
+            if (near == null || near.transform.parent == null) { context.AddString("No harbour gate near you."); return; }
+            Vector3 look = player.transform.forward;
+            look.y = 0f;
+            Vector3 at = player.transform.position;
+            at.y = GroundY(at);
+            near.transform.SetPositionAndRotation(at, Quaternion.LookRotation(look.normalized));
+            Transform frame = near.transform.parent;
+            Vector3 local = frame.InverseTransformPoint(at), localLook = frame.InverseTransformDirection(look);
+            Vector2 h, hLook;
+            IsletBuilder.HarbourFrame(new Vector2(local.x, local.z), new Vector2(localLook.x, localLook.z), out h, out hLook);
+            string line = "harbour gate at H(" + h.x.ToString("F1") + ", " + h.y.ToString("F1") + "), looking H(" + hLook.x.ToString("F2") + ", " + hLook.y.ToString("F2") + ")";
+            context.AddString("Moved: " + line + ". (It goes back when the harbour loads again; tell me these numbers to keep it there.)");
+            Plugin.Log.LogInfo("iov_gate here: " + line);
         }
 
         static bool Find(string name, out ZoneSystem.LocationInstance found)
