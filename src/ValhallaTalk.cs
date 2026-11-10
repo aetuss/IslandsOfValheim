@@ -57,13 +57,9 @@ namespace IslandsOfValheim
             {
                 string free;
                 string line = TaleCaptains.Talk(player, captain, out free);
-                if (free != null) TaleCaptains.Free(free);
-                // (freed himself, he's a new body at the table: that one speaks)
-                ValhallaSpeaker speaking = this;
-                if (free == captain)
-                    foreach (ValhallaSpeaker s in all)
-                        if (s != null && s != this && s.who == Captain && s.captain == captain) speaking = s;
-                speaking.Say(line);
+                // (the ghost says it; freed himself, he goes on saying it once he's whole)
+                Say(line);
+                if (free != null) TaleCaptains.Free(free, free == captain ? line : "");
                 return true;
             }
             if (who == RingMaster)
@@ -170,7 +166,7 @@ namespace IslandsOfValheim
         void OnEnable() { if (!all.Contains(this)) all.Add(this); }
         void OnDisable() { all.Remove(this); }
 
-        void Say(string line)
+        internal void Say(string line)
         {
             if (Chat.instance == null) return;
             Chat.instance.SetNpcText(gameObject, Vector3.up * height, 35f, 9f, "", line, false); // (the ring's master is heard across his ring)

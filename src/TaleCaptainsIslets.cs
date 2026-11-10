@@ -27,12 +27,17 @@ namespace IslandsOfValheim
             pivot.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
             stone.transform.SetParent(pivot.transform, false);
             stone.transform.localPosition = Vector3.zero;
-            stone.transform.localRotation = Quaternion.identity;
+            // turned about on its pivot: the model's runes are on its back, and raised they face the camp
+            // (lying, they face the sky)
+            stone.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             Bounds b = OwnMeshBounds(stone.transform);
-            stone.transform.localPosition = -new Vector3(b.center.x, b.min.y, b.center.z); // its foot on the pivot
+            stone.transform.localPosition = -(stone.transform.localRotation * new Vector3(b.center.x, b.min.y, b.center.z)); // its foot on the pivot
             HrafnStone raise = pivot.AddComponent<HrafnStone>();
             raise.yaw = yaw;
             raise.lift = Mathf.Min(b.size.x, b.size.z) * 0.5f;
+            // the dead come up in the cold camp, before the tale's stones (not on the ridge behind you)
+            Vector2 camp = Polar(cliffDeg, (PlateauAt(cliffDeg) - 0.8f) * 0.42f);
+            raise.ambushAt = new Vector3(camp.x, GroundMin(camp.x, camp.y, 0.5f), camp.y);
             // lying on its back (lifted by half its thickness, so it lies on the ground, not in it)
             pivot.transform.localPosition += Vector3.up * raise.lift;
             pivot.transform.localRotation = Quaternion.Euler(-86f, yaw, 0f);
@@ -67,6 +72,7 @@ namespace IslandsOfValheim
     {
         public float lift;          // how far the pivot is lifted while lying (half the stone's thickness)
         public float yaw;           // which way it faces, standing
+        public Vector3 ambushAt;    // where Ketill's crew comes up, in the islet's own space
         bool standing, raising;
         float nextLook;
 
@@ -139,8 +145,9 @@ namespace IslandsOfValheim
             Story.Set(TaleCaptains.FoundKey(TaleCaptains.Ketill));
             if (player != null) player.Message(MessageHud.MessageType.Center, "$iov_t2_hrafn_raised", 0, null, false);
             Plugin.Debug("T2: Hrafn's stone raised");
-            yield return Ambush.Rise(transform.position, new[] { "Draugr", "Draugr", "Draugr_Ranged" }, new[] { 1, 2, 1 },
-                "vfx_prespawn", "vfx_DraugrSpawn", 5f);
+            Vector3 camp = ambushAt != Vector3.zero && transform.parent != null ? transform.parent.TransformPoint(ambushAt) : transform.position;
+            yield return Ambush.Rise(camp, transform.position, new[] { "Draugr", "Draugr", "Draugr_Ranged" }, new[] { 1, 2, 1 },
+                "vfx_prespawn", "vfx_DraugrSpawn", 2.6f);
         }
     }
 
@@ -148,7 +155,8 @@ namespace IslandsOfValheim
     // comes up there, already roused (made on this client, owned by it, as the tale's other foes).
     static class Ambush
     {
-        internal static IEnumerator Rise(Vector3 around, string[] creatures, int[] levels, string warn, string come, float distance)
+        // around: where they come up (spread about it); face: what they turn to (where you are)
+        internal static IEnumerator Rise(Vector3 around, Vector3 face, string[] creatures, int[] levels, string warn, string come, float distance)
         {
             Vector3[] spots = new Vector3[creatures.Length];
             float start = Random.Range(0f, 360f);
@@ -164,7 +172,7 @@ namespace IslandsOfValheim
                 GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(creatures[i]) : null;
                 if (prefab == null) continue;
                 if (come.Length > 0) BossKit.Effect(come, spots[i]);
-                Vector3 look = around - spots[i];
+                Vector3 look = face - spots[i];
                 look.y = 0f;
                 GameObject go = Object.Instantiate(prefab, spots[i] + Vector3.up * 0.2f, Quaternion.LookRotation(look.sqrMagnitude > 0.01f ? look : Vector3.forward));
                 Character body = go.GetComponent<Character>();
@@ -175,12 +183,16 @@ namespace IslandsOfValheim
             Plugin.Debug("T2: an ambush of " + creatures.Length);
         }
 
-        // The ground (or a floor) under a point, never the water.
+        // The ground (or a floor) under a point, never the water, nor the top of a stone or a crate standing
+        // there (well above the ground it was asked about).
         static Vector3 Ground(Vector3 p)
         {
             RaycastHit hit;
-            if (Physics.Raycast(p + Vector3.up * 20f, Vector3.down, out hit, 60f, LayerMask.GetMask("Default", "static_solid", "terrain", "piece"), QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(p + Vector3.up * 20f, Vector3.down, out hit, 60f, LayerMask.GetMask("Default", "static_solid", "terrain", "piece"), QueryTriggerInteraction.Ignore)
+                && hit.point.y < p.y + 1.2f)
                 return hit.point;
+            float h;
+            if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(p, out h)) return new Vector3(p.x, h, p.z);
             return p;
         }
     }

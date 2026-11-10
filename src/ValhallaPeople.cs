@@ -392,17 +392,63 @@ namespace IslandsOfValheim
             captains[id] = person;
         }
 
-        // Freed while you watch: the ghost goes in a column of light, and in its place sits the man.
-        internal void FreeCaptain(string id)
+        readonly HashSet<string> becoming = new HashSet<string>();
+
+        // Freed while you watch, slowly: a column of light comes down on the ghost, it grows bright and nearly
+        // whole in it, and at its brightest the man sits in its place; then the light goes. (line: what the
+        // ghost was saying as it went, said on by the man)
+        internal void FreeCaptain(string id, string line = "")
         {
             SpiritHuman ghost;
-            if (!captains.TryGetValue(id, out ghost) || ghost == null) return;
-            LightBeam.Over(ghost.transform.position, 3.4f, 1.6f, 0.6f, 2.4f, true);
-            made.Remove(ghost.gameObject);
-            everyone.Remove(ghost);
-            Destroy(ghost.gameObject);
+            if (!captains.TryGetValue(id, out ghost) || ghost == null || becoming.Contains(id)) return;
+            StartCoroutine(Becoming(id, ghost, line));
+        }
+
+        IEnumerator Becoming(string id, SpiritHuman ghost, string line)
+        {
+            becoming.Add(id);
+            yield return new WaitForSeconds(0.9f); // (a breath: the words first)
+            if (ghost == null) { becoming.Remove(id); yield break; }
+            Vector3 at = ghost.transform.position;
+            LightBeam.Over(at, 5.2f, 1.6f, 1.5f, 2.6f, true);
+            // its see-through colours, to brighten (not the depth twins' invisible ones)
+            List<Material> pale = new List<Material>();
+            List<Color> from = new List<Color>();
+            foreach (Renderer r in ghost.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r is ParticleSystemRenderer) continue;
+                foreach (Material m in r.sharedMaterials)
+                    if (m != null && m.HasProperty("_Color") && m.renderQueue >= 3000 && m.shader != null && m.shader.name == "Sprites/Default")
+                    {
+                        pale.Add(m);
+                        from.Add(m.color);
+                    }
+            }
+            Color bright = new Color(1f, 0.96f, 0.86f, 0.93f);
+            const float Takes = 2.3f;
+            for (float t = 0f; t < Takes; t += Time.deltaTime)
+            {
+                if (ghost == null) break;
+                float k = Mathf.SmoothStep(0f, 1f, t / Takes);
+                for (int i = 0; i < pale.Count; i++) if (pale[i] != null) pale[i].color = Color.Lerp(from[i], bright, k);
+                yield return null;
+            }
+            BossKit.Effect("fx_summon_spirit_spawn", at + Vector3.up * 0.6f);
+            if (ghost != null)
+            {
+                made.Remove(ghost.gameObject);
+                everyone.Remove(ghost);
+                Destroy(ghost.gameObject);
+            }
             captains.Remove(id);
             Captain(id);
+            becoming.Remove(id);
+            SpiritHuman man;
+            if (line.Length > 0 && captains.TryGetValue(id, out man) && man != null)
+            {
+                ValhallaSpeaker speaker = man.GetComponent<ValhallaSpeaker>();
+                if (speaker != null) speaker.Say(line);
+            }
         }
 
         static SpiritHuman.Look CaptainLook(string id)

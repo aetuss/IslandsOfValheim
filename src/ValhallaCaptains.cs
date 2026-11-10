@@ -99,10 +99,11 @@ namespace IslandsOfValheim
         }
 
         // Freed: the world's key, and (if they're in sight) the one at the table turns from a ghost into a man.
-        internal static void Free(string id)
+        // (line: what the freed one is saying as it happens, said on once he's whole)
+        internal static void Free(string id, string line = "")
         {
             Story.Set(FreedKey(id));
-            if (ValhallaPeople.Current != null) ValhallaPeople.Current.FreeCaptain(id);
+            if (ValhallaPeople.Current != null) ValhallaPeople.Current.FreeCaptain(id, line);
             Plugin.Debug("T2: " + id + " freed" + (AllFreed ? "; all four" : ""));
         }
 
