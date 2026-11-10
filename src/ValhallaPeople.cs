@@ -66,6 +66,7 @@ namespace IslandsOfValheim
             moves.Clear();
             ringPair = null;
             ringCleared = false;
+            ringHomeKnown[0] = ringHomeKnown[1] = false;
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -373,6 +374,7 @@ namespace IslandsOfValheim
         Actor ringPair;                       // the two who spar in the ring
         readonly Vector3[] ringHome = new Vector3[2];
         readonly Quaternion[] ringTurn = new Quaternion[2];
+        readonly bool[] ringHomeKnown = new bool[2];
         bool ringCleared;
 
         // The two sparring walk out to the ring's edge (through gaps between its columns, clear of its fires)
@@ -391,10 +393,17 @@ namespace IslandsOfValheim
                 two[i].blocking = false;
                 Vector3 to;
                 Quaternion end;
-                if (clear)
+                // (their own places in the ring, noted once only: a bout begun again while they were still on
+                // their way back took wherever they were then for home, and they sparred there, at the edge)
+                moves.RemoveAll(o => o.who == two[i]);
+                if (!ringHomeKnown[i])
                 {
                     ringHome[i] = transform.InverseTransformPoint(two[i].transform.position);
                     ringTurn[i] = two[i].transform.rotation;
+                    ringHomeKnown[i] = true;
+                }
+                if (clear)
+                {
                     float a = degrees[i] * Mathf.Deg2Rad;
                     to = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
                     end = transform.rotation * Quaternion.LookRotation(new Vector3(Ring.x - to.x, 0f, Ring.y - to.z).normalized);
