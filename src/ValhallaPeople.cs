@@ -360,7 +360,15 @@ namespace IslandsOfValheim
                     {
                         // a bite every quarter minute or so
                         long slot = (long)(t / 15.0);
-                        if (slot != a.last) { if (a.last != long.MinValue) a.who.Eat(); a.last = slot; }
+                        if (slot != a.last)
+                        {
+                            if (a.last != long.MinValue)
+                            {
+                                a.who.Eat();
+                                if (slot % 23 == 11) a.who.Burp(); // each now and then (every six minutes or so)
+                            }
+                            a.last = slot;
+                        }
                         break;
                     }
                     case Trainer:

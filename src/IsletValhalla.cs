@@ -43,7 +43,9 @@ namespace IslandsOfValheim
 
             BuildFloatingRock(sky.transform);
             UnderRocks();
-            BuildValhallaLayout();
+            keepSounds = true;
+            try { BuildValhallaLayout(); }
+            finally { keepSounds = false; }
             ValhallaClouds.Build(sky.transform);
             ValhallaClouds.Motes(sky.transform);
             sky.AddComponent<ValhallaSky>();
@@ -630,7 +632,13 @@ namespace IslandsOfValheim
             env.m_psystems = new GameObject[0];
             env.m_envObject = null;
             env.m_rainCloudAlpha = 0f;
-            env.m_musicMorning = env.m_musicDay = env.m_musicEvening = env.m_musicNight = "morning";
+            // its music by the time of day (the game's own pieces): the dawn and dusk calls now and then, the
+            // meadows' tune by day, and under the northern lights the far north's. (The hall and the Brim
+            // Folk's feast have their own: ValhallaSky.Music.)
+            env.m_musicMorning = "morning";
+            env.m_musicDay = "meadows";
+            env.m_musicEvening = "evening";
+            env.m_musicNight = "deepnorth";
             return env;
         }
 
@@ -902,6 +910,7 @@ namespace IslandsOfValheim
             }
             if (!inside) return;
             Clock();
+            Music(transform.InverseTransformPoint(p));
             WatchForCanopy(player);
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
@@ -930,6 +939,8 @@ namespace IslandsOfValheim
             }
             else
             {
+                if (placeMusic != null && MusicMan.instance != null) MusicMan.instance.LocationMusic(null);
+                placeMusic = null;
                 env.SetForceEnvironment("");
                 if (heldTime)
                 {
@@ -961,6 +972,30 @@ namespace IslandsOfValheim
                 lastPart = part;
                 lastWeather = weather;
             }
+        }
+
+        // Places with music of their own, over the time of day's (the game's location music, as at Haldor's):
+        // in the hall, the mead and merriment of the game's closing song; at the Brim Folk's feast under the
+        // birches, the far north's memorial. Asked again every second while you're there (a piece that ends
+        // starts again), let go when you step out.
+        const string HallMusic = "credits", FeastMusic = "location_deepnorth_memorialsite";
+        static readonly Vector2 FeastAt = new Vector2(-42f, 8f);
+        string placeMusic;
+        float nextMusic;
+
+        void Music(Vector3 local)
+        {
+            if (Time.time < nextMusic) return;
+            nextMusic = Time.time + 1f;
+            MusicMan music = MusicMan.instance;
+            if (music == null) return;
+            string want = null;
+            if (Mathf.Abs(local.x) < 8.5f && local.z > 3.5f && local.z < 40.5f && local.y < 12f) want = HallMusic;
+            else if (new Vector2(local.x - FeastAt.x, local.z - FeastAt.y).magnitude < 18f) want = FeastMusic;
+            if (want != null) music.LocationMusic(want);
+            else if (placeMusic != null) music.LocationMusic(null);
+            if (want != placeMusic) Plugin.Debug("Valhalla: music " + (want ?? "by the time of day"));
+            placeMusic = want;
         }
 
         // The meadow's random sounds (birds by day) instead of whatever the sea far below would play.

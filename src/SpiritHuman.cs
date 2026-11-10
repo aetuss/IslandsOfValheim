@@ -273,6 +273,14 @@ namespace IslandsOfValheim
 
         static EffectList eating;
 
+        // After a drink, now and then: the game's mead burp (heard close by only).
+        internal void Burp()
+        {
+            if (!Near) return;
+            GameObject burp = PrefabManager.Instance.GetPrefab("sfx_MeadBurp");
+            if (burp != null) Object.Instantiate(burp, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+        }
+
         Vector3 Hand() { return transform.position + Vector3.up * 1.3f + transform.forward * 0.6f; }
 
         // Effects played here alone (they're the game's sounds and sparks, nothing in them is shared).

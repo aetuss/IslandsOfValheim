@@ -516,6 +516,10 @@ namespace IslandsOfValheim
             Plugin.Debug("  " + go.name + " size " + b.size.ToString("F1") + " at " + pos.ToString("F1"));
         }
 
+        // While Valhalla is built: the game's sound script stays too, so its fires crackle (it picks the
+        // sound and starts it; without it a fire's sound source has nothing to play).
+        static bool keepSounds;
+
         static void Strip(GameObject go)
         {
             // Several passes: a script that another one requires can only go after that one.
@@ -527,7 +531,7 @@ namespace IslandsOfValheim
                 int gone = 0;
                 for (int i = scripts.Length - 1; i >= 0; i--)
                 {
-                    if (scripts[i] is LightLod) continue;
+                    if (scripts[i] is LightLod || (keepSounds && scripts[i] is ZSFX)) continue;
                     Object.DestroyImmediate(scripts[i]);
                     gone++;
                 }
