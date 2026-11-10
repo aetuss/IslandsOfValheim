@@ -110,8 +110,10 @@ namespace IslandsOfValheim
                     floorFront = Mathf.Min(floorFront, tb.min.z);
                     floorBack = Mathf.Max(floorBack, tb.max.z);
                 }
-            // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out.
-            int n = 0;
+            // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out; inside, a
+            // banner high on each (but the end ones), and on the four pairs nearest the throne the trophies of
+            // the great foes the world has beaten (on item stands, as a player hangs them).
+            int n = 0, banners = 0;
             for (float z = HallStart; z <= HallEnd + 0.01f; z += 4f)
                 foreach (float side in new[] { -1f, 1f })
                 {
@@ -121,6 +123,10 @@ namespace IslandsOfValheim
                     Vector3 at = new Vector3(side * (HallHalfWidth + 0.6f), floorTop + 2.2f, z);
                     PutAgainst(SkyItem(ShieldNames[(n++ * 5 + 3) % ShieldNames.Length], at, new Vector3(side, 0f, 0f), Vector3.up, false), at,
                         new Vector3(-side, 0f, 0f), side > 0f ? pb.max.x : pb.min.x);
+                    float inner = side > 0f ? pb.min.x : pb.max.x;
+                    int slot = Mathf.RoundToInt((z - (HallEnd - 16f)) / 4f);
+                    if (slot >= 0 && slot < 4) Trophy(slot * 2 + (side > 0f ? 1 : 0), inner, side, floorTop + 2.1f, z);
+                    if (z > HallStart + 0.5f && z < HallEnd - 0.5f) Banner(banners++, inner, side, floorTop + PillarHeight - 0.35f, z);
                 }
             float wallTop = floorTop + PillarHeight;
             // Beams along the tops of the pillars.
@@ -167,6 +173,93 @@ namespace IslandsOfValheim
             SkySeat("piece_throne01", new Vector3(0f, dais, HallEnd - 3f), Vector3.back);
             foreach (float x in new[] { -2.3f, 2.3f })
                 Lamp("CastleKit_groundtorch", "piece_brazierfloor02", new Vector3(x, dais, HallEnd - 3.4f));
+            Mead(floorTop);
+        }
+
+        // ---- the hall's trophies, banners and mead ----
+
+        // The great foes, in the order they're met, each with the world's key that says it's been beaten
+        // (ValhallaSky shows a trophy only once that key is set: the hall honours what this world has done).
+        static readonly string[,] Trophies =
+        {
+            { "TrophyEikthyr", "defeated_eikthyr" }, { "TrophyTheElder", "defeated_gdking" }, { "TrophyBonemass", "defeated_bonemass" },
+            { "TrophyDragonQueen", "defeated_dragon" }, { "TrophyGoblinKing", "defeated_goblinking" }, { "TrophySeekerQueen", "defeated_queen" },
+            { "TrophyFader", "defeated_fader" }, { "TrophyFrozenKing", "defeated_frozenking" },
+        };
+        internal const string TrophyMark = "IoV_Trophy:";
+
+        // A wall item stand on a pillar's inner face (inner: that face's x; side: the pillar's side), its
+        // trophy on it the way the game's own stand shows one (the item's "attach" part on the stand's attach
+        // point); the trophy's object named for its key.
+        static void Trophy(int k, float inner, float side, float y, float z)
+        {
+            if (k >= Trophies.GetLength(0)) return;
+            Transform attach = null;
+            Vector3 at = new Vector3(inner - side * 0.06f, y, z);
+            GameObject stand = SkyProp("itemstand", at, Vector3.zero, false, go =>
+            {
+                ItemStand s = go.GetComponent<ItemStand>();
+                if (s != null) attach = s.m_attachOther;
+            });
+            if (stand == null) return;
+            // flat against the pillar (thin across the hall), its face (the attach point) into the hall
+            if (SkyBounds(stand).size.z < SkyBounds(stand).size.x) stand.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * stand.transform.localRotation;
+            Put(stand, at, false);
+            if (attach != null && (parent.InverseTransformPoint(attach.position).x - SkyBounds(stand).center.x) * -side < 0f)
+            {
+                stand.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * stand.transform.localRotation;
+                Put(stand, at, false);
+            }
+            GameObject item = PrefabManager.Instance.GetPrefab(Trophies[k, 0]);
+            Transform look = item != null ? item.transform.Find("attach") : null;
+            if (look == null) { Plugin.Debug("Valhalla: no trophy " + Trophies[k, 0]); return; }
+            Transform holder = attach != null ? attach : stand.transform;
+            GameObject trophy = Object.Instantiate(look.gameObject, holder, false);
+            trophy.transform.localPosition = attach != null ? look.localPosition : new Vector3(0f, 0f, 0.15f);
+            trophy.transform.localRotation = look.localRotation;
+            trophy.transform.localScale = look.localScale;
+            Strip(trophy);
+            trophy.name = TrophyMark + Trophies[k, 1];
+            built++;
+        }
+
+        // A banner of the game's hanging high on a pillar's inner face, flat against it.
+        static void Banner(int i, float inner, float side, float top, float z)
+        {
+            string name = "piece_banner0" + (1 + (i * 3) % 7);
+            Vector3 at = new Vector3(inner - side * 0.08f, top, z);
+            GameObject banner = SkyProp(name, at, Vector3.zero, true);
+            if (banner == null) return;
+            if (SkyBounds(banner).size.x > SkyBounds(banner).size.z)
+            {
+                banner.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * banner.transform.localRotation;
+                Put(banner, at, true);
+            }
+            // (put by its middle: pulled back so its back is at the pillar)
+            Bounds b = SkyBounds(banner);
+            float back = side > 0f ? b.max.x : b.min.x;
+            banner.transform.localPosition += new Vector3(inner - back, 0f, 0f);
+        }
+
+        // Mead: a fermenter in each of the hall's back corners, beside the throne's dais, and barrels by the door.
+        static void Mead(float floorTop)
+        {
+            foreach (float side in new[] { -1f, 1f })
+            {
+                string fermenter = First("fermenter");
+                if (fermenter != null) SkyProp(fermenter, new Vector3(side * 6.1f, floorTop, HallEnd - 3.5f), new Vector3(0f, side > 0f ? -90f : 90f, 0f));
+                string barrel = First("barrell", "piece_barrel", "piece_chest_barrel");
+                if (barrel == null) continue;
+                SkyProp(barrel, new Vector3(side * 6.6f, floorTop, HallStart + 1.6f), new Vector3(0f, side * 20f, 0f));
+                SkyProp(barrel, new Vector3(side * 6.7f, floorTop, HallStart + 2.8f), new Vector3(0f, side * 75f, 0f));
+            }
+        }
+
+        static string First(params string[] names)
+        {
+            foreach (string name in names) if (PrefabManager.Instance.GetPrefab(name) != null) return name;
+            Plugin.Debug("Valhalla: none of " + string.Join(", ", names));
+            return null;
         }
 
         // Steps of black marble from the ground up to the hall's floor, in front of its measured edge.

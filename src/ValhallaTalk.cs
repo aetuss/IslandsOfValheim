@@ -61,7 +61,9 @@ namespace IslandsOfValheim
             }
             if (who == Bragi)
             {
-                Say(Welcomed ? BragiTalk[Random.Range(0, BragiTalk.Length)] : "$iov_bragi_greet");
+                // (once the einherjar have taken you in, now and then he sings of it)
+                bool won = Story.Key(ValhallaDuel.WonKey);
+                Say(!Welcomed ? "$iov_bragi_greet" : won && Random.value < 0.5f ? "$iov_bragi_won" : BragiTalk[Random.Range(0, BragiTalk.Length)]);
                 greeted = true;
                 return true;
             }
@@ -75,7 +77,8 @@ namespace IslandsOfValheim
                 return true;
             }
             player.AddKnownText("$iov_lore_scattered", "$iov_lore_scattered_text"); // (a page lost is found again)
-            Say("$iov_valsaevar_ring");
+            // to the ring; once you've won there, on to what his captains left undone (the next task)
+            Say(Story.Key(ValhallaDuel.WonKey) ? "$iov_valsaevar_won" : "$iov_valsaevar_ring");
             return true;
         }
 
@@ -132,10 +135,17 @@ namespace IslandsOfValheim
             Say("$iov_ringmaster_call");
         }
 
+        // A line from whichever of them is the one (the ring's master, as the bouts end).
+        internal static void Shout(int one, string line)
+        {
+            foreach (ValhallaSpeaker s in FindObjectsOfType<ValhallaSpeaker>())
+                if (s.who == one) { s.Say(line); return; }
+        }
+
         void Say(string line)
         {
             if (Chat.instance == null) return;
-            Chat.instance.SetNpcText(gameObject, Vector3.up * height, 20f, 9f, "", line, false);
+            Chat.instance.SetNpcText(gameObject, Vector3.up * height, 35f, 9f, "", line, false); // (the ring's master is heard across his ring)
         }
     }
 

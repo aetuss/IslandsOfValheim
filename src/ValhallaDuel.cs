@@ -132,6 +132,8 @@ namespace IslandsOfValheim
             if (yielded) return;
             yielded = true;
             yieldedAt = Time.time;
+            if (slamGlow != null) Destroy(slamGlow.gameObject); // (beaten mid-blow)
+            slamAt = -1f;
             if (ai != null)
             {
                 ai.m_viewRange = ai.m_hearRange = ai.m_alertRange = 0f;
@@ -149,10 +151,102 @@ namespace IslandsOfValheim
 
         bool goingHome;
 
+        // ---- the champion's own blow: he raises his weapon and glows gold, calls out, and brings it down on
+        // the ground, a shock round him that throws back and hurts whoever's still close (step away, or block) ----
+
+        internal float slamDamage;        // set for the champion: how hard his slam hits (by the world's tier)
+        const float SlamWindUp = 1.7f, SlamReach = 5f;
+        float nextSlam = -1f, slamAt = -1f;
+        bool swung;
+        Light slamGlow;
+
+        void Champion()
+        {
+            Player player = Player.m_localPlayer;
+            ZNetView nview = GetComponent<ZNetView>();
+            if (player == null || nview == null || !nview.IsOwner()) return;
+            if (nextSlam < 0f) nextSlam = Time.time + 9f;
+            if (slamAt > 0f)
+            {
+                // winding up: still, glowing brighter, then the swing down
+                body.SetMoveDir(Vector3.zero);
+                if (slamGlow != null) slamGlow.intensity = Mathf.Lerp(0.5f, 7f, 1f - (slamAt - Time.time) / SlamWindUp);
+                if (!swung && Time.time >= slamAt - 0.45f) { swung = true; Trigger("swing_sledge"); }
+                if (Time.time >= slamAt) Slam(player);
+                return;
+            }
+            if (Time.time < nextSlam || Vector3.Distance(player.transform.position, transform.position) > 7f) return;
+            // the wind-up
+            slamAt = Time.time + SlamWindUp;
+            swung = false;
+            if (ai != null) ai.enabled = false;
+            Vector3 face = player.transform.position - transform.position;
+            face.y = 0f;
+            if (face.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(face);
+            Emote("emote_challenge");
+            GameObject light = new GameObject("IoV_SlamGlow");
+            light.transform.SetParent(transform, false);
+            light.transform.localPosition = new Vector3(0f, 1.8f, 0.4f);
+            slamGlow = light.AddComponent<Light>();
+            slamGlow.type = LightType.Point;
+            slamGlow.color = new Color(1f, 0.8f, 0.4f);
+            slamGlow.range = 7f;
+            slamGlow.intensity = 0.5f;
+            slamGlow.shadows = LightShadows.None;
+            if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.4f, 30f, 2.5f, "", "$iov_starkadr_slam", false);
+            EffectList start = SledgeEffects(true);
+            if (start != null) start.Create(transform.position + Vector3.up, transform.rotation);
+        }
+
+        void Slam(Player player)
+        {
+            slamAt = -1f;
+            nextSlam = Time.time + Random.Range(13f, 18f);
+            if (slamGlow != null) Destroy(slamGlow.gameObject);
+            if (ai != null && !yielded) ai.enabled = true;
+            Vector3 centre = transform.position + transform.forward * 1.2f;
+            EffectList hit = SledgeEffects(false);
+            if (hit != null) hit.Create(centre, Quaternion.identity);
+            Vector3 away = player.transform.position - centre;
+            away.y = 0f;
+            if (away.magnitude > SlamReach) return;
+            HitData blow = new HitData();
+            blow.m_damage.m_blunt = slamDamage > 0f ? slamDamage : 60f;
+            blow.m_point = player.transform.position + Vector3.up;
+            blow.m_dir = away.sqrMagnitude > 0.01f ? away.normalized : transform.forward;
+            blow.m_pushForce = 120f;
+            blow.m_staggerMultiplier = 2f;
+            blow.SetAttacker(body);
+            player.Damage(blow);
+        }
+
+        // The game's own sledge, its swing (start) or its blow on the ground (the shock and its sound).
+        static EffectList SledgeEffects(bool start)
+        {
+            foreach (string name in new[] { "SledgeIron", "SledgeStagbreaker", "SledgeDemolisher" })
+            {
+                GameObject item = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(name) : null;
+                Attack a = item != null ? item.GetComponent<ItemDrop>().m_itemData.m_shared.m_attack : null;
+                if (a == null) continue;
+                EffectList e = start ? a.m_startEffect : (a.m_hitTerrainEffect != null && a.m_hitTerrainEffect.HasEffects() ? a.m_hitTerrainEffect : a.m_triggerEffect);
+                if (e != null && e.HasEffects()) return e;
+            }
+            return null;
+        }
+
+        void Trigger(string name)
+        {
+            Animator animator = GetComponentInChildren<Animator>();
+            if (animator == null) return;
+            foreach (AnimatorControllerParameter p in animator.parameters)
+                if (p.name == name && p.type == AnimatorControllerParameterType.Trigger) { animator.SetTrigger(name); return; }
+        }
+
         // Kneeling a while, then taken back by the light that brought it (the same soft column, coming on round it;
         // at its brightest it's gone).
         void Update()
         {
+            if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
             if (!goingHome && Time.time > yieldedAt + 3.5f)
@@ -253,6 +347,7 @@ namespace IslandsOfValheim
         void Win()
         {
             Message("$iov_duel_won");
+            ValhallaSpeaker.Shout(ValhallaSpeaker.RingMaster, "$iov_ringmaster_won");
             Story.Set(WonKey);
             endAt = Time.time + 5f;
             Plugin.Debug("Duel: won");
@@ -432,7 +527,12 @@ namespace IslandsOfValheim
             else
             {
                 Vector3 at = centre + away * In;
-                Later(at, () => Fighter(PrefabName(true), at, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf"));
+                Later(at, () =>
+                {
+                    Character champion = Fighter(PrefabName(true), at, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf");
+                    EinherjarFighter f = champion != null ? champion.GetComponent<EinherjarFighter>() : null;
+                    if (f != null) f.slamDamage = 25f + 18f * tier;
+                });
             }
             Plugin.Debug("Duel: bout " + round + ", " + pending.Count + " coming into the ring (tier " + tier + ")");
         }
@@ -472,11 +572,11 @@ namespace IslandsOfValheim
 
         // One fighter: dressed (its gear given as a creature's default items, set on the prefab just before it's
         // made, which is when the game reads them), its health, and its eyes on you.
-        void Fighter(string prefabName, Vector3 at, Player player, int armourTier, float health, int model, string right, string left, string hair, string beard, string cape)
+        Character Fighter(string prefabName, Vector3 at, Player player, int armourTier, float health, int model, string right, string left, string hair, string beard, string cape)
         {
             GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(prefabName) : null;
             Humanoid template = prefab != null ? prefab.GetComponent<Humanoid>() : null;
-            if (template == null) { Plugin.Log.LogWarning("Duel: no " + prefabName); return; }
+            if (template == null) { Plugin.Log.LogWarning("Duel: no " + prefabName); return null; }
             List<GameObject> items = new List<GameObject>();
             string[] armour = Armour[Mathf.Clamp(armourTier, 0, Armour.Length - 1)];
             foreach (string name in new[] { right, left, armour[0], armour[1], armour[2], cape })
@@ -504,6 +604,7 @@ namespace IslandsOfValheim
             EyesOn(body, player);
             fighters.Add(body);
             Plugin.Debug("Duel: " + prefabName + " with " + right + (left != "" ? " and " + left : "") + ", " + health.ToString("F0") + " health");
+            return body;
         }
     }
 }
