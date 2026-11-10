@@ -980,6 +980,32 @@ namespace IslandsOfValheim
             }
         }
 
+        // ---- nothing built, nothing broken ----
+        //
+        // Valhalla is the Allfather's, not a place to build: no piece placed, none taken down, no ground dug or
+        // raised, anywhere on its rock (as in the game's own no-build places: a boss's altar, a trader's camp).
+        // (Its own things are copies with their workings taken out: nothing of them can be damaged.)
+        static readonly List<ValhallaSky> all = new List<ValhallaSky>();
+
+        void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+        void OnDisable() { all.Remove(this); }
+
+        internal static bool Covers(Vector3 p)
+        {
+            foreach (ValhallaSky s in all)
+                if (s != null && Utils.DistanceXZ(p, s.transform.position) < Reach && p.y > s.transform.position.y - Below) return true;
+            return false;
+        }
+
+        [HarmonyPatch(typeof(Location), "IsInsideNoBuildLocation")]
+        static class NoBuilding
+        {
+            static void Postfix(Vector3 point, ref bool __result)
+            {
+                if (!__result && Covers(point)) __result = true;
+            }
+        }
+
         // ---- a land of its own ----
         //
         // Valhalla is named as a land is: on the minimap's corner (it would say the sea below) and, the first

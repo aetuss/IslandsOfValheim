@@ -190,6 +190,19 @@ namespace IslandsOfValheim
             ValhallaSpeaker.highSeat = transform.TransformPoint(new Vector3(0f, 2.4f, high));
             yield return null;
 
+            // The Allfather's beasts (each where no one walks or keeps watch):
+            // - Geri and Freki, his wolves, lying at his feet: on Hliðskjálf's third tier, either side of the
+            //   steps on the side he looks out on, heads to the steps; a touch of gold in their grey;
+            // - Eikþyrnir, the hart of Valhalla (the game's Eikthyr is him), grazing in the meadow east of the hall,
+            //   well off the guard's round;
+            // - Gullinkambi, the golden cock that wakes the einherjar, on the hall's ridge over its doors.
+            foreach (float side in new[] { -1f, 1f })
+                Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
+            Beast("Eikthyr", new Vector3(20f, 0f, 28f), new Vector3(-0.6f, 0f, -0.8f), 4f, 1f, Color.white, "");
+            if (Beast("Hen", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.3f, new Color(1f, 0.76f, 0.22f), "") == null)
+                Beast("Chicken", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.6f, new Color(1f, 0.76f, 0.22f), "");
+            yield return null;
+
 #if IOV_DEV
             // The Brim Folk's ghosts: round their own feast, slowly, outside its tables and inside its torches
             // (a circle cut across the tables' ends: they walked over them). (In the tale they come as the tasks
@@ -325,6 +338,65 @@ namespace IslandsOfValheim
             facing.y = 0f;
             Quaternion turn = transform.rotation * Quaternion.LookRotation(facing.sqrMagnitude > 0.001f ? facing.normalized : Vector3.forward);
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
+        }
+
+        // A beast of the game's, as a still copy on this client: made under a switched-off holder (so none of
+        // its workings ever wake: not its mind, not its network side), all its scripts taken out, then put in
+        // place; its own animator keeps it breathing and looking about. Solid. Tinted if asked (gold).
+        GameObject beastHolder;
+
+        GameObject Beast(string prefabName, Vector3 local, Vector3 facing, float from, float scale, Color tint, string pose)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab(prefabName);
+            if (prefab == null) { Plugin.Debug("Valhalla: no " + prefabName + " for a beast"); return null; }
+            if (beastHolder == null)
+            {
+                beastHolder = new GameObject("IoV_BeastHolder");
+                beastHolder.SetActive(false);
+                beastHolder.transform.SetParent(transform, false);
+            }
+            GameObject go = Instantiate(prefab, beastHolder.transform, false);
+            go.name = prefabName + "_local";
+            for (int pass = 0; pass < 6; pass++)
+            {
+                MonoBehaviour[] scripts = go.GetComponentsInChildren<MonoBehaviour>(true);
+                if (scripts.Length == 0) break;
+                for (int i = scripts.Length - 1; i >= 0; i--) DestroyImmediate(scripts[i]);
+            }
+            foreach (Rigidbody body in go.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(body);
+            foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) if (c.isTrigger) DestroyImmediate(c);
+            foreach (AudioSource a in go.GetComponentsInChildren<AudioSource>(true)) a.enabled = false;
+            local.y = Ground(local.x, local.z, from);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = local;
+            go.transform.localRotation = Quaternion.LookRotation(facing.sqrMagnitude > 0.001f ? facing.normalized : Vector3.forward);
+            go.transform.localScale = prefab.transform.localScale * scale;
+            if (tint != Color.white)
+            {
+                MaterialPropertyBlock block = new MaterialPropertyBlock();
+                foreach (Renderer r in go.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r is ParticleSystemRenderer) continue;
+                    r.GetPropertyBlock(block);
+                    block.SetColor("_Color", tint);
+                    block.SetColor("_EmissionColor", tint * 0.12f);
+                    r.SetPropertyBlock(block);
+                }
+            }
+            Animator animator = go.GetComponentInChildren<Animator>(true);
+            if (animator != null)
+            {
+                animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+                List<string> bools = new List<string>();
+                foreach (AnimatorControllerParameter p in animator.parameters)
+                {
+                    if (p.type == AnimatorControllerParameterType.Bool) bools.Add(p.name);
+                    if (p.name == pose && pose.Length > 0 && p.type == AnimatorControllerParameterType.Bool) animator.SetBool(pose, true);
+                }
+                Plugin.Debug("Valhalla: " + prefabName + " placed (" + (pose.Length > 0 ? pose + (bools.Contains(pose) ? "" : " not found") : "idle") + "; its animator's switches: " + string.Join(", ", bools.ToArray()) + ")");
+            }
+            made.Add(go);
+            return go;
         }
 
         // One you can talk to (hover, use): ValhallaTalk.
