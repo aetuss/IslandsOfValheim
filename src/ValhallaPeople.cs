@@ -140,6 +140,25 @@ namespace IslandsOfValheim
             Walk(Warrior(n++, false), Solid, 1.2f, 6f, false, new Vector2(-1.5f, 43.5f), new Vector2(-1.2f, 51f));
             yield return null;
 
+            // The guard: Einherjar in gold-red flametal with polearms, alike as a guard is. Two at the gate, two
+            // at the hall's door, four round Hliðskjálf's foot looking out (they speak up if you come too close
+            // to the Allfather), and two who walk their rounds: round the hall, round the high seat.
+            float high = IsletBuilder.LookoutZ, gate = IsletBuilder.ValhallaGateZ;
+            int g = 0;
+            foreach (float x in new[] { -3.6f, 3.6f })
+                Speaks(Stand(Guard(g++), new Vector3(x, 0f, gate + 2.5f), Vector3.forward, 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
+            foreach (float x in new[] { -5.2f, 5.2f })
+                Speaks(Stand(Guard(g++), new Vector3(x, 0f, 2.2f), Vector3.back, 3f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
+            foreach (float x in new[] { -8.2f, 8.2f })
+                foreach (float z in new[] { -8.2f, 8.2f })
+                    Speaks(Stand(Guard(g++), new Vector3(x, 0f, high + z), new Vector3(x, 0f, z), 4f, GuardWeapon), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            walkerHolds = GuardWeapon;
+            Speaks(Walk(Guard(g++), Solid, 1.1f, 0f, true, new Vector2(11.5f, -1.5f), new Vector2(11.5f, 44f), new Vector2(-11.5f, 44f), new Vector2(-11.5f, -1.5f)), ValhallaSpeaker.Guard, 2.3f);
+            walkerHolds = GuardWeapon;
+            Speaks(Walk(Guard(g++), Solid, 1.0f, 0f, true, Circle(new Vector2(0f, high), 10.5f, 20, 0.3f)), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            ValhallaSpeaker.highSeat = transform.TransformPoint(new Vector3(0f, 2.4f, high));
+            yield return null;
+
 #if IOV_DEV
             // The Brim Folk's ghosts: round their own feast, slowly, outside its tables and inside its torches
             // (a circle cut across the tables' ends: they walked over them). (In the tale they come as the tasks
@@ -199,6 +218,22 @@ namespace IslandsOfValheim
                 SkinColor = Vector3.one * (0.86f + 0.14f * Pick(i, 3)),
                 Helmet = helmet ? set[0] : "",
                 Chest = set[1], Legs = set[2], Shoulder = set[3],
+            };
+        }
+
+        // A guard: all in the same gold-red flametal, a polearm in hand; their faces their own.
+        static readonly string[] GuardGear = { "HelmetFlametal", "ArmorFlametalChest", "ArmorFlametalLegs", "CapeAsh" };
+        const string GuardWeapon = "AtgeirBlackmetal";
+
+        static SpiritHuman.Look Guard(int i)
+        {
+            return new SpiritHuman.Look
+            {
+                Hair = MenHair[(i * 5 + 1) % MenHair.Length],
+                Beard = Beards[(i * 3 + 2) % Beards.Length],
+                HairColor = HairColours[(i * 7 + 3) % HairColours.Length],
+                SkinColor = Vector3.one * (0.86f + 0.14f * Pick(i, 41)),
+                Helmet = GuardGear[0], Chest = GuardGear[1], Legs = GuardGear[2], Shoulder = GuardGear[3],
             };
         }
 
@@ -366,9 +401,11 @@ namespace IslandsOfValheim
             internal Quaternion facing;
         }
 
-        void Walk(SpiritHuman.Look look, int ghost, float speed, float rest, bool loop, params Vector2[] route)
+        string walkerHolds = ""; // what the next walker made carries in his right hand
+
+        SpiritHuman Walk(SpiritHuman.Look look, int ghost, float speed, float rest, bool loop, params Vector2[] route)
         {
-            if (route.Length < 2) return;
+            if (route.Length < 2) return null;
             List<Vector2> points = new List<Vector2>(route);
             if (!loop) for (int i = route.Length - 2; i > 0; i--) points.Add(route[i]); // and back
             Walker w = new Walker { points = points.ToArray(), speed = speed, rest = rest };
@@ -385,9 +422,10 @@ namespace IslandsOfValheim
             Vector3 start;
             Vector2 dir;
             Where(w, out start, out dir);
-            w.facing = Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.y));
-            w.who = SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", ghost, transform, transform.TransformPoint(start), transform.rotation * w.facing);
-            if (w.who == null) return;
+            w.facing = dir != Vector2.zero ? Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.y)) : Quaternion.identity;
+            w.who = SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", ghost, transform, transform.TransformPoint(start), transform.rotation * w.facing, walkerHolds);
+            walkerHolds = "";
+            if (w.who == null) return null;
             w.who.keepMoving = true;
             everyone.Add(w.who);
             if (ghost == Solid)
@@ -397,6 +435,7 @@ namespace IslandsOfValheim
             }
             made.Add(w.who.gameObject);
             walkers.Add(w);
+            return w.who;
         }
 
         // Out-and-back walkers rest at both ends (the route's first point and its turning point).

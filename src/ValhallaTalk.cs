@@ -11,7 +11,12 @@ namespace IslandsOfValheim
     class ValhallaSpeaker : MonoBehaviour, Hoverable, Interactable
     {
         internal const string WelcomedKey = "iovvalhallawelcomed";
-        internal const int Bragi = 0, Saevar = 1, Odin = 2;
+        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4;
+
+        // Hliðskjálf's seat (world), and when its guards last spoke up about it
+        internal static Vector3 highSeat;
+        static float warnedAt = -100f;
+        static readonly string[] GuardTalk = { "$iov_guard_talk1", "$iov_guard_talk2" };
 
         internal int who;
         internal float height = 2.2f; // over its feet (lower for one sitting)
@@ -22,7 +27,7 @@ namespace IslandsOfValheim
 
         static readonly string[] BragiTalk = { "$iov_bragi_talk1", "$iov_bragi_talk2", "$iov_bragi_talk3" };
 
-        string Name { get { return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : "$iov_odin"; } }
+        string Name { get { return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : "$iov_guard"; } }
 
         public string GetHoverText()
         {
@@ -38,6 +43,11 @@ namespace IslandsOfValheim
         {
             Player player = user as Player;
             if (hold || player == null || player != Player.m_localPlayer || who == Odin) return false;
+            if (who == Guard || who == HighSeatGuard)
+            {
+                Say(GuardTalk[Random.Range(0, GuardTalk.Length)]);
+                return true;
+            }
             if (who == Bragi)
             {
                 Say(Welcomed ? BragiTalk[Random.Range(0, BragiTalk.Length)] : "$iov_bragi_greet");
@@ -63,6 +73,7 @@ namespace IslandsOfValheim
         // Bragi greets whoever first comes near the throne (once a visit), if they haven't been welcomed yet.
         void Update()
         {
+            if (who == HighSeatGuard) { Watch(); return; }
             if (who != Bragi || greeted || Time.time < nextGreetLook) return;
             nextGreetLook = Time.time + 0.5f;
             Player player = Player.m_localPlayer;
@@ -72,10 +83,52 @@ namespace IslandsOfValheim
             Say("$iov_bragi_greet");
         }
 
+        // No wall keeps you from the Allfather's seat; his guard does. Climb close to it and the nearest of them
+        // tells you he's not to be disturbed (now and then, not on every step).
+        void Watch()
+        {
+            if (Time.time < nextGreetLook) return;
+            nextGreetLook = Time.time + 0.5f;
+            Player player = Player.m_localPlayer;
+            if (player == null || Time.time - warnedAt < 25f || highSeat == Vector3.zero) return;
+            if (Vector3.Distance(player.transform.position, highSeat) > 5.5f) return;
+            ValhallaSpeaker nearest = null;
+            float best = float.MaxValue;
+            foreach (ValhallaSpeaker s in FindObjectsOfType<ValhallaSpeaker>())
+            {
+                if (s.who != HighSeatGuard) continue;
+                float d = Vector3.Distance(s.transform.position, player.transform.position);
+                if (d < best) { best = d; nearest = s; }
+            }
+            if (nearest != this) return;
+            warnedAt = Time.time;
+            Say("$iov_guard_odin");
+        }
+
         void Say(string line)
         {
             if (Chat.instance == null) return;
             Chat.instance.SetNpcText(gameObject, Vector3.up * height, 20f, 9f, "", line, false);
         }
+    }
+
+    // A rune stone of Valhalla's memorial path that can be read, as the game's own rune stones are.
+    // (Its field is public so the location's copy keeps it.)
+    class ValhallaRune : MonoBehaviour, Hoverable, Interactable
+    {
+        public string text;
+
+        public string GetHoverText() { return Localization.instance.Localize("$iov_runestone\n[<color=yellow><b>$KEY_Use</b></color>] $piece_rune_read"); }
+        public string GetHoverName() { return Localization.instance.Localize("$iov_runestone"); }
+        public float GetHoverOffset() { return 0f; }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            if (hold || user != Player.m_localPlayer || TextViewer.instance == null || string.IsNullOrEmpty(text)) return false;
+            TextViewer.instance.ShowText(TextViewer.Style.Rune, "$iov_runestone", text, true);
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
     }
 }

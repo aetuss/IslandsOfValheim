@@ -25,7 +25,7 @@ namespace IslandsOfValheim
         const float DuelRadius = 10f;
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
         static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
-        static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
+        internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }
 
@@ -922,7 +922,8 @@ namespace IslandsOfValheim
         {
             Vector2 from = new Vector2(-6f, ValhallaArrival.z + 4f), to = new Vector2(Feast.x + 9f, Feast.y - 12f);
             Vector2 bend = new Vector2(-34f, -46f);
-            int n = 0;
+            int n = 0, runes = 0;
+            List<GameObject> comingIn = new List<GameObject>(), goingOut = new List<GameObject>();
             for (float t = 0f; t <= 1.001f; t += 0.035f)
             {
                 Vector2 p = Bezier(from, bend, to, t);
@@ -930,18 +931,57 @@ namespace IslandsOfValheim
                 SkyProp("blackmarble_tile_floor_1x1", new Vector3(p.x, G(p.x, p.y) - 0.05f, p.y), new Vector3(0f, t * 400f, 0f));
                 if (n++ % 4 != 2) continue;
                 // a stone either side, now a carved pillar, now a rune stone
-                Vector2 ahead = Bezier(from, bend, to, Mathf.Min(1f, t + 0.02f)) - p;
+                Vector2 ahead = (Bezier(from, bend, to, Mathf.Min(1f, t + 0.02f)) - p).normalized;
                 Vector2 side = new Vector2(-ahead.y, ahead.x).normalized;
                 foreach (float s in new[] { -1f, 1f })
                 {
                     Vector2 q = p + side * s * 2.6f;
+                    Vector3 foot = new Vector3(q.x, G(q.x, q.y) - 0.2f, q.y);
                     bool pillar = (n / 4 + (s > 0f ? 1 : 0)) % 2 == 0;
                     GameObject stone = pillar
                         ? SkyPart("GDKing", "platforms/StonePillarTall/StonePillar", "", new Vector3(q.x, G(q.x, q.y) - 0.3f, q.y), n * 31f, 0.7f)
-                        : SkyPart("Runestone_Meadows", "", "runestone", new Vector3(q.x, G(q.x, q.y) - 0.2f, q.y), n * 47f, 1f);
-                    if (stone == null && !pillar) SkyPart("GDKing", "platforms/StonePillarTall/StonePillar", "", new Vector3(q.x, G(q.x, q.y) - 0.3f, q.y), n * 31f, 0.7f);
+                        : SkyPart("Runestone_Meadows", "", "runestone", foot, 0f, 1f);
+                    if (stone == null && !pillar) { SkyPart("GDKing", "platforms/StonePillarTall/StonePillar", "", new Vector3(q.x, G(q.x, q.y) - 0.3f, q.y), n * 31f, 0.7f); continue; }
+                    if (pillar) continue;
+                    // Rune stones by turns: one turned to meet you as you come in from the landing, the next to
+                    // meet you as you go back out; each a little towards the path. Read, each says its piece.
+                    bool inward = runes++ % 2 == 0;
+                    Vector2 look = (inward ? -ahead : ahead) - side * s * 0.6f;
+                    FaceRune(stone, new Vector3(look.x, 0f, look.y), foot);
+                    (inward ? comingIn : goingOut).Add(stone);
                 }
             }
+            // their words in the order they're met: in from the landing, and out from the far end
+            for (int i = 0; i < comingIn.Count; i++)
+                Readable(comingIn[i], RunesIn[i % RunesIn.Length]);
+            for (int i = 0; i < goingOut.Count; i++)
+                Readable(goingOut[goingOut.Count - 1 - i], RunesOut[i % RunesOut.Length]);
+            Plugin.Debug("Valhalla: " + comingIn.Count + " rune stones to read coming in, " + goingOut.Count + " going out");
+        }
+
+        static readonly string[] RunesIn = { "$iov_rune_in1", "$iov_rune_in2", "$iov_rune_in3", "$iov_rune_in4" };
+        static readonly string[] RunesOut = { "$iov_rune_out1", "$iov_rune_out2", "$iov_rune_out3", "$iov_rune_out4" };
+
+        // Which way a rune stone's carved face looks, along its thin side: +1 or -1 (set by what's seen in the
+        // game: the carving is on one face only).
+        const float RuneFace = 1f;
+
+        // A rune stone turned so its carved face looks along look, and set back on its foot.
+        static void FaceRune(GameObject stone, Vector3 look, Vector3 foot)
+        {
+            Bounds b = OwnBounds(stone);
+            Vector3 normal = (b.size.x <= b.size.z ? Vector3.right : Vector3.forward) * RuneFace;
+            Vector3 now = stone.transform.localRotation * normal;
+            now.y = 0f;
+            float turn = Vector3.SignedAngle(now, look, Vector3.up);
+            stone.transform.localRotation = Quaternion.Euler(0f, turn, 0f) * stone.transform.localRotation;
+            Put(stone, foot, false);
+        }
+
+        static void Readable(GameObject stone, string text)
+        {
+            ValhallaRune rune = stone.AddComponent<ValhallaRune>();
+            rune.text = text;
         }
 
         static Vector2 Bezier(Vector2 a, Vector2 b, Vector2 c, float t)
