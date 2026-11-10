@@ -621,6 +621,7 @@ namespace IslandsOfValheim
             bool there = SigrunWatersMarker.Near(fish.transform.position) || InLocation(player.transform.position, SigrunIslet) ||
                 InLocation(fish.transform.position, SigrunIslet);
             if (!there) return;
+            if (SigrunsNecklace.Caught(fish, player)) return; // T2: her sister's necklace (TaleCaptainsIslets)
             if (Key(SigrunDone) || Has(player, Piece2))
             {
                 Plugin.Debug("Story: a fish from Sigrún's waters, but her fragment " + (Key(SigrunDone) ? "is already with Sævar" : "is already in your bag"));
@@ -1034,6 +1035,21 @@ namespace IslandsOfValheim
             foreach (SigrunWatersMarker marker in loaded)
                 if (marker != null && Utils.DistanceXZ(marker.transform.position, point) < Radius) return true;
             return false;
+        }
+
+        // The middle of her islet nearest the point (the marker stands there), if one is loaded.
+        internal static bool Nearest(Vector3 point, out Vector3 middle)
+        {
+            middle = point;
+            float best = Radius;
+            bool any = false;
+            foreach (SigrunWatersMarker marker in loaded)
+            {
+                if (marker == null) continue;
+                float d = Utils.DistanceXZ(marker.transform.position, point);
+                if (d < best) { best = d; middle = marker.transform.position; any = true; }
+            }
+            return any;
         }
     }
 

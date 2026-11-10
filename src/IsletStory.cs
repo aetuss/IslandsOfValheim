@@ -189,6 +189,7 @@ namespace IslandsOfValheim
             PlaceNetworked(Story.OrmrChest, new Vector3(1.8f, FloorTop, -1.6f), 300f);
             PlaceNetworked(Story.OrmrGuard, new Vector3(2.4f, FloorTop + 0.2f, 0.2f), 0f);
             StoryStones("IoV_StoryStone_Ormr", 3);
+            OrmrsLastStone(); // T2: the stone no one read (TaleCaptainsIslets)
             quietProps = true;
             Prop(new[] { "crypt_skeleton_laying" }, new Vector2(5.8f, 2.4f), 200f, 0.05f);
             Prop(new[] { "crypt_skeleton_laying" }, new Vector2(-5.2f, 4.2f), 30f, 0.05f);
@@ -292,6 +293,7 @@ namespace IslandsOfValheim
             Ice(new Vector2(-6f, 3f), 250f, 1.8f);
             Ice(new Vector2(6f, 3.2f), 310f, 1.8f);
             PlaceNetworked(Story.FinalStand, new Vector3(0f, FloorTop, 0.2f), 0f);
+            GrimrsToy(new Vector2(-1.5f, 3.3f), 200f, FloorTop, new Vector3(0f, FloorTop, -5f)); // T2 (TaleCaptainsIslets)
             float stone = cliffDeg + 180f;
             PlaceNetworked(new[] { "IoV_StoryStone_Hidden" }, Polar(stone, PlateauAt(stone) - 0.8f), 90f - stone, 0f);
             FrozenGraves();

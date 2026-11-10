@@ -255,6 +255,10 @@ namespace IslandsOfValheim
                 OnGround(new[] { "Rock_7_deepnorth", "Rock_4_deepnorth" }, gc + Polar(deg, deg < 180f ? 11.4f : 10.5f), deg * 2f + 30f, 5f, 0.1f);
             StaticPart(sources, "DN_gammeltrollFrac01", "TrollFrost_Frac_legs", new Vector2(19f, -28f), 0f, 1f, true, 4.8f);
             StaticPart(sources, "DN_gammeltrollFrac02", "TrollFrost_Frac_arm", new Vector2(-19f, -16f), 90f, 1f, true, 4.6f);
+            // T2: the little wooden wolf his mother carved him, on the threshold he kept watch from (TaleCaptainsIslets);
+            // the north's creatures come up in the middle of the floor
+            if (!arenaBare)
+                GrimrsToy(new Vector2(0.8f, -10.8f), 160f, Height(0.8f, -10.8f), new Vector3(gc.x, Height(gc.x, gc.y + 1f), gc.y + 1f));
 
             // Ormr's hollow: a carved ring of dark stone filling the floor (the Fader's arena's middle, 15 m across,
             // half a metre high), a glowing stone altar at its far side; he stands up in the middle of the ring.

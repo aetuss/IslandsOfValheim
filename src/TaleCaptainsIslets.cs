@@ -1,4 +1,5 @@
 using System.Collections;
+using Jotunn.Managers;
 using UnityEngine;
 
 namespace IslandsOfValheim
@@ -42,6 +43,104 @@ namespace IslandsOfValheim
             pivot.transform.localPosition += Vector3.up * raise.lift;
             pivot.transform.localRotation = Quaternion.Euler(-86f, yaw, 0f);
             built++;
+        }
+
+        // Ormr's: his last diary stone, apart from the other three (on the far side of the row), half sunk in the
+        // moss, Seekers' eggs by it. Read once the captains' task has begun.
+        static void OrmrsLastStone()
+        {
+            float deg = cliffDeg - 85f;
+            Vector2 at = Polar(deg, PlateauAt(deg) - 0.6f);
+            GameObject stone = Copy(new[] { "RuneStone_Mistlands", "RuneStone_Meadows" }, new Vector3(0f, 90f - deg, 0f), 0f, true); // faces the middle, as the others
+            if (stone == null) { Plugin.Debug("T2: no rune stone for Ormr"); return; }
+            Bounds b = LocalBounds(stone);
+            Move(stone, b, new Vector3(at.x, GroundMin(at.x, at.y, 0.6f) - 0.2f, at.y), false);
+            stone.name = "IoV_OrmrLastStone";
+            OrmrsStone read = stone.AddComponent<OrmrsStone>();
+            // the Seekers come up on the plateau, between the stone and the ruin
+            Vector2 near = Polar(deg, PlateauAt(deg) * 0.45f);
+            read.ambushAt = new Vector3(near.x, GroundMin(near.x, near.y, 0.5f), near.y);
+            quietProps = true;
+            Prop(new[] { "SeekerEgg" }, Polar(deg + 7f, PlateauAt(deg + 7f) - 1.4f), deg * 3f, 0.15f);
+            Prop(new[] { "SeekerEgg" }, Polar(deg - 6f, PlateauAt(deg - 6f) - 1.8f), deg * 5f, 0.2f);
+            quietProps = false;
+            Plugin.Debug("T2: Ormr's last stone at " + at.ToString("F1"));
+        }
+
+        // Grímr's: the little wooden wolf his mother carved him, left where he began to keep watch. A copy of the
+        // game's wolf (a cub if there is one), stilled, small, in the grain of wood, on its own holder: the holder
+        // is what's looked at and taken (its fields public, so the location's copy keeps them).
+        static void GrimrsToy(Vector2 at, float yaw, float floor, Vector3 ambushAt)
+        {
+            GameObject wolf = Copy(new[] { "Wolf_cub", "Wolf" }, Vector3.zero, 0f, true);
+            if (wolf == null) { Plugin.Debug("T2: no wolf for Grímr's toy"); return; }
+            foreach (Animator a in wolf.GetComponentsInChildren<Animator>(true)) Object.DestroyImmediate(a);
+            foreach (Collider c in wolf.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+            foreach (ParticleSystem p in wolf.GetComponentsInChildren<ParticleSystem>(true))
+                if (p.gameObject != wolf) p.gameObject.SetActive(false);
+            Material wood = WoodMaterial();
+            foreach (Renderer r in wolf.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer || wood == null) continue;
+                Material[] grain = new Material[Mathf.Max(1, r.sharedMaterials.Length)];
+                for (int i = 0; i < grain.Length; i++) grain[i] = wood;
+                r.sharedMaterials = grain;
+            }
+
+            GameObject holder = new GameObject("IoV_GrimrToy");
+            holder.transform.SetParent(parent, false);
+            holder.layer = LayerMask.NameToLayer("item");
+            wolf.transform.SetParent(holder.transform, false);
+            wolf.transform.localPosition = Vector3.zero;
+            wolf.transform.localRotation = Quaternion.identity;
+            Bounds b = DrawnBounds(holder.transform);
+            const float Length = 0.42f; // a toy, held in two hands
+            float k = Length / Mathf.Max(0.01f, Mathf.Max(b.size.x, b.size.z));
+            wolf.transform.localScale *= k;
+            b = DrawnBounds(holder.transform);
+            wolf.transform.localPosition = -new Vector3(b.center.x, b.min.y, b.center.z); // on its feet, on the holder
+            BoxCollider box = holder.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, b.size.y * 0.5f, 0f);
+            box.size = new Vector3(b.size.x + 0.12f, b.size.y + 0.1f, b.size.z + 0.12f);
+            holder.transform.localPosition = new Vector3(at.x, floor + 0.01f, at.y);
+            holder.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            GrimrsWolf toy = holder.AddComponent<GrimrsWolf>();
+            toy.ambushAt = ambushAt;
+            built++;
+            Plugin.Debug("T2: Grímr's toy (" + wolf.name + ", " + (wood != null ? "wood" : "its own skin") + ") at " + at.ToString("F1") + ", " + b.size.ToString("F2") + " m");
+        }
+
+        // A wooden piece's own material, for a carving.
+        static Material WoodMaterial()
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab("wood_beam");
+            if (prefab == null) prefab = PrefabManager.Instance.GetPrefab("wood_pole");
+            MeshRenderer r = prefab != null ? prefab.GetComponentInChildren<MeshRenderer>(true) : null;
+            return r != null ? r.sharedMaterial : null;
+        }
+
+        // What's drawn under t (skinned or not), in t's own space: a skinned mesh as it lies at rest.
+        static Bounds DrawnBounds(Transform t)
+        {
+            bool any = false;
+            Bounds result = new Bounds();
+            foreach (Renderer r in t.GetComponentsInChildren<Renderer>(true))
+            {
+                Mesh mesh = null;
+                SkinnedMeshRenderer skinned = r as SkinnedMeshRenderer;
+                if (skinned != null) mesh = skinned.sharedMesh;
+                else if (r is MeshRenderer) { MeshFilter f = r.GetComponent<MeshFilter>(); if (f != null) mesh = f.sharedMesh; }
+                if (mesh == null) continue;
+                Bounds mb = mesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = t.InverseTransformPoint(r.transform.TransformPoint(corner));
+                    if (!any) { result = new Bounds(p, Vector3.zero); any = true; }
+                    else result.Encapsulate(p);
+                }
+            }
+            return result;
         }
 
         // The bounds of what's drawn of a thing, in its own space.
@@ -148,6 +247,150 @@ namespace IslandsOfValheim
             Vector3 camp = ambushAt != Vector3.zero && transform.parent != null ? transform.parent.TransformPoint(ambushAt) : transform.position;
             yield return Ambush.Rise(camp, transform.position, new[] { "Draugr", "Draugr", "Draugr_Ranged" }, new[] { 1, 2, 1 },
                 "vfx_prespawn", "vfx_DraugrSpawn", 2.6f);
+        }
+    }
+
+    // Ormr's last stone: worn and unreadable until the captains' task has begun; then read as the game's rune
+    // stones are, and the first reading wakes the Seekers nesting by it.
+    class OrmrsStone : MonoBehaviour, Hoverable, Interactable
+    {
+        public Vector3 ambushAt; // in the islet's own space
+        bool woken;
+
+        public string GetHoverText()
+        {
+            if (!TaleCaptains.Begun) return Localization.instance.Localize("$iov_t2_ormr_stone_worn");
+            return Localization.instance.Localize("$iov_t2_ormr_stone_name\n[<color=yellow><b>$KEY_Use</b></color>] $piece_rune_read");
+        }
+
+        public string GetHoverName() { return Localization.instance.Localize(TaleCaptains.Begun ? "$iov_t2_ormr_stone_name" : "$iov_t2_ormr_stone_worn"); }
+        public float GetHoverOffset() { return 0f; }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            Player player = user as Player;
+            if (hold || player == null || player != Player.m_localPlayer || !TaleCaptains.Begun) return false;
+            if (TextViewer.instance != null) TextViewer.instance.ShowText(TextViewer.Style.Rune, "$iov_t2_ormr_stone_name", "$iov_t2_ormr_stone_text", true);
+            if (woken || TaleCaptains.Found(TaleCaptains.Ormr)) return true;
+            woken = true;
+            Story.Set(TaleCaptains.FoundKey(TaleCaptains.Ormr));
+            player.Message(MessageHud.MessageType.Center, "$iov_t2_ormr_stone_read", 0, null, false);
+            Plugin.Debug("T2: Ormr's last stone read");
+            Vector3 around = ambushAt != Vector3.zero && transform.parent != null ? transform.parent.TransformPoint(ambushAt) : transform.position;
+            StartCoroutine(Ambush.Rise(around, player.transform.position, new[] { "Seeker", "Seeker", "SeekerBrood", "SeekerBrood" }, new[] { 2, 1, 1, 1 },
+                "vfx_prespawn", "vfx_spawn", 3.5f));
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
+    }
+
+    // Grímr's little wooden wolf: there until it's taken (the world's key, so it's gone for everyone, and back
+    // if the task is reset); only taken once the captains' task has begun. Taking it rouses the north.
+    class GrimrsWolf : MonoBehaviour, Hoverable, Interactable
+    {
+        public Vector3 ambushAt; // in the islet's own space
+        bool shown = true, looked;
+        float nextLook;
+
+        void Update()
+        {
+            if (looked && Time.time < nextLook) return;
+            nextLook = Time.time + 1f;
+            bool show = !TaleCaptains.Found(TaleCaptains.Grimr);
+            if (looked && show == shown) return;
+            looked = true;
+            Show(show);
+        }
+
+        void Show(bool show)
+        {
+            shown = show;
+            foreach (Transform child in transform) child.gameObject.SetActive(show);
+            Collider box = GetComponent<Collider>();
+            if (box != null) box.enabled = show;
+        }
+
+        public string GetHoverText()
+        {
+            if (!shown) return "";
+            if (!TaleCaptains.Begun) return Localization.instance.Localize("$iov_t2_grimr_toy");
+            return Localization.instance.Localize("$iov_t2_grimr_toy\n[<color=yellow><b>$KEY_Use</b></color>] $iov_t2_take");
+        }
+
+        public string GetHoverName() { return Localization.instance.Localize("$iov_t2_grimr_toy"); }
+        public float GetHoverOffset() { return 0.3f; }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            Player player = user as Player;
+            if (hold || !shown || player == null || player != Player.m_localPlayer || !TaleCaptains.Begun) return false;
+            if (TaleCaptains.Found(TaleCaptains.Grimr)) return false;
+            Story.Set(TaleCaptains.FoundKey(TaleCaptains.Grimr));
+            Show(false);
+            BossKit.Effect("sfx_pickable_pick", transform.position);
+            player.Message(MessageHud.MessageType.Center, "$iov_t2_grimr_taken", 0, null, false);
+            Plugin.Debug("T2: Grímr's toy taken");
+            Vector3 around = ambushAt != Vector3.zero && transform.parent != null ? transform.parent.TransformPoint(ambushAt) : transform.position;
+            Plugin.Instance.StartCoroutine(Ambush.Rise(around, player.transform.position, new[] { "Ulv", "Ulv", "Fenring_Cultist", "Ulv" }, new[] { 2, 1, 1, 1 },
+                "vfx_prespawn", "vfx_spawn", 4.5f));
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
+    }
+
+    // Sigrún's: her sister Ása's necklace, from a fish caught in her islet's waters once the captains' task has
+    // begun (each fish there may have it, the third surely). The Fulings on her islet come down to the shore
+    // nearest the fisher. Caught on the fisher's game; called from Story.FromFish.
+    static class SigrunsNecklace
+    {
+        const float Chance = 0.35f;
+        const int AtMost = 3;
+        static int caught;
+
+        // Whether the task has this fish (then the tale's own fragment hunt doesn't look at it).
+        internal static bool Caught(Fish fish, Player player)
+        {
+            if (!TaleCaptains.Begun || TaleCaptains.Found(TaleCaptains.Sigrun)) return false;
+            caught++;
+            Plugin.Debug("T2: fish " + caught + " from Sigrún's waters");
+            if (caught < AtMost && Random.value >= Chance) return true;
+            caught = 0;
+            Story.Set(TaleCaptains.FoundKey(TaleCaptains.Sigrun));
+            player.Message(MessageHud.MessageType.Center, "$iov_t2_sigrun_caught", 0, null, false);
+            Plugin.Debug("T2: Sigrún's necklace caught");
+            Vector3 shore = Ashore(player.transform.position);
+            Plugin.Instance.StartCoroutine(Ambush.Rise(shore, player.transform.position, new[] { "Goblin", "GoblinArcher", "Goblin", "GoblinShaman" }, new[] { 2, 1, 1, 1 },
+                "vfx_prespawn", "vfx_spawn", 3.5f));
+            return true;
+        }
+
+        // Dry land on her islet nearest the fisher (on the jetty or out in a boat): from the fisher towards the
+        // islet's middle until the ground is above the sea, then a few metres further in.
+        static Vector3 Ashore(Vector3 from)
+        {
+            Vector3 middle;
+            if (!SigrunWatersMarker.Nearest(from, out middle) || ZoneSystem.instance == null) return from;
+            float sea = ZoneSystem.instance.m_waterLevel;
+            Vector3 flat = new Vector3(from.x, middle.y, from.z);
+            Vector3 toward = middle - flat;
+            toward.y = 0f;
+            float length = toward.magnitude;
+            if (length < 1f) return middle;
+            toward /= length;
+            for (float s = 0f; s < length; s += 1f)
+            {
+                Vector3 p = flat + toward * s;
+                float h;
+                if (ZoneSystem.instance.GetGroundHeight(p, out h) && h > sea + 0.6f)
+                {
+                    p += toward * Mathf.Min(5f, length - s);
+                    if (ZoneSystem.instance.GetGroundHeight(p, out h)) p.y = h;
+                    return p;
+                }
+            }
+            return middle;
         }
     }
 
