@@ -50,12 +50,17 @@ namespace IslandsOfValheim
             PrefabManager.Instance.AddPrefab(new CustomPrefab(stand, false));
         }
 
-        // Hafgufa: the game's serpent, three and a half times its size, in the colours of the deep, its eyes alight.
+        // How many times the game's serpent (about 30 m; 3.5 was too big to fight from a ship: user, 2026-11-11).
+        const float Size = 2.5f;
+
+        // Hafgufa: the game's serpent, two and a half times its size, in the colours of the deep, its eyes alight.
+        // Its bites reach as far as it is big (a serpent's own reach, from so big a body, never got to a ship), and
+        // it never swims off to lick its wounds.
         static void RegisterHafgufa()
         {
             if (PrefabManager.Instance.GetPrefab("Serpent") == null) { Plugin.Log.LogWarning("No Serpent: Hafgufa is left out."); return; }
             GameObject go = PrefabManager.Instance.CreateClonedPrefab(Hafgufa, "Serpent");
-            go.transform.localScale = go.transform.localScale * 3.5f;
+            go.transform.localScale = go.transform.localScale * Size;
             Character body = go.GetComponent<Character>();
             if (body != null)
             {
@@ -66,8 +71,24 @@ namespace IslandsOfValheim
                 body.m_swimSpeed *= 1.3f;
                 BossKit.Steady(body, "Hafgufa");
             }
+            Humanoid humanoid = go.GetComponent<Humanoid>();
+            if (humanoid != null && humanoid.m_defaultItems != null)
+            {
+                GameObject[] items = (GameObject[])humanoid.m_defaultItems.Clone();
+                for (int i = 0; i < items.Length; i++) items[i] = LongerBite(items[i]);
+                humanoid.m_defaultItems = items;
+            }
             BaseAI ai = go.GetComponent<BaseAI>();
             if (ai != null) { ai.m_spawnMessage = ""; ai.m_deathMessage = ""; }
+            MonsterAI monster = go.GetComponent<MonsterAI>();
+            if (monster != null)
+            {
+                Field(monster, "m_fleeIfHurtWhenTargetCantBeReached", false);
+                Field(monster, "m_fleeIfNotAlerted", false);
+                Field(monster, "m_fleeIfLowHealth", 0f);
+                Field(monster, "m_fleeTimeSinceHurt", 0f);
+                Field(monster, "m_maxChaseDistance", 0f); // (0: it chases as long as it can see you)
+            }
             CharacterDrop drops = go.GetComponent<CharacterDrop>();
             if (drops != null) drops.m_drops.Clear(); // (what it leaves comes later, with the arc's rewards)
             BossKit.Tint(go, BossKit.Cast(new Color(0.05f, 0.12f, 0.16f), 0.75f, 0.75f), 0.4f, "Hafgufa");
@@ -75,6 +96,40 @@ namespace IslandsOfValheim
             go.AddComponent<HafgufaFight>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Debug("Hafgufa made from Serpent");
+        }
+
+        // One of the serpent's attacks, cloned, reaching as far as Hafgufa is big.
+        static GameObject LongerBite(GameObject item)
+        {
+            if (item == null || item.GetComponent<ItemDrop>() == null) return item;
+            string name = "IoV_Hafgufa_" + item.name;
+            GameObject clone = PrefabManager.Instance.GetPrefab(name);
+            if (clone == null)
+            {
+                clone = PrefabManager.Instance.CreateClonedPrefab(name, item);
+                ItemDrop.ItemData.SharedData shared = clone.GetComponent<ItemDrop>().m_itemData.m_shared;
+                string before = shared.m_aiAttackRange.ToString("F1") + "/" + (shared.m_attack != null ? shared.m_attack.m_attackRange.ToString("F1") : "-");
+                shared.m_aiAttackRange *= Size;
+                shared.m_aiAttackRangeMin *= Size;
+                if (shared.m_attack != null)
+                {
+                    shared.m_attack.m_attackRange *= Size;
+                    shared.m_attack.m_attackHeight *= Size;
+                    shared.m_attack.m_attackOffset *= Size;
+                    shared.m_attack.m_attackRayWidth *= Size;
+                }
+                ItemManager.Instance.AddItem(new CustomItem(clone, false));
+                Plugin.Debug("Hafgufa's " + item.name + ": reach " + before + " -> " + shared.m_aiAttackRange.ToString("F1") + "/" + (shared.m_attack != null ? shared.m_attack.m_attackRange.ToString("F1") : "-"));
+            }
+            return clone;
+        }
+
+        static void Field(object on, string name, object value)
+        {
+            System.Reflection.FieldInfo f = AccessTools.Field(on.GetType(), name);
+            if (f == null) { Plugin.Debug("Hafgufa: no " + name); return; }
+            Plugin.Debug("Hafgufa: " + name + " " + f.GetValue(on) + " -> " + value);
+            f.SetValue(on, value);
         }
 
         // A cold light at its head (the game's glow child, so its fight can make it pulse).
@@ -149,7 +204,7 @@ namespace IslandsOfValheim
             CharacterDrop drops = go.GetComponent<CharacterDrop>();
             if (drops != null) drops.m_drops.Clear();
             MonsterAI ai = go.GetComponent<MonsterAI>();
-            if (ai != null) AccessTools.Field(typeof(MonsterAI), "m_despawnInDay").SetValue(ai, false); // (by day as well as by night; the setter needs a live network view)
+            if (ai != null) Field(ai, "m_despawnInDay", false); // (by day as well as by night; the setter needs a live network view)
             BossKit.Tint(go, BossKit.Cast(new Color(0.7f, 0.92f, 1f), 0.6f, 1.15f), 0f, "the drowned");
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
@@ -372,11 +427,35 @@ namespace IslandsOfValheim
 
         Vector3 Middle { get { return new Vector3(transform.position.x, ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : transform.position.y, transform.position.z); } }
 
+        // The graveyard keeps its own word that the net is torn, beside the world's key (which once went missing
+        // in a test, and a new Hafgufa rose): either one is enough, and the key is set again from it.
+        const string DoneHere = "IoV_T3Done";
+        const string BeastHere = "IoV_T3Beast"; // the one Hafgufa that rose here (its ZDO), so no second rises
+
+        bool Done
+        {
+            get
+            {
+                bool here = nview != null && nview.IsValid() && nview.GetZDO().GetBool(DoneHere, false);
+                if (RanNet.Done)
+                {
+                    if (!here && nview != null && nview.IsValid() && nview.IsOwner()) nview.GetZDO().Set(DoneHere, true);
+                    return true;
+                }
+                if (here)
+                {
+                    Plugin.Log.LogWarning("T3: the world's key was gone, but the graveyard knows the net is torn; set again");
+                    Story.Set(RanNet.DoneKey);
+                }
+                return here;
+            }
+        }
+
         void Tick()
         {
             if (ZNetScene.instance == null || nview == null || !nview.IsValid()) return;
             Player local = Player.m_localPlayer;
-            bool done = RanNet.Done;
+            bool done = Done;
             Character beast = Find();
             HafgufaFight fight = beast != null ? beast.GetComponent<HafgufaFight>() : null;
             int knots = RanKnot.CountNear(Middle, Search);
@@ -400,10 +479,13 @@ namespace IslandsOfValheim
                 if (here) local.Message(MessageHud.MessageType.Center, "$iov_ran_knotsbroken", 0, null, false);
             }
             int stage = fight != null ? fight.CurrentStage : -1;
-            if (stage >= 1 && lastStage == 0 && here) local.Message(MessageHud.MessageType.Center, "$iov_ran_hull", 0, null, false);
+            // (not as it dies: its last blow takes it past half and to nothing at once)
+            if (stage >= 1 && lastStage == 0 && here && !done && beast.GetHealth() > 0f)
+                local.Message(MessageHud.MessageType.Center, "$iov_ran_hull", 0, null, false);
             lastStage = stage;
 
             if (done) return;
+            KeepNear(beast);
             if (!RanNet.Begun)
             {
                 // the captains aren't free yet: only a heaviness on the water
@@ -419,7 +501,13 @@ namespace IslandsOfValheim
             {
                 if (rising) return;
                 foreach (Player player in Player.GetAllPlayers())
-                    if (player != null && Utils.DistanceXZ(player.transform.position, Middle) < RanNet.Reach) { Rise(false); return; }
+                    if (player != null && Utils.DistanceXZ(player.transform.position, Middle) < RanNet.Reach)
+                    {
+                        // the one that rose before is still in the world, out of sight: it's called back, not another
+                        if (CallBack()) return;
+                        Rise(false);
+                        return;
+                    }
                 return;
             }
             // the second stage: the drowned come up round whoever is near, a few at a time
@@ -429,6 +517,45 @@ namespace IslandsOfValheim
                 Player near = Player.GetClosestPlayer(beast.transform.position, 120f);
                 if (near != null && CountDrowned(near.transform.position, 60f) < 4) StartCoroutine(DrownedRise(near.transform.position));
             }
+        }
+
+        // Hafgufa strays no farther than this from the middle: past it, on the game that runs it, it's taken back
+        // under the water to the graveyard's edge (unseen: it's deep and far from whoever it chased).
+        const float Leash = 110f;
+
+        void KeepNear(Character beast)
+        {
+            if (beast == null || beast.IsDead()) return;
+            ZNetView view = beast.GetComponent<ZNetView>();
+            if (view == null || !view.IsValid() || !view.IsOwner()) return;
+            Vector3 middle = Middle, p = beast.transform.position;
+            Vector3 out_ = new Vector3(p.x - middle.x, 0f, p.z - middle.z);
+            if (out_.magnitude < Leash) return;
+            Vector3 back = middle + out_.normalized * 40f;
+            back.y = middle.y - 6f;
+            beast.transform.position = back;
+            Rigidbody body = beast.GetComponent<Rigidbody>();
+            if (body != null) { body.position = back; body.velocity = Vector3.zero; }
+            Plugin.Debug("T3: Hafgufa strayed " + Mathf.RoundToInt(out_.magnitude) + " m; back to the graveyard");
+        }
+
+        // The Hafgufa that rose here, if it's still in the world but not loaded (it strayed out of reach): moved back
+        // under the graveyard, where it comes into the world again. True if there is one.
+        bool CallBack()
+        {
+            ZDOID id = nview.GetZDO().GetZDOID(BeastHere);
+            if (id == ZDOID.None || ZDOMan.instance == null) return false;
+            ZDO zdo = ZDOMan.instance.GetZDO(id);
+            if (zdo == null) return false;
+            Vector3 back = Middle + new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)).normalized * 40f;
+            back.y = Middle.y - 6f;
+            if (Utils.DistanceXZ(zdo.GetPosition(), Middle) > 60f)
+            {
+                zdo.SetOwner(ZDOMan.GetSessionID());
+                zdo.SetPosition(back);
+                Plugin.Debug("T3: the Hafgufa that rose before is called back");
+            }
+            return true;
         }
 
         Character Find()
@@ -452,7 +579,7 @@ namespace IslandsOfValheim
         internal void Rise(bool force)
         {
             if (rising || nview == null || !nview.IsValid()) return;
-            if (!force && (RanNet.Done || !RanNet.Begun)) return;
+            if (!force && (Done || !RanNet.Begun)) return;
             if (!nview.IsOwner()) nview.ClaimOwnership();
             StartCoroutine(Rising());
         }
@@ -495,7 +622,9 @@ namespace IslandsOfValheim
                 if (c != null) c.SetLevel(2);
                 BaseAI ai = go.GetComponent<BaseAI>();
                 if (ai != null) ai.Alert();
-                Plugin.Debug("T3: Hafgufa rises");
+                ZNetView view = go.GetComponent<ZNetView>();
+                if (view != null && view.GetZDO() != null && nview.IsValid()) nview.GetZDO().Set(BeastHere, view.GetZDO().m_uid);
+                Plugin.Debug("T3: Hafgufa rises (the world's key: " + RanNet.Done + ", the captains free: " + RanNet.Begun + ")");
             }
             rising = false;
             sawKnots = true;
@@ -659,6 +788,12 @@ namespace IslandsOfValheim
                 foreach (RanKnot k in RanKnot.Near(s.Middle, Search)) Despawn(k.gameObject);
                 s.wasDone = false;
                 s.lastStage = -1;
+                if (s.nview != null && s.nview.IsValid())
+                {
+                    s.nview.ClaimOwnership();
+                    s.nview.GetZDO().Set(DoneHere, false);
+                    s.nview.GetZDO().Set(BeastHere, ZDOID.None);
+                }
                 if (s.souls != null) s.souls.SetActive(true);
             }
         }
