@@ -519,11 +519,19 @@ namespace IslandsOfValheim
         static void Strip(GameObject go)
         {
             // Several passes: a script that another one requires can only go after that one.
+            // (LightLod stays: the game's own dimming of a light with distance, and its shadows off further out,
+            // within the player's settings' limits. Without it every fire lit and cast shadows from anywhere.)
             for (int pass = 0; pass < 4; pass++)
             {
                 MonoBehaviour[] scripts = go.GetComponentsInChildren<MonoBehaviour>(true);
-                if (scripts.Length == 0) break;
-                for (int i = scripts.Length - 1; i >= 0; i--) Object.DestroyImmediate(scripts[i]);
+                int gone = 0;
+                for (int i = scripts.Length - 1; i >= 0; i--)
+                {
+                    if (scripts[i] is LightLod) continue;
+                    Object.DestroyImmediate(scripts[i]);
+                    gone++;
+                }
+                if (gone == 0) break;
             }
             foreach (Rigidbody body in go.GetComponentsInChildren<Rigidbody>(true)) Object.DestroyImmediate(body);
         }

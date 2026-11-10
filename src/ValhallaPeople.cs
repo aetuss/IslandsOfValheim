@@ -13,7 +13,8 @@ namespace IslandsOfValheim
     // - Sævar, at peace, by the dais;
     // - Bragi, Valhalla's skald, on the hall's throne; Odin on Hliðskjálf, his back to the hall, looking out;
     //   once the tale's last task is done (the world's key DoneKey), Odin sits in the hall and Bragi stands by;
-    // - a few who walk: up and down the way, round the ring, across the yard, from the hall to Hliðskjálf;
+    // - a few who walk: up and down the way, round the ring, across the yard;
+    // - the guard: at the landing, the hall's door and round Hliðskjálf, two of them on their rounds;
     // - the Brim Folk's ghosts, pale and walked through (as the tasks bring them; in development builds a
     //   few already, to see them).
     //
@@ -101,18 +102,32 @@ namespace IslandsOfValheim
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
             // tankard in hand. Now and then each takes a bite.
             int b = 0, n = 0;
+            Transform spareBench = null;
+            float spareAlong = 0f, spareOff = float.MaxValue;
             foreach (Transform bench in Children("piece_bench01"))
             {
                 Vector3 p = bench.localPosition;
                 if (Mathf.Abs(p.x) > 9f || p.z < 3f || p.z > HallEnd) continue; // the hall's only (the Brim Folk's are theirs)
                 foreach (float along in new[] { -0.55f, 0.55f })
                 {
-                    if (Pick(b * 2 + (along > 0f ? 1 : 0), 17) > 0.42f) continue;
+                    if (Pick(b * 2 + (along > 0f ? 1 : 0), 17) > 0.42f)
+                    {
+                        // an empty place: the one nearest the hall's middle is kept for one more (below)
+                        float off = Mathf.Abs(p.z - HallEnd * 0.5f);
+                        if (off < spareOff) { spareOff = off; spareBench = bench; spareAlong = along; }
+                        continue;
+                    }
                     Act(Seat(Warrior(n, false), bench, along, n % 3 == 0 ? "Tankard" : ""), Feaster, n * 3.7f);
                     n++;
                     if (++count % 3 == 0) yield return null;
                 }
                 b++;
+            }
+            // (one who walked to and fro in the meadow west of the hall sits down with the rest now)
+            if (spareBench != null)
+            {
+                Act(Seat(Warrior(n, false), spareBench, spareAlong, "Tankard"), Feaster, n * 3.7f);
+                n++;
             }
 
             // The yard: two at the dummies, weapon and shield in hand, swinging at them.
@@ -137,9 +152,6 @@ namespace IslandsOfValheim
             Walk(Warrior(n++, true), Solid, 1.3f, 4f, false, new Vector2(0.9f, -57f), new Vector2(0.9f, -3f));
             Walk(Warrior(n++, false), Solid, 1.2f, 0f, true, Circle(Ring, 14.5f, 16, 0f));
             Walk(Warrior(n++, true), Solid, 1.25f, 5f, false, new Vector2(Yard.x - 8f, Yard.y + 5.8f), new Vector2(Yard.x + 8f, Yard.y + 5.8f));
-            // (one went to and fro behind the hall, before the Allfather's seat: now between the hall's west
-            // side and the Brim Folk's feast, clear of the birches there)
-            Walk(Warrior(n++, false), Solid, 1.2f, 6f, false, new Vector2(-14f, 26f), new Vector2(-27f, 20f));
             yield return null;
 
             // The guard: Einherjar in gold-red flametal with polearms, alike as a guard is. Four on the landing's

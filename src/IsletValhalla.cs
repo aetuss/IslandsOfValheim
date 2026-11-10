@@ -704,6 +704,13 @@ namespace IslandsOfValheim
             }
             Grass();
             people = gameObject.AddComponent<ValhallaPeople>();
+            if (Plugin.DebugLog.Value)
+            {
+                Light[] lights = GetComponentsInChildren<Light>(true);
+                int lod = 0, shadowed = 0;
+                foreach (Light l in lights) { if (l.GetComponent<LightLod>() != null) lod++; if (l.shadows != LightShadows.None) shadowed++; }
+                Plugin.Debug("Valhalla: " + lights.Length + " lights, " + lod + " dimmed with distance by the game, " + shadowed + " casting shadows");
+            }
         }
 
         // ---- grass ----
@@ -986,8 +993,9 @@ namespace IslandsOfValheim
         void OnDestroy()
         {
             if (!inside) return;
-            Apply(false);
-            Canopy(false);
+            // (when the game itself is shutting down, logging out, its weather may already be half gone)
+            try { Apply(false); Canopy(false); }
+            catch (System.Exception e) { Plugin.Debug("Valhalla: weather not put back on the way out (" + e.GetType().Name + ")"); }
         }
     }
 }
