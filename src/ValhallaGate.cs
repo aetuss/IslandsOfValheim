@@ -30,6 +30,19 @@ namespace IslandsOfValheim
             Color dark = portal != null ? portal.m_colorUnconnected : Color.black, lit = portal != null ? portal.m_colorTargetfound : Color.white;
             GameObject door = trigger != null ? trigger.gameObject : null;
             Strip(go);
+            // Its hum: with the game's sound script gone (Strip) the bare source carried across the island, so it
+            // fades out by hand: full near the stones, nothing beyond 18 m.
+            foreach (AudioSource hum in go.GetComponentsInChildren<AudioSource>(true))
+            {
+                Plugin.Debug("Gate: sound " + hum.name + " (" + (hum.clip != null ? hum.clip.name : "no clip") + ") was blend " + hum.spatialBlend.ToString("F1") +
+                    ", " + hum.rolloffMode + " " + hum.minDistance.ToString("F0") + "-" + hum.maxDistance.ToString("F0") + " m");
+                hum.spatialBlend = 1f;
+                hum.rolloffMode = AudioRolloffMode.Linear;
+                hum.minDistance = 3f;
+                hum.maxDistance = 18f;
+                hum.dopplerLevel = 0f;
+                hum.spread = 0f;
+            }
             ValhallaGate gate = go.AddComponent<ValhallaGate>();
             gate.valhallaSide = valhallaSide;
             gate.glow = glow;
