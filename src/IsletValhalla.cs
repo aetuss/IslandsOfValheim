@@ -898,6 +898,8 @@ namespace IslandsOfValheim
             if (here != inside)
             {
                 inside = here;
+                Here = here;
+                arrivedAt = Time.time;
                 Apply(here);
                 Canopy(here);
                 if (people != null) people.Show(here);
@@ -906,6 +908,7 @@ namespace IslandsOfValheim
             if (!inside) return;
             Clock();
             Music(transform.InverseTransformPoint(p));
+            Found(player);
             WatchForCanopy(player);
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
@@ -965,6 +968,47 @@ namespace IslandsOfValheim
                 Plugin.Debug("Valhalla: " + part + " (" + time.ToString("F3") + "), " + weather);
                 lastPart = part;
                 lastWeather = weather;
+            }
+        }
+
+        // ---- a land of its own ----
+        //
+        // Valhalla is named as a land is: on the minimap's corner (it would say the sea below) and, the first
+        // time this character comes, in the middle of the view as the game names a land found.
+        internal const string FoundKey = "iovvalhallafound"; // the player's seen list
+        internal static bool Here;   // the local player is in Valhalla
+        float arrivedAt;
+
+        void Found(Player player)
+        {
+            if (Time.time < arrivedAt + 3f || player.IsTeleporting() || player.HaveSeenTutorial(FoundKey)) return;
+            if (MessageHud.instance == null) return;
+            player.SetSeenTutorial(FoundKey);
+            MessageHud.instance.ShowBiomeFoundMsg("$iov_valhalla", true);
+        }
+
+        [HarmonyPatch(typeof(Minimap), "UpdateBiome")]
+        static class MinimapName
+        {
+            static bool named;
+            static readonly System.Reflection.FieldInfo shown = AccessTools.Field(typeof(Minimap), "m_biome");
+
+            static void Postfix(Minimap __instance)
+            {
+                if (Here)
+                {
+                    string name = Localization.instance != null ? Localization.instance.Localize("$iov_valhalla") : "Valhalla";
+                    if (__instance.m_biomeNameSmall != null && __instance.m_biomeNameSmall.text != name) __instance.m_biomeNameSmall.text = name;
+                    if (__instance.m_biomeNameLarge != null && __instance.m_biomeNameLarge.text != name) __instance.m_biomeNameLarge.text = name;
+                    named = true;
+                }
+                else if (named)
+                {
+                    // forget which land it last named, so it names the one below again
+                    named = false;
+                    if (shown != null)
+                        shown.SetValue(__instance, shown.FieldType.IsValueType ? System.Activator.CreateInstance(shown.FieldType) : null);
+                }
             }
         }
 
@@ -1124,6 +1168,7 @@ namespace IslandsOfValheim
         void OnDestroy()
         {
             if (!inside) return;
+            Here = false;
             // (when the game itself is shutting down, logging out, its weather may already be half gone)
             try { Apply(false); Canopy(false); }
             catch (System.Exception e) { Plugin.Debug("Valhalla: weather not put back on the way out (" + e.GetType().Name + ")"); }
