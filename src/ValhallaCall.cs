@@ -105,6 +105,7 @@ namespace IslandsOfValheim
             if (zones != null)
             {
                 zones.RemoveGlobalKey(ValhallaGate.OpenKey);
+                zones.RemoveGlobalKey(ValhallaSpeaker.WelcomedKey);
                 foreach (string key in new List<string>(zones.GetGlobalKeys()))
                     if (key.StartsWith(DayKey)) zones.RemoveGlobalKey(key);
             }

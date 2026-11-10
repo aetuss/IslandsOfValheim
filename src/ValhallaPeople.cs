@@ -85,17 +85,17 @@ namespace IslandsOfValheim
             Transform highSeat = Find("piece_blackmarble_throne", t => true);
             if (after)
             {
-                Seat(Odin(), hallThrone, 0f);
-                Stand(Bragi(), new Vector3(-2f, 0f, HallEnd - 6.2f), Vector3.back, 3f);
+                Speaks(Seat(Odin(), hallThrone, 0f), ValhallaSpeaker.Odin, 1.7f);
+                Speaks(Stand(Bragi(), new Vector3(-2f, 0f, HallEnd - 6.2f), Vector3.back, 3f), ValhallaSpeaker.Bragi, 2.2f);
             }
             else
             {
-                Seat(Bragi(), hallThrone, 0f);
-                Seat(Odin(), highSeat, 0f);
+                Speaks(Seat(Bragi(), hallThrone, 0f), ValhallaSpeaker.Bragi, 1.7f);
+                Speaks(Seat(Odin(), highSeat, 0f), ValhallaSpeaker.Odin, 1.7f);
             }
             // Sævar, at the foot of the dais (between it and the tables' ends), looking down the hall to whoever
             // comes in.
-            Stand(Saevar(), new Vector3(2f, 0f, HallEnd - 6.2f), Vector3.back, 3f);
+            Speaks(Stand(Saevar(), new Vector3(2f, 0f, HallEnd - 6.2f), Vector3.back, 3f), ValhallaSpeaker.Saevar, 2.2f);
             yield return null;
 
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
@@ -259,6 +259,15 @@ namespace IslandsOfValheim
             facing.y = 0f;
             Quaternion turn = transform.rotation * Quaternion.LookRotation(facing.sqrMagnitude > 0.001f ? facing.normalized : Vector3.forward);
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
+        }
+
+        // One you can talk to (hover, use): ValhallaTalk.
+        static void Speaks(SpiritHuman person, int who, float height)
+        {
+            if (person == null) return;
+            ValhallaSpeaker speaker = person.gameObject.AddComponent<ValhallaSpeaker>();
+            speaker.who = who;
+            speaker.height = height;
         }
 
         SpiritHuman Add(SpiritHuman person)

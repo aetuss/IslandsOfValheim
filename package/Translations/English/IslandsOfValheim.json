@@ -240,5 +240,15 @@
   "iov_se_ashtar_tooltip": "The burning sea doesn't harm the ship you're on.",
   "iov_saevarchest": "Sævar's Chest",
   "iov_call_topic": "Odin's call",
-  "iov_call_text": "Odin's eye was on the sea as Sævar walked toward the light. Now the old stones at his harbour have woken, and Sævar asks for you. Look for the light over the harbour."
+  "iov_call_text": "Odin's eye was on the sea as Sævar walked toward the light. Now the old stones at his harbour have woken, and Sævar asks for you. Look for the light over the harbour.",
+  "iov_bragi": "Bragi",
+  "iov_odin": "Odin",
+  "iov_bragi_greet": "Welcome, guest of the All-Father. I am Bragi, and the songs of this hall are mine to keep. Sævar waits for you, there by the dais.",
+  "iov_bragi_talk1": "Every name sung in this hall was earned. Yours may be, too.",
+  "iov_bragi_talk2": "The einherjar fight by day and feast by night, and tire of neither.",
+  "iov_bragi_talk3": "I have a verse for the Brim Folk already. It only lacks its ending.",
+  "iov_valsaevar_welcome": "You came. I knew the light would find you. Listen, and I'll tell you what still holds my people.",
+  "iov_valsaevar_ring": "The einherjar wait for you at the ring. Show them what Odin saw in you.",
+  "iov_lore_scattered": "Lore: The Scattered",
+  "iov_lore_scattered_text": "The curse is broken. Hafdís rests at last, and the sea no longer keeps what was never its own.\n\nBut the Brim Folk died cursed, and the cursed dead do not come to Valhalla. Rán took them into her net beneath the waves, and most of them are there still. Some never went even that far: they are bound to the places where they fell, by what they left undone.\n\nOdin has promised me this: when my people are gathered, they may come home, at peace. I cannot do it alone. I belong to this hall now, and the sea is no longer mine to sail.\n\nBut first, the einherjar want to see what kind of guest Odin has brought. Go to the ring, and show them."
 }

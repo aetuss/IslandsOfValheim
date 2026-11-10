@@ -457,7 +457,7 @@ namespace IslandsOfValheim
             return ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(key);
         }
 
-        static void Set(string key)
+        internal static void Set(string key)
         {
             if (ZoneSystem.instance != null && !ZoneSystem.instance.GetGlobalKey(key)) ZoneSystem.instance.SetGlobalKey(key);
             Plugin.Debug("Story: " + key);
@@ -500,7 +500,7 @@ namespace IslandsOfValheim
                 if (Key(step.Done)) player.AddKnownText("$" + step.Lore, "$" + step.Lore + "_text");
         }
 
-        static void Tell(Player player, string label, string text)
+        internal static void Tell(Player player, string label, string text)
         {
             player.AddKnownText(label, text);
             if (TextViewer.instance != null) TextViewer.instance.ShowText(TextViewer.Style.Rune, label, text, true); // the game says it's in the compendium

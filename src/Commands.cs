@@ -71,7 +71,7 @@ namespace IslandsOfValheim
                 {
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
                     if (what == "now") { ValhallaCall.devNow = true; args.Context.AddString("Odin's call comes now: watch for Hugin, and the light over the harbour."); }
-                    else if (what == "reset") { ValhallaCall.Reset(); args.Context.AddString("Reset: the gate is dark; the call comes the morning after the tale's end is next seen."); }
+                    else if (what == "reset") { ValhallaCall.Reset(); args.Context.AddString("Reset: the gate is dark, nobody has been welcomed in Valhalla; the call comes the morning after the tale's end is next seen."); }
                     else args.Context.AddString("iov_call now | reset");
                 }, true);
 
