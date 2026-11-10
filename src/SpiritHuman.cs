@@ -147,6 +147,7 @@ namespace IslandsOfValheim
 
         void Update()
         {
+            Land();
             if (animator == null || !animator.enabled) { if (ghost == Solid) return; }
             else
             {
@@ -205,10 +206,14 @@ namespace IslandsOfValheim
         int chain;                // in how many steps (a sword's three swings)
         internal bool blocking;
 
+        ItemDrop.ItemData.SharedData rightShared, leftShared;
+
         // What it holds decides how it stands: the left hand's item (a shield) first, as the game does.
         internal void Holding(string right, string left)
         {
             ItemDrop.ItemData.SharedData r = Shared(right), l = Shared(left);
+            rightShared = r;
+            leftShared = l;
             if (l != null) stance = (int)l.m_itemType == 15 ? 6 : (int)l.m_animationState;
             else if (r != null) stance = (int)r.m_animationState;
             if (r != null && r.m_attack != null) { attack = r.m_attack.m_attackAnimation ?? ""; chain = r.m_attack.m_attackChainLevels; }
@@ -222,12 +227,62 @@ namespace IslandsOfValheim
             return drop != null ? drop.m_itemData.m_shared : null;
         }
 
-        // One swing of its weapon (step n of its chain).
-        internal void Strike(int n)
+        // One swing of its weapon (step n of its chain), with the weapon's own sounds: its swing as it starts,
+        // its whoosh as it comes round, and as it lands either the guard's block (his shield, or his weapon
+        // parrying) or, with no one in the way (a training dummy), the weapon's hit.
+        internal void Strike(int n, SpiritHuman guard)
         {
             if (attack.Length == 0) return;
             Trigger(chain > 1 ? attack + (n % chain) : attack);
+            if (!Near || rightShared == null || rightShared.m_attack == null) return;
+            Sound(rightShared.m_attack.m_startEffect, Hand());
+            swingLands = Time.time + 0.38f;
+            swingGuard = guard;
         }
+
+        float swingLands = -1f;
+        SpiritHuman swingGuard;
+
+        void Land()
+        {
+            if (swingLands < 0f || Time.time < swingLands) return;
+            swingLands = -1f;
+            if (rightShared == null || rightShared.m_attack == null) return;
+            Sound(rightShared.m_attack.m_triggerEffect, Hand());
+            if (swingGuard != null)
+            {
+                ItemDrop.ItemData.SharedData guardsOwn = swingGuard.leftShared ?? swingGuard.rightShared;
+                if (guardsOwn != null) Sound(guardsOwn.m_blockEffect, swingGuard.transform.position + Vector3.up * 1.2f + swingGuard.transform.forward * 0.4f);
+            }
+            else Sound(rightShared.m_hitEffect, transform.position + Vector3.up * 1.1f + transform.forward * 1.6f);
+        }
+
+        // A bite: the eating, and the game's own sound of it (a player's, when eating).
+        internal void Eat()
+        {
+            Trigger("eat");
+            if (!Near) return;
+            if (eating == null)
+            {
+                GameObject player = PrefabManager.Instance.GetPrefab("Player");
+                Humanoid body = player != null ? player.GetComponent<Humanoid>() : null;
+                eating = body != null && body.m_consumeItemEffects != null ? body.m_consumeItemEffects : new EffectList();
+            }
+            Sound(eating, transform.position + Vector3.up * 1.4f);
+        }
+
+        static EffectList eating;
+
+        Vector3 Hand() { return transform.position + Vector3.up * 1.3f + transform.forward * 0.6f; }
+
+        // Effects played here alone (they're the game's sounds and sparks, nothing in them is shared).
+        static void Sound(EffectList effects, Vector3 at)
+        {
+            if (effects == null || effects.m_effectPrefabs == null || effects.m_effectPrefabs.Length == 0) return;
+            effects.Create(at, Quaternion.identity);
+        }
+
+        bool Near { get { return detail >= 0 && detail <= 1; } }
 
         // ---- detail by distance (what keeps dozens of them cheap) ----
 

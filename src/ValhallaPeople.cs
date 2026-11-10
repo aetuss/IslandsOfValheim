@@ -120,7 +120,8 @@ namespace IslandsOfValheim
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x + 6f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "AxeBronze", "ShieldWood"), Trainer, 2.3f);
             // The ring: two fighting in it (by turns one swings, the other takes it on his shield), and three
             // watching from its edge, cheering now and then.
-            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldIronSquare");
+            // (the square shield, held, lay flat like a tray: this one fights with his sword alone and parries)
+            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze");
             SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
             if (one != null && other != null) actors.Add(new Actor { who = one, partner = other, kind = Duel });
             foreach (float deg in new[] { 205f, 240f, 300f })
@@ -297,14 +298,14 @@ namespace IslandsOfValheim
                     {
                         // a bite every quarter minute or so
                         long slot = (long)(t / 15.0);
-                        if (slot != a.last) { if (a.last != long.MinValue) a.who.Trigger("eat"); a.last = slot; }
+                        if (slot != a.last) { if (a.last != long.MinValue) a.who.Eat(); a.last = slot; }
                         break;
                     }
                     case Trainer:
                     {
                         // three swings in a row at the dummy, then a breath
                         long slot = (long)(t / 0.9);
-                        if (slot != a.last) { int k = (int)(slot % 6); if (k < 3) a.who.Strike(k); a.last = slot; }
+                        if (slot != a.last) { int k = (int)(slot % 6); if (k < 3) a.who.Strike(k, null); a.last = slot; }
                         break;
                     }
                     case Duel:
@@ -317,16 +318,23 @@ namespace IslandsOfValheim
                         guard.blocking = true;
                         swinger.blocking = false;
                         long slot = (long)(t / 1.0);
-                        if (slot != a.last) { int k = (int)(slot - turnOf * 3.5); if (k >= 0 && k < 3) swinger.Strike(k); a.last = slot; }
+                        if (slot != a.last) { int k = (int)(slot - turnOf * 3.5); if (k >= 0 && k < 3) swinger.Strike(k, guard); a.last = slot; }
                         break;
                     }
                     case Watcher:
                     {
-                        // a cheer (or a shout, a laugh) every twelve seconds or so, ended after a while
-                        long slot = (long)(t / 12.0);
+                        // a cheer (or a shout, a laugh) every quarter minute or so: played out whole, as the game
+                        // plays it for a player; only one that goes on by itself (the game's not "one shot")
+                        // is ended, and not soon
+                        long slot = (long)(t / 16.0);
                         if (slot != a.last)
                         {
-                            if (a.last != long.MinValue) { a.who.Trigger(Cheers[(int)(Pick((int)(slot % 100000), 29) * Cheers.Length) % Cheers.Length]); a.stopAt = Time.time + 3.5f; }
+                            if (a.last != long.MinValue)
+                            {
+                                string cheer = Cheers[(int)(Pick((int)(slot % 100000), 29) * Cheers.Length) % Cheers.Length];
+                                a.who.Trigger(cheer);
+                                a.stopAt = OneShot(cheer) ? 0f : Time.time + 6f;
+                            }
                             a.last = slot;
                         }
                         if (a.stopAt > 0f && Time.time > a.stopAt) { a.who.Trigger("emote_stop"); a.stopAt = 0f; }
@@ -334,6 +342,28 @@ namespace IslandsOfValheim
                     }
                 }
             }
+        }
+
+        // Whether the game plays an emote once and returns (its Emotes' "one shot"), read off the game's own list.
+        static readonly Dictionary<string, bool> oneShot = new Dictionary<string, bool>();
+        static bool OneShot(string trigger)
+        {
+            bool once;
+            if (oneShot.TryGetValue(trigger, out once)) return once;
+            once = false;
+            try
+            {
+                string name = trigger.StartsWith("emote_") ? trigger.Substring(6) : trigger;
+                foreach (System.Reflection.FieldInfo f in typeof(Emotes).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+                {
+                    if (!string.Equals(f.Name, name, System.StringComparison.OrdinalIgnoreCase)) continue;
+                    foreach (object attribute in f.GetCustomAttributes(typeof(Emote), false)) once = ((Emote)attribute).OneShot;
+                }
+            }
+            catch (System.Exception e) { Plugin.Debug("Valhalla: couldn't read emote " + trigger + ": " + e.Message); }
+            oneShot[trigger] = once;
+            Plugin.Debug("Valhalla: emote " + trigger + (once ? " plays once" : " goes on till stopped"));
+            return once;
         }
 
         // How much of each is worked out, by how far it is from the camera.
