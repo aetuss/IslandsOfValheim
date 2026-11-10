@@ -85,6 +85,7 @@ namespace IslandsOfValheim
         void Update()
         {
             if (who == HighSeatGuard) { Watch(); return; }
+            if (who == RingMaster) { CallOver(); return; }
             if (who != Bragi || greeted || Time.time < nextGreetLook) return;
             nextGreetLook = Time.time + 0.5f;
             Player player = Player.m_localPlayer;
@@ -114,6 +115,21 @@ namespace IslandsOfValheim
             if (nearest != this) return;
             warnedAt = Time.time;
             Say("$iov_guard_odin");
+        }
+
+        // Sent by Sævar and come to the ring, not yet tested: the ring's master calls you over to him (as you
+        // come near, and again now and then while you're about).
+        float calledAt = -100f;
+
+        void CallOver()
+        {
+            if (Time.time < nextGreetLook) return;
+            nextGreetLook = Time.time + 0.5f;
+            Player player = Player.m_localPlayer;
+            if (player == null || !Welcomed || ValhallaDuel.Active || Story.Key(ValhallaDuel.WonKey) || Time.time - calledAt < 45f) return;
+            if (Vector3.Distance(player.transform.position, transform.position) > 14f) return;
+            calledAt = Time.time;
+            Say("$iov_ringmaster_call");
         }
 
         void Say(string line)

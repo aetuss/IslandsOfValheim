@@ -109,6 +109,14 @@ namespace IslandsOfValheim
             ai = GetComponent<MonsterAI>();
         }
 
+        // The player's body starts out waking up, sitting on the ground (the player's own script lets it get
+        // up; this one has no such script): up at once.
+        void Start()
+        {
+            Animator animator = GetComponentInChildren<Animator>();
+            if (animator != null) animator.SetBool("wakeup", false);
+        }
+
         // Beaten (its health run out): it doesn't die, it kneels, says so, and before long is gone.
         internal void Yield(bool kneel)
         {
@@ -219,7 +227,7 @@ namespace IslandsOfValheim
         void Next(int r)
         {
             round = r;
-            boutAt = Time.time + (r == 1 ? 3f : 6f);
+            boutAt = Time.time + (r == 1 ? 5f : 6f); // (the first: while the two sparring walk out of the ring)
             lastHealth = -1f;
             Message(r == 1 ? "$iov_duel_round1" : r == 2 ? "$iov_duel_round2" : "$iov_duel_round3");
         }
@@ -253,6 +261,7 @@ namespace IslandsOfValheim
                 if (c != null && c.GetComponent<ZNetView>() != null && c.GetComponent<ZNetView>().IsOwner() && ZNetScene.instance != null)
                     ZNetScene.instance.Destroy(c.gameObject);
             fighters.Clear();
+            pending.Clear();
             if (round > 0 && ValhallaPeople.Current != null) ValhallaPeople.Current.RingCleared(false);
             round = 0;
             endAt = -1f;
@@ -285,6 +294,12 @@ namespace IslandsOfValheim
             // nearly beaten: spared before the last blow
             if (player.GetHealth() < player.GetMaxHealth() * 0.1f) { Lose("$iov_duel_lost"); return; }
 
+            if (pending.Count > 0)
+            {
+                // in the light that brings them: they step out of it at its brightest
+                if (Time.time >= pendingAt) { foreach (System.Action make in pending) make(); pending.Clear(); }
+                return;
+            }
             if (fighters.Count == 0)
             {
                 if (Time.time >= boutAt) Spawn(player, centre);
@@ -374,16 +389,34 @@ namespace IslandsOfValheim
             if (away.sqrMagnitude < 1f) away = -player.transform.forward;
             away.Normalize();
             if (round == 1)
-                Fighter(PrefabName(false), centre + away * 4.5f, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]);
+            {
+                Vector3 at = centre + away * 4.5f;
+                Later(at, () => Fighter(PrefabName(false), at, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]));
+            }
             else if (round == 2)
             {
                 Vector3 side = Vector3.Cross(Vector3.up, away);
-                Fighter(PrefabName(false), centre + away * 4f + side * 2.5f, player, tier, Health[tier] * 0.7f, 0, Pick(Axes, tier), Pick(Shields, tier), "Hair9", "Beard7", Capes[tier]);
-                Fighter(PrefabName(false), centre + away * 4f - side * 2.5f, player, tier, Health[tier] * 0.7f, 1, Pick(Polearms, tier), "", "Hair14", "", Capes[tier]);
+                Vector3 one = centre + away * 4f + side * 2.5f, other = centre + away * 4f - side * 2.5f;
+                Later(one, () => Fighter(PrefabName(false), one, player, tier, Health[tier] * 0.7f, 0, Pick(Axes, tier), Pick(Shields, tier), "Hair9", "Beard7", Capes[tier]));
+                Later(other, () => Fighter(PrefabName(false), other, player, tier, Health[tier] * 0.7f, 1, Pick(Polearms, tier), "", "Hair14", "", Capes[tier]));
             }
             else
-                Fighter(PrefabName(true), centre + away * 5f, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf");
-            Plugin.Debug("Duel: bout " + round + ", " + fighters.Count + " in the ring (tier " + tier + ")");
+            {
+                Vector3 at = centre + away * 5f;
+                Later(at, () => Fighter(PrefabName(true), at, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf"));
+            }
+            Plugin.Debug("Duel: bout " + round + ", " + pending.Count + " coming into the ring (tier " + tier + ")");
+        }
+
+        // They come in Valhalla's own light (a soft column, as the one that took Sævar), and step out of it.
+        readonly List<System.Action> pending = new List<System.Action>();
+        float pendingAt;
+
+        void Later(Vector3 at, System.Action make)
+        {
+            LightBeam.Over(at, 3.4f, 1.8f, 0.9f, 2.2f, true);
+            pending.Add(make);
+            pendingAt = Time.time + 1f;
         }
 
         static string PrefabName(bool champion) { return champion ? EinherjarFighter.ChampionPrefab : EinherjarFighter.PrefabName; }

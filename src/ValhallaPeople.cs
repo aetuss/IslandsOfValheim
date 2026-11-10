@@ -63,6 +63,9 @@ namespace IslandsOfValheim
             walkers.Clear();
             actors.Clear();
             everyone.Clear();
+            moves.Clear();
+            ringPair = null;
+            ringCleared = false;
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -353,35 +356,70 @@ namespace IslandsOfValheim
         readonly Quaternion[] ringTurn = new Quaternion[2];
         bool ringCleared;
 
-        // The two sparring step out to the ring's edge and watch with the rest; afterwards back to it.
+        // The two sparring walk out to the ring's edge (through gaps between its columns, clear of its fires)
+        // and watch with the rest; afterwards they walk back and take up their bout again.
         internal void RingCleared(bool clear)
         {
             if (ringPair == null || clear == ringCleared) return;
             ringCleared = clear;
             SpiritHuman[] two = { ringPair.who, ringPair.partner };
-            float[] degrees = { 160f, 340f };
+            float[] degrees = { 126f, 342f };
+            ringPair.kind = Watcher; // (no more swings, walking out or in)
+            int going = 0;
             for (int i = 0; i < 2; i++)
             {
                 if (two[i] == null) continue;
                 two[i].blocking = false;
+                Vector3 to;
+                Quaternion end;
                 if (clear)
                 {
-                    ringHome[i] = two[i].transform.position;
+                    ringHome[i] = transform.InverseTransformPoint(two[i].transform.position);
                     ringTurn[i] = two[i].transform.rotation;
                     float a = degrees[i] * Mathf.Deg2Rad;
-                    Vector3 local = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                    local.y = Ground(local.x, local.z, 4f);
-                    Vector3 facing = new Vector3(Ring.x - local.x, 0f, Ring.y - local.z);
-                    two[i].transform.position = transform.TransformPoint(local);
-                    two[i].transform.rotation = transform.rotation * Quaternion.LookRotation(facing.normalized);
+                    to = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
+                    end = transform.rotation * Quaternion.LookRotation(new Vector3(Ring.x - to.x, 0f, Ring.y - to.z).normalized);
                 }
                 else
                 {
-                    two[i].transform.position = ringHome[i];
-                    two[i].transform.rotation = ringTurn[i];
+                    to = ringHome[i];
+                    end = ringTurn[i];
                 }
+                going++;
+                moves.Add(new Move { who = two[i], to = to, end = end, back = !clear });
             }
-            ringPair.kind = clear ? Watcher : Duel;
+            if (!clear && going == 0) ringPair.kind = Duel;
+        }
+
+        class Move { internal SpiritHuman who; internal Vector3 to; internal Quaternion end; internal bool back; }
+        readonly List<Move> moves = new List<Move>();
+        const float StrollSpeed = 1.5f;
+
+        void Strolls(float dt)
+        {
+            for (int i = moves.Count - 1; i >= 0; i--)
+            {
+                Move m = moves[i];
+                if (m.who == null) { moves.RemoveAt(i); continue; }
+                Vector3 at = transform.InverseTransformPoint(m.who.transform.position);
+                Vector3 d = m.to - at;
+                d.y = 0f;
+                float left = d.magnitude;
+                if (left < 0.05f)
+                {
+                    m.who.walking = 0f;
+                    m.who.transform.rotation = m.end;
+                    moves.RemoveAt(i);
+                    // both back in the ring: their bout goes on
+                    if (m.back && ringPair != null && !moves.Exists(o => o.back)) ringPair.kind = Duel;
+                    continue;
+                }
+                Vector3 step = at + d / left * Mathf.Min(left, StrollSpeed * dt);
+                step.y = Ground(step.x, step.z, 4f);
+                m.who.transform.position = transform.TransformPoint(step);
+                m.who.transform.rotation = Quaternion.Slerp(m.who.transform.rotation, transform.rotation * Quaternion.LookRotation(d / left), dt * 6f);
+                m.who.walking = StrollSpeed;
+            }
         }
 
         // A blow landed in the ring: some of those watching knock weapon on shield.
@@ -552,6 +590,7 @@ namespace IslandsOfValheim
             if (made.Count == 0) return;
             Details();
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
+            Strolls(Time.deltaTime);
             if (walkers.Count == 0) return;
             Player player = Player.m_localPlayer;
             Vector3 you = player != null ? transform.InverseTransformPoint(player.transform.position) : new Vector3(9999f, 0f, 0f);
