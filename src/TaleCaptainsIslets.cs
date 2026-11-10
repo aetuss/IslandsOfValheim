@@ -78,13 +78,23 @@ namespace IslandsOfValheim
             foreach (Collider c in wolf.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
             foreach (ParticleSystem p in wolf.GetComponentsInChildren<ParticleSystem>(true))
                 if (p.gameObject != wolf) p.gameObject.SetActive(false);
-            Material wood = WoodMaterial();
+            // Carved wood: its own materials (the wood_beam's came out pale and frosty on it), tinted the brown of
+            // old oiled wood, with no glow of their own.
+            int tinted = 0;
             foreach (Renderer r in wolf.GetComponentsInChildren<Renderer>(true))
             {
-                if (r is ParticleSystemRenderer || wood == null) continue;
-                Material[] grain = new Material[Mathf.Max(1, r.sharedMaterials.Length)];
-                for (int i = 0; i < grain.Length; i++) grain[i] = wood;
-                r.sharedMaterials = grain;
+                if (r is ParticleSystemRenderer) continue;
+                Material[] own = r.sharedMaterials;
+                for (int i = 0; i < own.Length; i++)
+                {
+                    if (own[i] == null) continue;
+                    Material m = new Material(own[i]);
+                    m.name = own[i].name + " (carved)";
+                    if (m.HasProperty("_Color")) { m.SetColor("_Color", WoodBrown); tinted++; }
+                    if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", Color.black);
+                    own[i] = m;
+                }
+                r.sharedMaterials = own;
             }
 
             GameObject holder = new GameObject("IoV_GrimrToy");
@@ -94,7 +104,7 @@ namespace IslandsOfValheim
             wolf.transform.localPosition = Vector3.zero;
             wolf.transform.localRotation = Quaternion.identity;
             Bounds b = DrawnBounds(holder.transform);
-            const float Length = 0.42f; // a toy, held in two hands
+            const float Length = 0.6f; // a toy, held in two hands (a little big, so it's seen on the floor)
             float k = Length / Mathf.Max(0.01f, Mathf.Max(b.size.x, b.size.z));
             wolf.transform.localScale *= k;
             b = DrawnBounds(holder.transform);
@@ -107,17 +117,10 @@ namespace IslandsOfValheim
             GrimrsWolf toy = holder.AddComponent<GrimrsWolf>();
             toy.ambushAt = ambushAt;
             built++;
-            Plugin.Debug("T2: Grímr's toy (" + wolf.name + ", " + (wood != null ? "wood" : "its own skin") + ") at " + at.ToString("F1") + ", " + b.size.ToString("F2") + " m");
+            Plugin.Debug("T2: Grímr's toy (" + wolf.name + ", " + tinted + " materials tinted wood) at " + at.ToString("F1") + ", " + b.size.ToString("F2") + " m");
         }
 
-        // A wooden piece's own material, for a carving.
-        static Material WoodMaterial()
-        {
-            GameObject prefab = PrefabManager.Instance.GetPrefab("wood_beam");
-            if (prefab == null) prefab = PrefabManager.Instance.GetPrefab("wood_pole");
-            MeshRenderer r = prefab != null ? prefab.GetComponentInChildren<MeshRenderer>(true) : null;
-            return r != null ? r.sharedMaterial : null;
-        }
+        static readonly Color WoodBrown = new Color(0.55f, 0.36f, 0.2f);
 
         // What's drawn under t (skinned or not), in t's own space: a skinned mesh as it lies at rest.
         static Bounds DrawnBounds(Transform t)

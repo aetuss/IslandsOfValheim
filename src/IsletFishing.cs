@@ -127,27 +127,52 @@ namespace IslandsOfValheim
 
         // A ground's fish going into a bag. Around Sigrún's islet one of them has her fragment in it; and
         // now and then it's a sodden pouch instead of a fish.
+        // (The game's fish are items now: reeling one in and picking one up both end in ItemDrop.Pickup;
+        // Fish.Pickup only hands over to it. Fish.Pickup is still watched for a fish that isn't an item.)
+        [HarmonyPatch(typeof(ItemDrop), "Pickup")]
+        static class ItemPickupPatch
+        {
+            static bool Prefix(ItemDrop __instance, Humanoid character)
+            {
+                Fish fish = __instance != null ? __instance.GetComponent<Fish>() : null;
+                return fish == null || !Taken(fish, character);
+            }
+        }
+
         [HarmonyPatch(typeof(Fish), "Pickup")]
         static class PickupPatch
         {
             static bool Prefix(Fish __instance, Humanoid character, ref bool __result)
             {
-                ZNetView nview = __instance != null ? __instance.GetComponent<ZNetView>() : null;
-                if (character == null || character != Player.m_localPlayer || nview == null || !nview.IsValid()) return true;
-                int ground = nview.GetZDO().GetInt(GroundKey, 0);
-                if (ground <= 0 || ground > IsletTier.All.Count) return true;
-                Plugin.Debug("Fishing: " + __instance.name + " from a " + IsletTier.All[ground - 1].Name + " ground picked up at " + __instance.transform.position.ToString("F0"));
-                Story.FromFish(__instance, character);
-                if (Random.value >= PouchChance) return true;
-                string text = GivePouch(IsletTier.All[ground - 1], character);
-                if (inCatch) pouchText = text;
-                else character.Message(MessageHud.MessageType.Center, text, 0, null, false);
-                nview.ClaimOwnership();
-                ZNetScene.instance.Destroy(__instance.gameObject);
-                Plugin.Debug("Fishing: a pouch instead of a fish (" + text + ")");
+                if (__instance == null || __instance.GetComponent<ItemDrop>() != null) return true; // (its ItemDrop.Pickup sees it)
+                if (!Taken(__instance, character)) return true;
                 __result = true;
                 return false;
             }
+        }
+
+        static ZDOID lastTaken = ZDOID.None;
+
+        // A fish being taken: the tale's and the task's looks at it, and maybe a pouch instead (then true: the
+        // fish is gone, and the game's own pickup mustn't go on).
+        static bool Taken(Fish fish, Humanoid character)
+        {
+            ZNetView nview = fish.GetComponent<ZNetView>();
+            if (character == null || character != Player.m_localPlayer || nview == null || !nview.IsValid()) return false;
+            int ground = nview.GetZDO().GetInt(GroundKey, 0);
+            if (ground <= 0 || ground > IsletTier.All.Count) return false;
+            if (nview.GetZDO().m_uid == lastTaken) return false; // (the same fish asked for twice)
+            lastTaken = nview.GetZDO().m_uid;
+            Plugin.Debug("Fishing: " + fish.name + " from a " + IsletTier.All[ground - 1].Name + " ground picked up at " + fish.transform.position.ToString("F0"));
+            Story.FromFish(fish, character);
+            if (Random.value >= PouchChance) return false;
+            string text = GivePouch(IsletTier.All[ground - 1], character);
+            if (inCatch) pouchText = text;
+            else character.Message(MessageHud.MessageType.Center, text, 0, null, false);
+            nview.ClaimOwnership();
+            ZNetScene.instance.Destroy(fish.gameObject);
+            Plugin.Debug("Fishing: a pouch instead of a fish (" + text + ")");
+            return true;
         }
 
     }
