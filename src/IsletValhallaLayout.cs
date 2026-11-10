@@ -942,7 +942,13 @@ namespace IslandsOfValheim
                         ? SkyPart("GDKing", "platforms/StonePillarTall/StonePillar", "", new Vector3(q.x, G(q.x, q.y) - 0.3f, q.y), n * 31f, 0.7f)
                         : SkyPart("Runestone_Meadows", "", "runestone", foot, 0f, 1f);
                     if (stone == null && !pillar) { SkyPart("GDKing", "platforms/StonePillarTall/StonePillar", "", new Vector3(q.x, G(q.x, q.y) - 0.3f, q.y), n * 31f, 0.7f); continue; }
-                    if (pillar) continue;
+                    if (pillar)
+                    {
+                        // a standing blue brazier on its top: the path's light at night
+                        if (stone != null)
+                            Lamp("piece_brazierfloor02", "MountainKit_brazier_blue", new Vector3(q.x, SkyBounds(stone).max.y, q.y));
+                        continue;
+                    }
                     // Rune stones by turns: one turned to meet you as you come in from the landing, the next to
                     // meet you as you go back out; each a little towards the path. Read, each says its piece.
                     bool inward = runes++ % 2 == 0;
