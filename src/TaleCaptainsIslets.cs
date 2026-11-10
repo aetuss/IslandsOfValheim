@@ -78,8 +78,10 @@ namespace IslandsOfValheim
             foreach (Collider c in wolf.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
             foreach (ParticleSystem p in wolf.GetComponentsInChildren<ParticleSystem>(true))
                 if (p.gameObject != wolf) p.gameObject.SetActive(false);
-            // Carved wood: its own materials (the wood_beam's came out pale and frosty on it), tinted the brown of
-            // old oiled wood, with no glow of their own.
+            // Carved wood: its own materials (the wood_beam's whole material came out pale and frosty on it), with
+            // the wood_beam's grain for its fur and a warm tint (tinted fur alone read as a real dark wolf), with no
+            // glow of their own.
+            Texture grainTex = WoodGrain();
             int tinted = 0;
             foreach (Renderer r in wolf.GetComponentsInChildren<Renderer>(true))
             {
@@ -90,7 +92,10 @@ namespace IslandsOfValheim
                     if (own[i] == null) continue;
                     Material m = new Material(own[i]);
                     m.name = own[i].name + " (carved)";
-                    if (m.HasProperty("_Color")) { m.SetColor("_Color", WoodBrown); tinted++; }
+                    Plugin.Debug("T2: Grímr's toy material " + own[i].name + " (" + own[i].shader.name + "), main texture " + (own[i].mainTexture != null ? own[i].mainTexture.name : "none"));
+                    if (grainTex != null && m.HasProperty("_MainTex")) m.SetTexture("_MainTex", grainTex);
+                    if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", null);
+                    if (m.HasProperty("_Color")) { m.SetColor("_Color", grainTex != null ? WoodTint : WoodBrown); tinted++; }
                     if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", Color.black);
                     own[i] = m;
                 }
@@ -120,7 +125,23 @@ namespace IslandsOfValheim
             Plugin.Debug("T2: Grímr's toy (" + wolf.name + ", " + tinted + " materials tinted wood) at " + at.ToString("F1") + ", " + b.size.ToString("F2") + " m");
         }
 
-        static readonly Color WoodBrown = new Color(0.55f, 0.36f, 0.2f);
+        static readonly Color WoodBrown = new Color(0.55f, 0.36f, 0.2f), WoodTint = new Color(1f, 0.85f, 0.66f);
+
+        // The grain of a wooden piece (its texture only).
+        static Texture WoodGrain()
+        {
+            foreach (string name in new[] { "wood_beam", "wood_pole", "woodwall" })
+            {
+                GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+                MeshRenderer r = prefab != null ? prefab.GetComponentInChildren<MeshRenderer>(true) : null;
+                if (r != null && r.sharedMaterial != null && r.sharedMaterial.mainTexture != null)
+                {
+                    Plugin.Debug("T2: wood grain from " + name + " (" + r.sharedMaterial.mainTexture.name + ")");
+                    return r.sharedMaterial.mainTexture;
+                }
+            }
+            return null;
+        }
 
         // What's drawn under t (skinned or not), in t's own space: a skinned mesh as it lies at rest.
         static Bounds DrawnBounds(Transform t)
@@ -335,7 +356,7 @@ namespace IslandsOfValheim
             player.Message(MessageHud.MessageType.Center, "$iov_t2_grimr_taken", 0, null, false);
             Plugin.Debug("T2: Grímr's toy taken");
             Vector3 around = ambushAt != Vector3.zero && transform.parent != null ? transform.parent.TransformPoint(ambushAt) : transform.position;
-            Plugin.Instance.StartCoroutine(Ambush.Rise(around, player.transform.position, new[] { "Ulv", "Ulv", "Fenring_Cultist", "Ulv" }, new[] { 2, 1, 1, 1 },
+            Plugin.Instance.StartCoroutine(Ambush.Rise(around, player.transform.position, new[] { "Ulv", "Ulv", "Ulv", "Ulv" }, new[] { 2, 1, 1, 1 },
                 "vfx_prespawn", "vfx_spawn", 4.5f));
             return true;
         }
@@ -361,7 +382,7 @@ namespace IslandsOfValheim
             if (caught < AtMost && Random.value >= Chance) return true;
             caught = 0;
             Story.Set(TaleCaptains.FoundKey(TaleCaptains.Sigrun));
-            player.Message(MessageHud.MessageType.Center, "$iov_t2_sigrun_caught", 0, null, false);
+            IsletFishing.Say(player, "$iov_t2_sigrun_caught");
             Plugin.Debug("T2: Sigrún's necklace caught");
             Vector3 shore = Ashore(player.transform.position);
             Plugin.Instance.StartCoroutine(Ambush.Rise(shore, player.transform.position, new[] { "Goblin", "GoblinArcher", "Goblin", "GoblinShaman" }, new[] { 2, 1, 1, 1 },
@@ -382,18 +403,28 @@ namespace IslandsOfValheim
             float length = toward.magnitude;
             if (length < 1f) return middle;
             toward /= length;
+            // (The islet's ground is its own mesh, so it's found by a ray, not by the game's ground height.)
             for (float s = 0f; s < length; s += 1f)
             {
                 Vector3 p = flat + toward * s;
                 float h;
-                if (ZoneSystem.instance.GetGroundHeight(p, out h) && h > sea + 0.6f)
+                if (Land(p, sea, out h))
                 {
                     p += toward * Mathf.Min(5f, length - s);
-                    if (ZoneSystem.instance.GetGroundHeight(p, out h)) p.y = h;
+                    p.y = Land(p, sea, out h) ? h : middle.y;
                     return p;
                 }
             }
             return middle;
+        }
+
+        static bool Land(Vector3 p, float sea, out float height)
+        {
+            RaycastHit hit;
+            height = sea;
+            if (!Physics.Raycast(new Vector3(p.x, sea + 40f, p.z), Vector3.down, out hit, 80f, LayerMask.GetMask("Default", "static_solid", "terrain"), QueryTriggerInteraction.Ignore)) return false;
+            height = hit.point.y;
+            return height > sea + 0.6f;
         }
     }
 
@@ -431,12 +462,20 @@ namespace IslandsOfValheim
 
         // The ground (or a floor) under a point, never the water, nor the top of a stone or a crate standing
         // there (well above the ground it was asked about).
+        // (Every hit down the line, the highest that isn't well above: under a stake or a tree the first hit is its
+        // top, and the islet's own ground is a mesh, which the game's ground height doesn't know, so falling back
+        // to that put one of Sigrún's Fulings under the islet.)
         static Vector3 Ground(Vector3 p)
         {
-            RaycastHit hit;
-            if (Physics.Raycast(p + Vector3.up * 20f, Vector3.down, out hit, 60f, LayerMask.GetMask("Default", "static_solid", "terrain", "piece"), QueryTriggerInteraction.Ignore)
-                && hit.point.y < p.y + 1.2f)
-                return hit.point;
+            RaycastHit[] hits = Physics.RaycastAll(p + Vector3.up * 20f, Vector3.down, 60f, LayerMask.GetMask("Default", "static_solid", "terrain", "piece"), QueryTriggerInteraction.Ignore);
+            bool found = false;
+            Vector3 best = p;
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.point.y >= p.y + 2.5f) continue;
+                if (!found || hit.point.y > best.y) { best = hit.point; found = true; }
+            }
+            if (found) return best;
             float h;
             if (ZoneSystem.instance != null && ZoneSystem.instance.GetGroundHeight(p, out h)) return new Vector3(p.x, h, p.z);
             return p;

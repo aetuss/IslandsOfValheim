@@ -151,6 +151,17 @@ namespace IslandsOfValheim
             }
         }
 
+        // A message about a fish just taken. While it's being reeled in, the game says "caught ..." right after
+        // and that would cover it, so it takes that line's place (several, one under the other); otherwise
+        // it's shown at once.
+        internal static void Say(Character to, string text)
+        {
+            if (to == null || string.IsNullOrEmpty(text)) return;
+            if (Localization.instance != null) text = Localization.instance.Localize(text);
+            if (inCatch) { pouchText = pouchText == null ? text : pouchText + "\n" + text; return; }
+            to.Message(MessageHud.MessageType.Center, text, 0, null, false);
+        }
+
         static ZDOID lastTaken = ZDOID.None;
 
         // A fish being taken: the tale's and the task's looks at it, and maybe a pouch instead (then true: the
@@ -167,8 +178,7 @@ namespace IslandsOfValheim
             Story.FromFish(fish, character);
             if (Random.value >= PouchChance) return false;
             string text = GivePouch(IsletTier.All[ground - 1], character);
-            if (inCatch) pouchText = text;
-            else character.Message(MessageHud.MessageType.Center, text, 0, null, false);
+            Say(character, text);
             nview.ClaimOwnership();
             ZNetScene.instance.Destroy(fish.gameObject);
             Plugin.Debug("Fishing: a pouch instead of a fish (" + text + ")");
