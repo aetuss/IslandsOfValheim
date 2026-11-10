@@ -199,8 +199,8 @@ namespace IslandsOfValheim
             // - Gullinkambi, the golden cock that wakes the einherjar, on the hall's ridge over its doors.
             foreach (float side in new[] { -1f, 1f })
                 Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
-            BeastWalk(Beast("Eikthyr", new Vector3(18f, 0f, 36f), new Vector3(0.3f, 0f, -1f), 4f, 1f, Color.white, ""), 0.9f, 14f,
-                new Vector2(18f, 36f), new Vector2(21.5f, 26f), new Vector2(18.5f, 15f));
+            Vector2[] hart = IsletBuilder.HartRoute;
+            BeastWalk(Beast("Eikthyr", new Vector3(hart[0].x, 0f, hart[0].y), new Vector3(0.3f, 0f, -1f), 4f, 1f, Color.white, ""), 0.9f, 14f, hart);
             if (Beast("Hen", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.3f, new Color(1f, 0.76f, 0.22f), "") == null)
                 Beast("Chicken", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.6f, new Color(1f, 0.76f, 0.22f), "");
             yield return null;
@@ -342,8 +342,10 @@ namespace IslandsOfValheim
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
         }
 
-        class Voice { internal Transform who; internal EffectList sound; internal float every, next; }
+        class Voice { internal Transform who; internal EffectList sound; internal float every, next; internal string name; }
         readonly List<Voice> voices = new List<Voice>();
+
+        static bool Has(EffectList e) { return e != null && e.m_effectPrefabs != null && e.m_effectPrefabs.Length > 0; }
 
         // Each beast's voice every so often (a while apart, never on the dot), heard only near it.
         void Voices()
@@ -354,8 +356,9 @@ namespace IslandsOfValheim
             {
                 if (v.who == null || Time.time < v.next) continue;
                 v.next = Time.time + v.every * Random.Range(0.7f, 1.6f);
-                if (Vector3.Distance(player.transform.position, v.who.position) > 30f) continue;
+                if (Vector3.Distance(player.transform.position, v.who.position) > 35f) continue;
                 v.sound.Create(v.who.position + Vector3.up, v.who.rotation);
+                Plugin.Debug("Valhalla: " + v.name + " calls");
             }
         }
 
@@ -389,10 +392,13 @@ namespace IslandsOfValheim
             }
             GameObject go = Instantiate(prefab, beastHolder.transform, false);
             go.name = prefabName + "_local";
-            // its own voice, now and then (what the game's creature makes idling), kept before its mind goes
+            // its own voice, now and then, kept before its mind goes: what the game's creature makes idling, or
+            // (a wolf has none) the call it gives when it spots you: a wolf's howl, now and then, longer apart
             BaseAI mind = go.GetComponent<BaseAI>();
-            if (mind != null && mind.m_idleSound != null && mind.m_idleSound.m_effectPrefabs != null && mind.m_idleSound.m_effectPrefabs.Length > 0)
-                voices.Add(new Voice { who = go.transform, sound = mind.m_idleSound, every = Mathf.Max(8f, mind.m_idleSoundInterval * 2f), next = Time.time + Random.Range(3f, 15f) });
+            if (Has(mind != null ? mind.m_idleSound : null))
+                voices.Add(new Voice { who = go.transform, sound = mind.m_idleSound, every = Mathf.Max(12f, mind.m_idleSoundInterval * 2f), next = Time.time + Random.Range(3f, 12f), name = prefabName });
+            else if (Has(mind != null ? mind.m_alertedEffects : null))
+                voices.Add(new Voice { who = go.transform, sound = mind.m_alertedEffects, every = 50f, next = Time.time + Random.Range(5f, 30f), name = prefabName });
             else Plugin.Debug("Valhalla: " + prefabName + " has no voice of its own");
             for (int pass = 0; pass < 6; pass++)
             {

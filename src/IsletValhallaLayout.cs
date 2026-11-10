@@ -759,7 +759,7 @@ namespace IslandsOfValheim
                 for (float gz = -90f; gz <= 90f; gz += 6f)
                 {
                     float x = gx + 3f * Noise(gx * 0.31f, gz * 0.17f), z = gz + 3f * Noise(gz * 0.23f, gx * 0.29f);
-                    if (!OnRock(x, z, 5f) || ValhallaPads(x, z) > 0.1f || NearMemorial(x, z, 3f)) continue;
+                    if (!OnRock(x, z, 5f) || ValhallaPads(x, z) > 0.1f || NearMemorial(x, z, 3f) || NearHartRoute(x, z, 3.5f)) continue;
                     float pick = Mathf.PerlinNoise(x * 0.05f + 300f, z * 0.05f + 77f);
                     float jitter = Mathf.PerlinNoise(x * 0.9f + 11f, z * 0.9f + 3f);
                     if (jitter < 0.35f) continue; // the gaps between drifts
@@ -781,6 +781,22 @@ namespace IslandsOfValheim
                             SkyPlant(name, cx, cz, k * 97f, sink);
                         }
                 }
+        }
+
+        // Eikþyrnir's way through the meadow east of the hall (ValhallaPeople walks him on it): kept clear of
+        // bushes and stones, his antlers being as wide as they are.
+        internal static readonly Vector2[] HartRoute = { new Vector2(18f, 36f), new Vector2(21.5f, 26f), new Vector2(18.5f, 15f) };
+
+        static bool NearHartRoute(float x, float z, float within)
+        {
+            Vector2 p = new Vector2(x, z);
+            for (int i = 0; i + 1 < HartRoute.Length; i++)
+            {
+                Vector2 a = HartRoute[i], ab = HartRoute[i + 1] - a;
+                float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+                if ((a + ab * t - p).sqrMagnitude < within * within) return true;
+            }
+            return false;
         }
 
         static bool NearMemorial(float x, float z, float within)

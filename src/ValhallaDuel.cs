@@ -147,10 +147,19 @@ namespace IslandsOfValheim
             }
         }
 
+        bool goingHome;
+
+        // Kneeling a while, then taken back by the light that brought it (the same soft column, coming on round it;
+        // at its brightest it's gone).
         void Update()
         {
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
+            if (!goingHome && Time.time > yieldedAt + 3.5f)
+            {
+                goingHome = true;
+                LightBeam.Over(transform.position, 3f, 1.8f, 0.9f, 2f, true);
+            }
             ZNetView nview = GetComponent<ZNetView>();
             if (Time.time > yieldedAt + 4.5f && nview != null && nview.IsOwner()) ZNetScene.instance.Destroy(gameObject);
         }
