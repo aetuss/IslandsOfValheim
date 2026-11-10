@@ -120,8 +120,9 @@ namespace IslandsOfValheim
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x + 6f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "AxeBronze", "ShieldWood"), Trainer, 2.3f);
             // The ring: two fighting in it (by turns one swings, the other takes it on his shield), and three
             // watching from its edge, cheering now and then.
-            // (the square shield, held, lay flat like a tray: this one fights with his sword alone and parries)
-            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze");
+            // (the square shield, held, lay flat like a tray, and with none his guard looked like a bare arm:
+            // a round one, as the trainers' stand right)
+            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldBanded");
             SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
             if (one != null && other != null) actors.Add(new Actor { who = one, partner = other, kind = Duel });
             foreach (float deg in new[] { 205f, 240f, 300f })

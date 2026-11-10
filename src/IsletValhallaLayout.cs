@@ -322,15 +322,16 @@ namespace IslandsOfValheim
         }
 
         // A still copy put by its own origin (as the hammer puts a piece), not by its size.
-        static GameObject SkyPivot(string name, Vector3 origin, Quaternion turn)
+        static GameObject SkyPivot(string name, Vector3 origin, Quaternion turn, System.Action<GameObject> first = null)
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
-            if (prefab == null) { missing++; return null; }
+            if (prefab == null) { missing++; Plugin.Debug("Valhalla: no " + name); return null; }
             usedNames.Add(name);
             GameObject go = Object.Instantiate(prefab, parent, false);
             go.name = prefab.name;
             go.transform.localRotation = turn;
             go.transform.localPosition = origin;
+            if (first != null) first(go);
             LightFires(go);
             Strip(go);
             built++;
@@ -779,27 +780,35 @@ namespace IslandsOfValheim
             float first = Block(new Vector3(0f, 0f, z0), 10f, 0.5f, 10f);
             float second = Block(new Vector3(0f, first, z0), 7.6f, 0.5f, 7.6f);
             float top = Block(new Vector3(0f, second, z0), 5.2f, 0.5f, 5.2f);
-            // steps up each tier on the south, the hall's side (between the ravens' posts)
+            // steps up each tier on the south, the hall's side
             Stair(0f, 0f, first, z0 - 5f, -1f, 3f);
             Stair(0f, first, second, z0 - 3.8f, -1f, 3f);
             Stair(0f, second, top, z0 - 2.6f, -1f, 3f);
-            SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
+            GameObject throne = SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
             foreach (float x in new[] { -2f, 2f })
-            {
-                // The raven carving is a board 3.2 m long, its mount at its origin, the bird 2.76 m along it (its
-                // own z) on top. Here the bird stands right over the post by the throne, the board running back
-                // to a second post at its mount end: a perch.
-                const float birdAlong = 2.76f, boardUnder = 0.24f;
-                GameObject post = Pillar(new Vector3(x, top, z0 - 2f), 5f);
-                if (post != null)
-                {
-                    float postTop = SkyBounds(post).max.y;
-                    // (4.76 m back from the middle: past the top tier and the second, on the first)
-                    Pillar(new Vector3(x, first, z0 - 2f - birdAlong), postTop - first);
-                    SkyPivot("darkwood_raven", new Vector3(x, postTop + boardUnder, z0 - 2f - birdAlong), Quaternion.identity);
-                }
                 SkyProp("piece_brazierfloor01", new Vector3(x, top, z0 + 2f), Vector3.zero);
+            // Huginn and Muninn on the throne's back, one at each top corner, looking out with Odin (the tall
+            // posts their carved perches stood on hid him, seen from the front). The game's own raven (the
+            // one that brings the player its counsel), its body shown and its workings taken out.
+            if (throne == null) return;
+            Bounds back = SkySolid(throne);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Vector3 at = new Vector3(back.center.x + side * (back.extents.x - 0.12f), back.max.y, back.min.z + 0.2f);
+                string bird = side < 0f || PrefabManager.Instance.GetPrefab("Munin") == null ? "Raven" : "Munin";
+                GameObject raven = SkyPivot(bird, at, Quaternion.Euler(0f, side * 18f, 0f), StillRaven);
+                if (raven != null) Plugin.Debug("Valhalla: " + bird + " on the high seat's back at " + at.ToString("F2") + ", its size " + SkyBounds(raven).size.ToString("F2"));
             }
+        }
+
+        // The game's raven as a still bird: its body shown (the game shows it only when it comes to talk), the
+        // "!" over it hidden.
+        static void StillRaven(GameObject go)
+        {
+            global::Raven raven = go.GetComponent<global::Raven>();
+            if (raven == null) return;
+            if (raven.m_visual != null) raven.m_visual.SetActive(true);
+            if (raven.m_exclamation != null) raven.m_exclamation.SetActive(false);
         }
 
         // ---- the Brim Folk's feast, under the trees to the west ----
