@@ -20,7 +20,7 @@ namespace IslandsOfValheim
     // The living are solid (a body on the "character" layer); a walker waits while you stand in its way.
     class ValhallaPeople : MonoBehaviour
     {
-        internal const string DoneKey = "IoVValhallaDone";
+        internal const string DoneKey = "iovvalhalladone"; // (the game keeps its world keys in lower case)
         internal static int devAfter = -1;   // iov_people: 1 after the tale's end, 0 before, -1 as the world is
         internal static int devCrowd;        // iov_people crowd N: so many more standing about, for the frame rate
 

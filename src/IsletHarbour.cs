@@ -127,6 +127,12 @@ namespace IslandsOfValheim
             Bench(fire, H(-5.6f, 6.9f));
             FishersCorner(H(5.8f, 4.6f));
             Seal(H(-4.6f, 1.2f), fire); // beside the house, looking at the campfire
+#if IOV_DEV
+            // Behind Bára, past the house's side: the stone gate that wakes when Odin calls, looking out over
+            // the campfire towards the jetty. (Development builds only, until the call is made.)
+            Vector2 gate = H(-8.2f, -1f), gateLook = H(-4f, 3f) - gate;
+            Gate(new Vector3(gate.x, Height(gate.x, gate.y) - 0.05f, gate.y), Mathf.Atan2(gateLook.x, gateLook.y) * Mathf.Rad2Deg, false);
+#endif
 
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;

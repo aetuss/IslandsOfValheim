@@ -65,6 +65,18 @@ namespace IslandsOfValheim
                 }, true);
 
 #if IOV_DEV
+            new Terminal.ConsoleCommand("iov_gate",
+                "[open|close] - IslandsOfValheim (development): wakes the stone gate at Sævar's harbour (as Odin's call will), or lets it go dark again",
+                args =>
+                {
+                    if (ZoneSystem.instance == null) return;
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    if (what == "open") ZoneSystem.instance.SetGlobalKey(ValhallaGate.OpenKey);
+                    else if (what == "close") ZoneSystem.instance.RemoveGlobalKey(ValhallaGate.OpenKey);
+                    else { args.Context.AddString("iov_gate open | close"); return; }
+                    args.Context.AddString("The harbour's gate " + (what == "open" ? "wakes: step through it to Valhalla." : "goes dark."));
+                }, true);
+
             new Terminal.ConsoleCommand("iov_tree",
                 "- IslandsOfValheim (development): where the World-tree's branches in the sky are, over where you stand",
                 args =>

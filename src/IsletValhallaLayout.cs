@@ -456,6 +456,10 @@ namespace IslandsOfValheim
             foreach (float x in new[] { -3f, 3f })
                 foreach (float z in new[] { ValhallaArrival.z - 2f, ValhallaArrival.z + 2f })
                     SkyProp("blackmarble_tile_floor_2x2", new Vector3(x, 0f, z), Vector3.zero);
+            // and behind it, at the south, the gate you came through, looking up the way (kept 7 m in from
+            // the rim)
+            float gateZ = -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f);
+            Gate(new Vector3(0f, G(0f, gateZ), gateZ), 0f, true);
             // tall iron torches either side, every 8 m (braziers where you arrive and before the hall's steps),
             // and between them a fallen warrior's spear planted upright with his shield leaning on it, facing the way
             int n = 0;
