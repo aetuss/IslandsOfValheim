@@ -93,9 +93,9 @@ namespace IslandsOfValheim
                 Speaks(Seat(Bragi(), hallThrone, 0f), ValhallaSpeaker.Bragi, 1.7f);
                 Speaks(Seat(Odin(), highSeat, 0f), ValhallaSpeaker.Odin, 1.7f);
             }
-            // Sævar, at the foot of the dais (between it and the tables' ends), looking down the hall to whoever
-            // comes in.
-            Speaks(Stand(Saevar(), new Vector3(2f, 0f, HallEnd - 6.2f), Vector3.back, 3f), ValhallaSpeaker.Saevar, 2.2f);
+            // Sævar, waiting at his own people's table (the Brim Folk's, under the golden birches to the west):
+            // at its head, between the two rows, looking out towards the way you come by.
+            Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
             yield return null;
 
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
