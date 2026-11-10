@@ -204,8 +204,20 @@ namespace IslandsOfValheim
         {
             if (heightOverride != null) return heightOverride(x, z);
             float h = NaturalHeight(x, z);
+            if (riseRadius > 0f)
+            {
+                // a level place raised where one islet wants it (the harbour's gate), blended into the slope
+                float d = Vector2.Distance(new Vector2(x, z), riseAt);
+                float w = 1f - Mathf.SmoothStep(0f, 1f, (d - riseRadius) / riseFade);
+                if (w > 0f && riseTo > h) h = Mathf.Lerp(h, riseTo, w);
+            }
             return cuts.Count > 0 && !ignoreCuts ? ApplyCuts(x, z, h) : h;
         }
+
+        // Set while one islet is built, then cleared: a round level place at riseAt (riseRadius across, the
+        // ground eased up to it over riseFade), at height riseTo. Only ever raises.
+        static Vector2 riseAt;
+        static float riseRadius, riseFade = 3f, riseTo;
 
         static bool ignoreCuts; // while a design is laid out at the middle before being moved (Village)
 

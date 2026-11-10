@@ -41,10 +41,26 @@ namespace IslandsOfValheim
             built = 0;
             missing = 0;
 
-            Material ground = BuildGround();
             float jetty = cliffDeg + 229f; // the low side, between two of the shore rocks
-            HarbourRocks();
-            PlaceHarbour(jetty);
+            Frame(jetty);
+#if IOV_DEV
+            // The gate's place, out on the jetty side's shoulder, raised level with the plateau (it dipped there).
+            riseAt = GateSpot;
+            riseRadius = 3.6f;
+            riseFade = 3f;
+            riseTo = PlateauHeight + 0.1f;
+#endif
+            Material ground;
+            try
+            {
+                ground = BuildGround();
+                HarbourRocks();
+                PlaceHarbour(jetty);
+#if IOV_DEV
+                ClearPlants(GateSpot, 5f);
+#endif
+            }
+            finally { riseRadius = 0f; }
             Pave(ground, PavedPath(jetty), 0.8f);
             Plugin.Debug(locationName + " built: " + built + " parts, " + missing + " prefabs not found");
 
@@ -105,11 +121,35 @@ namespace IslandsOfValheim
             hDir = new Vector2(Vector2.Dot(dir, hs), Vector2.Dot(dir, hf)).normalized;
         }
 
-        static void PlaceHarbour(float j)
+        static void Frame(float j)
         {
             hf = Polar(j, 1f);
             hs = new Vector2(-hf.y, hf.x);
             hc = Polar(j + 180f, 2.5f); // the house stands back from the plateau's middle
+        }
+
+        // The stone gate's place (where the player put it with iov_gate here, on the slope past the campfire
+        // towards the jetty), and the way it looks: over the campfire to the house.
+        static Vector2 GateSpot { get { return H(-11.5f, 13.4f); } }
+
+        // No tree, bush or flower growing through something put there after it.
+        static void ClearPlants(Vector2 at, float within)
+        {
+            string[] plants = { "tree", "beech", "birch", "oak", "pine", "fir", "bush", "shrub", "pickable", "flower" };
+            int cleared = 0;
+            for (int i = parent.childCount - 1; i >= 0; i--)
+            {
+                Transform t = parent.GetChild(i);
+                if (new Vector2(t.localPosition.x - at.x, t.localPosition.z - at.y).sqrMagnitude > within * within) continue;
+                string name = t.name.ToLowerInvariant();
+                foreach (string plant in plants)
+                    if (name.Contains(plant)) { Object.DestroyImmediate(t.gameObject); cleared++; break; }
+            }
+            if (cleared > 0) Plugin.Debug("Harbour: " + cleared + " plants cleared from the gate's place");
+        }
+
+        static void PlaceHarbour(float j)
+        {
             float face = 90f - j;       // a piece's +z towards the jetty
 
             HarbourJetty(j);
@@ -136,9 +176,9 @@ namespace IslandsOfValheim
             FishersCorner(H(5.8f, 4.6f));
             Seal(H(-4.6f, 1.2f), fire); // beside the house, looking at the campfire
 #if IOV_DEV
-            // Behind Bára, past the house's side: the stone gate that wakes when Odin calls, looking out over
-            // the campfire towards the jetty. (Development builds only, until the call is made.)
-            Vector2 gate = H(-8.2f, -1f), gateLook = H(-4f, 3f) - gate;
+            // The stone gate that wakes when Odin calls, on its raised place, looking over the campfire to the
+            // house. (Development builds only, until the call is made.)
+            Vector2 gate = GateSpot, gateLook = H(-3f, 3f) - gate;
             Gate(new Vector3(gate.x, Height(gate.x, gate.y) - 0.05f, gate.y), Mathf.Atan2(gateLook.x, gateLook.y) * Mathf.Rad2Deg, false);
 #endif
 

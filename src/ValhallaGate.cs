@@ -146,8 +146,9 @@ namespace IslandsOfValheim
             Plugin.Debug("Gate: through " + (valhallaSide ? "Valhalla's gate to the harbour" : "the harbour's gate to Valhalla"));
         }
 
-        // iov_gate here (development): the harbour's gate moved, now, to where you stand, its front the way you
-        // look; and where that is in the harbour's own frame, to build it there for good.
+        // iov_gate here (development): the harbour's gate moved, now, 4 m in front of you, its front towards you
+        // (on top of you, it took you through at once); and where that is in the harbour's own frame, to build it
+        // there for good.
         internal static void MoveHere(Terminal context)
         {
             Player player = Player.m_localPlayer;
@@ -158,9 +159,12 @@ namespace IslandsOfValheim
             if (near == null || near.transform.parent == null) { context.AddString("No harbour gate near you."); return; }
             Vector3 look = player.transform.forward;
             look.y = 0f;
-            Vector3 at = player.transform.position;
+            look.Normalize();
+            Vector3 at = player.transform.position + look * 4f;
             at.y = GroundY(at);
-            near.transform.SetPositionAndRotation(at, Quaternion.LookRotation(look.normalized));
+            arrivedAt = Time.time; // and not through it straight away
+            look = -look;          // its front towards you
+            near.transform.SetPositionAndRotation(at, Quaternion.LookRotation(look));
             Transform frame = near.transform.parent;
             Vector3 local = frame.InverseTransformPoint(at), localLook = frame.InverseTransformDirection(look);
             Vector2 h, hLook;
