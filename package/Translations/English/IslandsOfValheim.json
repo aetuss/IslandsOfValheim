@@ -238,5 +238,7 @@
   "iov_ashtar_desc": "Hafdís's crew tarred their hulls with this to sail the burning sea. Use it on board.",
   "iov_se_ashtar": "Ash-sea Tar",
   "iov_se_ashtar_tooltip": "The burning sea doesn't harm the ship you're on.",
-  "iov_saevarchest": "Sævar's Chest"
+  "iov_saevarchest": "Sævar's Chest",
+  "iov_call_topic": "Odin's call",
+  "iov_call_text": "Odin's eye was on the sea when Sævar walked into the light. Now the old stones at his harbour have woken, and Sævar asks for you. Look for the light over his harbour."
 }

@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.10.37";
+        public const string Version = "1.10.38";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -55,6 +55,9 @@ namespace IslandsOfValheim
 
             Texts.LoadOwn();
             gameObject.AddComponent<RestlessSea>();
+#if IOV_DEV
+            gameObject.AddComponent<ValhallaCall>(); // Odin's call after the tale (Valhalla arc, work in progress)
+#endif
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 

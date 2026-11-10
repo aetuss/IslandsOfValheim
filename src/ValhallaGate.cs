@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Jotunn.Managers;
 using UnityEngine;
 
@@ -61,6 +62,10 @@ namespace IslandsOfValheim
 
         int shown = -1;
         float nextLook;
+
+        internal static readonly List<ValhallaGate> All = new List<ValhallaGate>();
+        void OnEnable() { All.Add(this); }
+        void OnDisable() { All.Remove(this); }
 
         bool Open
         {
@@ -132,6 +137,7 @@ namespace IslandsOfValheim
                 // up to Valhalla's rock, right onto the ground in front of its gate (the rock isn't turned, and
                 // its ground's height is known before it's there); placed there first, if it isn't yet
                 arriving = ToValhalla;
+                player.SetSeenTutorial(ValhallaCall.EnteredKey); // the light over the harbour has done its work
                 ZoneSystem.LocationInstance rock;
                 if (Find(IsletBuilder.ValhallaBase, out rock))
                 {

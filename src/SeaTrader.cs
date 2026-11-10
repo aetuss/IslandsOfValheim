@@ -267,7 +267,7 @@ namespace IslandsOfValheim
 
         // A soft column: bright down the middle, fading out to its sides, at its foot and up into the sky
         // (no hard edges anywhere).
-        static Texture2D Soft()
+        internal static Texture2D Soft()
         {
             if (softTexture != null) return softTexture;
             const int w = 32, h = 128;

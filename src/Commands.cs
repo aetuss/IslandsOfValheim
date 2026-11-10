@@ -65,6 +65,16 @@ namespace IslandsOfValheim
                 }, true);
 
 #if IOV_DEV
+            new Terminal.ConsoleCommand("iov_call",
+                "[now|reset] - IslandsOfValheim (development): now: Odin's call comes at once (the gate wakes, Hugin comes, the light stands over the harbour), tale or not; reset: as if Sævar's tale had just ended",
+                args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    if (what == "now") { ValhallaCall.devNow = true; args.Context.AddString("Odin's call comes now: watch for Hugin, and the light over the harbour."); }
+                    else if (what == "reset") { ValhallaCall.Reset(); args.Context.AddString("Reset: the gate is dark; the call comes the morning after the tale's end is next seen."); }
+                    else args.Context.AddString("iov_call now | reset");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_gate",
                 "[open|close|here] - IslandsOfValheim (development): wakes the stone gate at Sævar's harbour (as Odin's call will), or lets it go dark again; here: moves it to where you stand, its front the way you look",
                 args =>
