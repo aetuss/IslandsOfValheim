@@ -279,6 +279,9 @@ namespace IslandsOfValheim
             float paved = Mathf.Max(Soft(Box(x, z, 0f, (ValhallaArrival.z + HallStart) * 0.5f, 2.6f, (HallStart - ValhallaArrival.z) * 0.5f + 1f)),
                 Mathf.Max(Soft(Box(x, z, 0f, ValhallaArrival.z, 5.5f, 4.5f)), Soft(Box(x, z, 0f, (HallStart + HallEnd) * 0.5f, HallHalfWidth + 2f, (HallEnd - HallStart) * 0.5f + 2f))));
             paved = Mathf.Max(paved, Soft(new Vector2(x, z - LookoutZ).magnitude - 6.5f));
+            // a paved way from the hall's back steps to Hliðskjálf's, as wide as its steps
+            float wayFrom = HallEnd, wayTo = LookoutZ - 6.5f;
+            if (wayTo > wayFrom) paved = Mathf.Max(paved, Soft(Box(x, z, 0f, (wayFrom + wayTo) * 0.5f, 1.6f, (wayTo - wayFrom) * 0.5f)));
             float earth = Soft(new Vector2(x - DuelRing.x, z - DuelRing.y).magnitude - (DuelRadius - 0.5f)) * 0.9f;
             earth = Mathf.Max(earth, Soft(new Vector2(x - Feast.x, z - Feast.y).magnitude - 9f) * 0.7f);
             float near = float.MaxValue;
@@ -909,6 +912,7 @@ namespace IslandsOfValheim
             Clock();
             Music(transform.InverseTransformPoint(p));
             Found(player);
+            WayLamps(player, transform.InverseTransformPoint(p));
             WatchForCanopy(player);
             if (p.y < floor.y - FallLimit && !player.IsTeleporting()) Catch(player);
             if (Time.time >= nextCheck)
@@ -937,6 +941,7 @@ namespace IslandsOfValheim
             }
             else
             {
+                LightAllWayLamps();
                 MusicOff();
                 env.SetForceEnvironment("");
                 if (heldTime)
@@ -1010,6 +1015,79 @@ namespace IslandsOfValheim
                         shown.SetValue(__instance, shown.FieldType.IsValueType ? System.Activator.CreateInstance(shown.FieldType) : null);
                 }
             }
+        }
+
+        // ---- the way's fires, the first time ----
+        //
+        // The first time this character comes, the fires along the way from the gate to the hall stand dark,
+        // and kindle pair by pair a little ahead of them as they walk up it (each with the sound of a fire
+        // fed). After that they're always burning.
+        internal const string WayLitKey = "iovvalhallawaylit"; // the player's seen list
+        const float WayAhead = 7f;      // how far ahead of you the next pair kindles
+        const float WayStep = 0.3f;     // and no faster than this, one after another
+
+        class WayLamp { internal Vector3 at; internal List<GameObject> flames = new List<GameObject>(); internal bool lit; }
+        List<WayLamp> wayLamps;
+        bool wayDone;
+        float nextKindle;
+
+        void WayLamps(Player player, Vector3 local)
+        {
+            if (wayDone) return;
+            if (wayLamps == null)
+            {
+                if (player.HaveSeenTutorial(WayLitKey)) { wayDone = true; return; }
+                wayLamps = new List<WayLamp>();
+                foreach (Transform t in transform)
+                {
+                    if (!t.name.StartsWith("piece_groundtorch") && !t.name.StartsWith("piece_brazierfloor01")) continue;
+                    Vector3 at = t.localPosition;
+                    if (Mathf.Abs(at.x) < 2f || Mathf.Abs(at.x) > 4.5f || at.z < IsletBuilder.ValhallaArrival.z || at.z > 0f) continue;
+                    WayLamp lamp = new WayLamp { at = at };
+                    foreach (Component c in t.GetComponentsInChildren<Component>(true))
+                        if ((c is Light || c is ParticleSystem || c is AudioSource) && c.transform != t && !lamp.flames.Contains(c.gameObject))
+                            lamp.flames.Add(c.gameObject);
+                    foreach (GameObject f in lamp.flames) f.SetActive(false);
+                    wayLamps.Add(lamp);
+                }
+                wayLamps.Sort((a, b) => a.at.z.CompareTo(b.at.z));
+                Plugin.Debug("Valhalla: " + wayLamps.Count + " fires along the way, dark until walked by");
+                if (wayLamps.Count == 0) { wayDone = true; return; }
+            }
+            if (Time.time < arrivedAt + 2f || player.IsTeleporting() || Time.time < nextKindle) return;
+            bool all = true;
+            foreach (WayLamp lamp in wayLamps)
+            {
+                if (lamp.lit) continue;
+                all = false;
+                if (local.z < lamp.at.z - WayAhead) break; // in order, from the gate up
+                Kindle(lamp, true);
+                nextKindle = Time.time + WayStep;
+                break;
+            }
+            if (all)
+            {
+                player.SetSeenTutorial(WayLitKey);
+                wayDone = true;
+                Plugin.Debug("Valhalla: the way's fires all lit");
+            }
+        }
+
+        void Kindle(WayLamp lamp, bool sound)
+        {
+            lamp.lit = true;
+            foreach (GameObject f in lamp.flames) if (f != null) f.SetActive(true);
+            if (!sound) return;
+            GameObject fed = PrefabManager.Instance.GetPrefab("sfx_FireAddFuel");
+            if (fed != null) Instantiate(fed, transform.TransformPoint(lamp.at + Vector3.up * 1.2f), Quaternion.identity);
+        }
+
+        // On leaving before the end: all burning again (a next first visit starts over).
+        void LightAllWayLamps()
+        {
+            if (wayLamps != null) foreach (WayLamp lamp in wayLamps) if (!lamp.lit) Kindle(lamp, false);
+            wayLamps = null;
+            wayDone = false;
         }
 
         // ---- music ----

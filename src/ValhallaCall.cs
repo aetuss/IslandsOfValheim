@@ -135,7 +135,7 @@ namespace IslandsOfValheim
             if (player != null)
             {
                 HashSet<string> seen = HarmonyLib.Traverse.Create(player).Field("m_shownTutorials").GetValue<HashSet<string>>();
-                if (seen != null) { seen.Remove(CallKey); seen.Remove(EnteredKey); seen.Remove(ValhallaSky.FoundKey); }
+                if (seen != null) { seen.Remove(CallKey); seen.Remove(EnteredKey); seen.Remove(ValhallaSky.FoundKey); seen.Remove(ValhallaSky.WayLitKey); }
             }
             foreach (ValhallaCall call in Object.FindObjectsOfType<ValhallaCall>()) call.told = false;
         }
