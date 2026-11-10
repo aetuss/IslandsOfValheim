@@ -394,21 +394,29 @@ namespace IslandsOfValheim
             go.name = prefabName + "_local";
             // its own voice, now and then, kept before its mind goes: what the game's creature makes idling, or
             // (a wolf has none) the call it gives when it spots you: a wolf's howl, now and then, longer apart
+            // (A wolf has no idle sound: its howl belongs to its howling, a sound inside it that its animation
+            // switches on; its sound scripts stay, so that's heard with it.)
             BaseAI mind = go.GetComponent<BaseAI>();
             if (Has(mind != null ? mind.m_idleSound : null))
                 voices.Add(new Voice { who = go.transform, sound = mind.m_idleSound, every = Mathf.Max(12f, mind.m_idleSoundInterval * 2f), next = Time.time + Random.Range(3f, 12f), name = prefabName });
-            else if (Has(mind != null ? mind.m_alertedEffects : null))
-                voices.Add(new Voice { who = go.transform, sound = mind.m_alertedEffects, every = 50f, next = Time.time + Random.Range(5f, 30f), name = prefabName });
-            else Plugin.Debug("Valhalla: " + prefabName + " has no voice of its own");
+            List<string> sounds = new List<string>();
+            foreach (AudioSource a in go.GetComponentsInChildren<AudioSource>(true))
+                sounds.Add(a.name + (a.clip != null ? " (" + a.clip.name + ")" : ""));
             for (int pass = 0; pass < 6; pass++)
             {
+                bool any = false;
                 MonoBehaviour[] scripts = go.GetComponentsInChildren<MonoBehaviour>(true);
-                if (scripts.Length == 0) break;
-                for (int i = scripts.Length - 1; i >= 0; i--) DestroyImmediate(scripts[i]);
+                for (int i = scripts.Length - 1; i >= 0; i--)
+                {
+                    if (scripts[i] is ZSFX) continue;
+                    DestroyImmediate(scripts[i]);
+                    any = true;
+                }
+                if (!any) break;
             }
             foreach (Rigidbody body in go.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(body);
             foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) if (c.isTrigger) DestroyImmediate(c);
-            foreach (AudioSource a in go.GetComponentsInChildren<AudioSource>(true)) a.enabled = false;
+            Plugin.Debug("Valhalla: " + prefabName + "'s own sounds: " + (sounds.Count > 0 ? string.Join(", ", sounds.ToArray()) : "none"));
             local.y = Ground(local.x, local.z, from);
             go.transform.SetParent(transform, false);
             go.transform.localPosition = local;
