@@ -64,6 +64,7 @@ namespace IslandsOfValheim
             actors.Clear();
             everyone.Clear();
             moves.Clear();
+            voices.Clear();
             ringPair = null;
             ringCleared = false;
             ringHomeKnown[0] = ringHomeKnown[1] = false;
@@ -193,12 +194,13 @@ namespace IslandsOfValheim
             // The Allfather's beasts (each where no one walks or keeps watch):
             // - Geri and Freki, his wolves, lying at his feet: on Hliðskjálf's third tier, either side of the
             //   steps on the side he looks out on, heads to the steps; a touch of gold in their grey;
-            // - Eikþyrnir, the hart of Valhalla (the game's Eikthyr is him), grazing in the meadow east of the hall,
-            //   well off the guard's round;
+            // - Eikþyrnir, the hart of Valhalla (the game's Eikthyr is him), wandering the meadow east of the hall,
+            //   slowly, stopping a while at either end: between the guard's round (x 11.5) and the ring's walker;
             // - Gullinkambi, the golden cock that wakes the einherjar, on the hall's ridge over its doors.
             foreach (float side in new[] { -1f, 1f })
                 Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
-            Beast("Eikthyr", new Vector3(20f, 0f, 28f), new Vector3(-0.6f, 0f, -0.8f), 4f, 1f, Color.white, "");
+            BeastWalk(Beast("Eikthyr", new Vector3(18f, 0f, 36f), new Vector3(0.3f, 0f, -1f), 4f, 1f, Color.white, ""), 0.9f, 14f,
+                new Vector2(18f, 36f), new Vector2(21.5f, 26f), new Vector2(18.5f, 15f));
             if (Beast("Hen", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.3f, new Color(1f, 0.76f, 0.22f), "") == null)
                 Beast("Chicken", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.6f, new Color(1f, 0.76f, 0.22f), "");
             yield return null;
@@ -340,6 +342,36 @@ namespace IslandsOfValheim
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
         }
 
+        class Voice { internal Transform who; internal EffectList sound; internal float every, next; }
+        readonly List<Voice> voices = new List<Voice>();
+
+        // Each beast's voice every so often (a while apart, never on the dot), heard only near it.
+        void Voices()
+        {
+            Player player = Player.m_localPlayer;
+            if (player == null) return;
+            foreach (Voice v in voices)
+            {
+                if (v.who == null || Time.time < v.next) continue;
+                v.next = Time.time + v.every * Random.Range(0.7f, 1.6f);
+                if (Vector3.Distance(player.transform.position, v.who.position) > 30f) continue;
+                v.sound.Create(v.who.position + Vector3.up, v.who.rotation);
+            }
+        }
+
+        // A beast that walks a route of its own, as the walkers do (its legs: the animator's forward_speed).
+        void BeastWalk(GameObject beast, float speed, float rest, params Vector2[] route)
+        {
+            if (beast == null) return;
+            Walker w = Route(speed, rest, false, route);
+            if (w == null) return;
+            w.beast = beast.transform;
+            w.legs = beast.GetComponentInChildren<Animator>(true);
+            w.body = beast.AddComponent<Rigidbody>();
+            w.body.isKinematic = true;
+            walkers.Add(w);
+        }
+
         // A beast of the game's, as a still copy on this client: made under a switched-off holder (so none of
         // its workings ever wake: not its mind, not its network side), all its scripts taken out, then put in
         // place; its own animator keeps it breathing and looking about. Solid. Tinted if asked (gold).
@@ -357,6 +389,11 @@ namespace IslandsOfValheim
             }
             GameObject go = Instantiate(prefab, beastHolder.transform, false);
             go.name = prefabName + "_local";
+            // its own voice, now and then (what the game's creature makes idling), kept before its mind goes
+            BaseAI mind = go.GetComponent<BaseAI>();
+            if (mind != null && mind.m_idleSound != null && mind.m_idleSound.m_effectPrefabs != null && mind.m_idleSound.m_effectPrefabs.Length > 0)
+                voices.Add(new Voice { who = go.transform, sound = mind.m_idleSound, every = Mathf.Max(8f, mind.m_idleSoundInterval * 2f), next = Time.time + Random.Range(3f, 15f) });
+            else Plugin.Debug("Valhalla: " + prefabName + " has no voice of its own");
             for (int pass = 0; pass < 6; pass++)
             {
                 MonoBehaviour[] scripts = go.GetComponentsInChildren<MonoBehaviour>(true);
@@ -615,11 +652,20 @@ namespace IslandsOfValheim
             internal double clock;
             internal Rigidbody body;
             internal Quaternion facing;
+            internal Transform beast;   // or a beast walks it (no person)
+            internal Animator legs;     // the beast's
+        }
+
+        static void Pace(Walker w, float speed)
+        {
+            if (w.who != null) { w.who.walking = speed; return; }
+            if (w.legs != null) w.legs.SetFloat("forward_speed", speed);
         }
 
         string walkerHolds = ""; // what the next walker made carries in his right hand
 
-        SpiritHuman Walk(SpiritHuman.Look look, int ghost, float speed, float rest, bool loop, params Vector2[] route)
+        // A route walked by the world's clock: out and back (resting at both ends) or round a loop.
+        Walker Route(float speed, float rest, bool loop, Vector2[] route)
         {
             if (route.Length < 2) return null;
             List<Vector2> points = new List<Vector2>(route);
@@ -635,6 +681,17 @@ namespace IslandsOfValheim
             // everyone starts from the world's clock, each walker a little apart
             double now = ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time;
             w.clock = now + walkers.Count * 37.0;
+            Vector3 start;
+            Vector2 dir;
+            Where(w, out start, out dir);
+            w.facing = dir != Vector2.zero ? Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.y)) : Quaternion.identity;
+            return w;
+        }
+
+        SpiritHuman Walk(SpiritHuman.Look look, int ghost, float speed, float rest, bool loop, params Vector2[] route)
+        {
+            Walker w = Route(speed, rest, loop, route);
+            if (w == null) return null;
             Vector3 start;
             Vector2 dir;
             Where(w, out start, out dir);
@@ -692,13 +749,14 @@ namespace IslandsOfValheim
             Details();
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Strolls(Time.deltaTime);
+            Voices();
             if (walkers.Count == 0) return;
             Player player = Player.m_localPlayer;
             Vector3 you = player != null ? transform.InverseTransformPoint(player.transform.position) : new Vector3(9999f, 0f, 0f);
             float dt = Time.deltaTime;
             foreach (Walker w in walkers)
             {
-                if (w.who == null) continue;
+                if (w.who == null && w.beast == null) continue;
                 Vector3 at;
                 Vector2 heading;
                 Where(w, out at, out heading);
@@ -706,14 +764,15 @@ namespace IslandsOfValheim
                 bool blocked = false;
                 if (w.body != null && heading != Vector2.zero)
                 {
-                    Vector3 ahead = at + new Vector3(heading.x, 0f, heading.y) * 0.8f;
-                    blocked = new Vector2(you.x - ahead.x, you.z - ahead.z).sqrMagnitude < 0.9f * 0.9f && Mathf.Abs(you.y - at.y) < 2f;
+                    float reach = w.beast != null ? 2.6f : 0.8f, room = w.beast != null ? 1.8f : 0.9f; // (a hart is bigger)
+                    Vector3 ahead = at + new Vector3(heading.x, 0f, heading.y) * reach;
+                    blocked = new Vector2(you.x - ahead.x, you.z - ahead.z).sqrMagnitude < room * room && Mathf.Abs(you.y - at.y) < 2.5f;
                 }
-                if (blocked) { w.who.walking = 0f; continue; }
+                if (blocked) { Pace(w, 0f); continue; }
                 w.clock += dt;
                 Where(w, out at, out heading);
-                if (heading != Vector2.zero) w.facing = Quaternion.Slerp(w.facing, Quaternion.LookRotation(new Vector3(heading.x, 0f, heading.y)), dt * 4f);
-                w.who.walking = heading != Vector2.zero ? w.speed : 0f;
+                if (heading != Vector2.zero) w.facing = Quaternion.Slerp(w.facing, Quaternion.LookRotation(new Vector3(heading.x, 0f, heading.y)), dt * (w.beast != null ? 1.5f : 4f));
+                Pace(w, heading != Vector2.zero ? w.speed : 0f);
                 Vector3 world = transform.TransformPoint(at);
                 Quaternion turn = transform.rotation * w.facing;
                 if (w.body != null) { w.body.MovePosition(world); w.body.MoveRotation(turn); }

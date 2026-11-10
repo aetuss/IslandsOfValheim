@@ -60,9 +60,9 @@ namespace IslandsOfValheim
             body.m_randomShield = new GameObject[0];
 
             MonsterAI ai = go.AddComponent<MonsterAI>();
-            ai.m_viewRange = 40f;
-            ai.m_viewAngle = 180f;
-            ai.m_hearRange = 40f;
+            ai.m_viewRange = 60f;
+            ai.m_viewAngle = 360f; // (in the ring they know where you are, whichever way they face)
+            ai.m_hearRange = 60f;
             ai.m_alertRange = 40f;
             ai.m_pathAgentType = Pathfinding.AgentType.Humanoid;
             ai.m_moveMinAngle = 10f;
@@ -317,12 +317,20 @@ namespace IslandsOfValheim
             // the crowd round the ring knocks weapon on shield when the einherjar take a blow
             float health = 0f;
             bool standing = false;
+            bool remind = Time.time >= nextRemind;
+            if (remind) nextRemind = Time.time + 0.5f;
             foreach (Character c in fighters)
             {
                 if (c == null) continue;
                 health += c.GetHealth();
                 EinherjarFighter f = c.GetComponent<EinherjarFighter>();
-                if (f != null && !f.yielded) standing = true;
+                if (f != null && !f.yielded)
+                {
+                    standing = true;
+                    // eyes on you all the bout: the first one in (you still on your way into the ring) stood with
+                    // its back to you, turning now and then, looking for you where it last knew you (nowhere)
+                    if (remind) EyesOn(c, player);
+                }
             }
             if (lastHealth >= 0f && health < lastHealth - 0.5f && Time.time >= nextCheer && ValhallaPeople.Current != null)
             {
@@ -431,6 +439,19 @@ namespace IslandsOfValheim
             pendingAt = Time.time + 1f;
         }
 
+        float nextRemind;
+
+        // Its foe is you, it's roused, and it knows where you are.
+        static void EyesOn(Character fighter, Player player)
+        {
+            MonsterAI ai = fighter != null ? fighter.GetComponent<MonsterAI>() : null;
+            if (ai == null || player == null) return;
+            Traverse t = Traverse.Create(ai);
+            t.Field("m_targetCreature").SetValue(player);
+            t.Field("m_lastKnownTargetPos").SetValue(player.transform.position);
+            t.Method("SetAlerted", new[] { typeof(bool) }).GetValue(true);
+        }
+
         static string PrefabName(bool champion) { return champion ? EinherjarFighter.ChampionPrefab : EinherjarFighter.PrefabName; }
 
         static string Pick(string[][] table, int tier)
@@ -471,12 +492,7 @@ namespace IslandsOfValheim
                 vis.SetHairColor(model == 1 ? new Vector3(0.85f, 0.7f, 0.45f) : new Vector3(0.4f, 0.27f, 0.17f));
                 vis.SetSkinColor(Vector3.one * 0.95f);
             }
-            MonsterAI ai = go.GetComponent<MonsterAI>();
-            if (ai != null)
-            {
-                Traverse.Create(ai).Field("m_targetCreature").SetValue(player);
-                Traverse.Create(ai).Method("SetAlerted", new[] { typeof(bool) }).GetValue(true);
-            }
+            EyesOn(body, player);
             fighters.Add(body);
             Plugin.Debug("Duel: " + prefabName + " with " + right + (left != "" ? " and " + left : "") + ", " + health.ToString("F0") + " health");
         }

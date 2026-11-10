@@ -1126,11 +1126,15 @@ namespace IslandsOfValheim
         // so the player's music volume and settings hold. Each time of day and each place has a few pieces
         // that take turns, one after another; going from one to another, the old one fades out and the new
         // fades in slowly. At dawn and at dusk the game's own short call for it comes first.
-        static readonly string[] DayMusic = { "meadows", "home", "location_haldor" };
+        // (Haldor's merry tune, a merchant's, is for the feast in the hall, not the open meadow or the high seat.
+        // Hliðskjálf, the Allfather's seat, has pieces of its own: the sealed tower, the dvergr's tower, the dark
+        // hall of the far north: slow, high, a little out of this world.)
+        static readonly string[] DayMusic = { "meadows", "home", "blackforest" };
         static readonly string[] DuskMusic = { "plains", "home" };
         static readonly string[] NightMusic = { "deepnorth", "mistlands" };
-        static readonly string[] HallMusic = { "credits", "location_deepnorth_timberhallvillage" };
+        static readonly string[] HallMusic = { "credits", "location_deepnorth_timberhallvillage", "location_haldor" };
         static readonly string[] FeastMusic = { "location_deepnorth_memorialsite", "location_ashlands_ruins" };
+        static readonly string[] SeatMusic = { "plainstower", "location_dvergrtower", "deepnorth_morkhalla" };
         const float Fade = 6f; // seconds each way between pieces
         static readonly Vector2 FeastAt = new Vector2(-42f, 8f);
 
@@ -1151,10 +1155,11 @@ namespace IslandsOfValheim
             SlowFades(music, true);
 
             // the place first (a few metres' grace on the way out, so its edge doesn't flicker)
-            float grace = playlist == HallMusic || playlist == FeastMusic ? 3f : 0f;
+            float grace = playlist == HallMusic || playlist == FeastMusic || playlist == SeatMusic ? 3f : 0f;
             string[] want = null;
             if (Mathf.Abs(local.x) < 8.5f + grace && local.z > 3.5f - grace && local.z < 40.5f + grace && local.y < 12f) want = HallMusic;
             else if (new Vector2(local.x - FeastAt.x, local.z - FeastAt.y).magnitude < 18f + grace) want = FeastMusic;
+            else if (new Vector2(local.x, local.z - IsletBuilder.LookoutZ).magnitude < 15f + grace) want = SeatMusic;
 
             // else the time of day (the sun's place in Valhalla's day: see ValhallaWeather.Turns)
             float t = EnvMan.instance.m_debugTime;
@@ -1170,7 +1175,7 @@ namespace IslandsOfValheim
             // a bout in the ring: its fighting music over everything
             if (ValhallaDuel.Music != null) { want = ValhallaDuel.Music; call = null; }
 
-            if (call != null && want != HallMusic && want != FeastMusic) Play(call, null);           // dawn's or dusk's call, once
+            if (call != null && want != HallMusic && want != FeastMusic && want != SeatMusic) Play(call, null);           // dawn's or dusk's call, once
             else if (want != playlist && !(playlist == null && playing != null && Time.time < playingUntil)) Play(Next(want), want);
             else if (Time.time >= playingUntil) Play(Next(want), want);                                     // this one's done: the next
             WeatherMusic(playing);
@@ -1228,7 +1233,7 @@ namespace IslandsOfValheim
             {
                 savedFade = fade.GetValue<float>();
                 fade.SetValue(Mathf.Max(savedFade, Fade));
-                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, new[] { "morning", "evening" }, ValhallaDuel.BoutMusic, ValhallaDuel.ChampionMusic })
+                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, SeatMusic, new[] { "morning", "evening" }, ValhallaDuel.BoutMusic, ValhallaDuel.ChampionMusic })
                     foreach (string name in list)
                     {
                         MusicMan.NamedMusic piece = Piece(name);
