@@ -103,6 +103,25 @@ namespace IslandsOfValheim
                     args.Context.AddString("Valhalla's sky: " + part + " (" + now.ToString("F2") + "), " + (w == ValhallaWeather.Hazy ? "haze" : "clear") + " (it shows while you're there)");
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_people",
+                "[before|after|auto] [crowd N] - IslandsOfValheim (development): Valhalla's people made again; before/after the tale's end (Bragi or Odin on the hall's throne); crowd N: so many more standing west of the way, to see what they cost",
+                args =>
+                {
+                    for (int i = 1; i < args.Length; i++)
+                    {
+                        string a = args[i].ToLowerInvariant();
+                        int crowd;
+                        if (a == "before") ValhallaPeople.devAfter = 0;
+                        else if (a == "after") ValhallaPeople.devAfter = 1;
+                        else if (a == "auto") { ValhallaPeople.devAfter = -1; ValhallaPeople.devCrowd = 0; }
+                        else if (a == "crowd" && i + 1 < args.Length && int.TryParse(args[i + 1], out crowd)) { ValhallaPeople.devCrowd = Mathf.Clamp(crowd, 0, 200); i++; }
+                    }
+                    if (ValhallaPeople.Current == null) { args.Context.AddString("Valhalla isn't loaded here."); return; }
+                    ValhallaPeople.Current.Remake();
+                    args.Context.AddString("Valhalla's people made again: " + (ValhallaPeople.devAfter == 1 ? "after" : ValhallaPeople.devAfter == 0 ? "before" : "as the world is") +
+                        ", " + ValhallaPeople.devCrowd + " more standing west of the way. Press F2 for the frame rate.");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_spirits",
                 "- IslandsOfValheim (development): a standing ghost, a seated one and a solid one around you, to see the spirits",
                 args => SpiritHuman.SpawnTest(args.Context), true);

@@ -692,6 +692,7 @@ namespace IslandsOfValheim
         float nextCheck;
         readonly List<Transform> clouds = new List<Transform>();
         GameObject tree, canopy;
+        ValhallaPeople people;
         static string meadowAmbients;
 
         void Start()
@@ -702,6 +703,7 @@ namespace IslandsOfValheim
                 if (t != null) clouds.Add(t);
             }
             Grass();
+            people = gameObject.AddComponent<ValhallaPeople>();
         }
 
         // ---- grass ----
@@ -888,6 +890,7 @@ namespace IslandsOfValheim
                 inside = here;
                 Apply(here);
                 Canopy(here);
+                if (people != null) people.Show(here);
                 Plugin.Debug(here ? "Valhalla: here (its weather, dusk and branch)" : "Valhalla: left");
             }
             if (!inside) return;

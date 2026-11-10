@@ -77,6 +77,8 @@ namespace IslandsOfValheim
         bool loggedParams;
         int pose, ghost;
         string sitAnim = "";
+        Look look; // a local one's (no ZDO)
+        internal float walking; // how fast it walks now (m/s; 0: stands), for its legs
         readonly HashSet<Renderer> ghosted = new HashSet<Renderer>();
         float nextGhostCheck;
 
@@ -86,7 +88,19 @@ namespace IslandsOfValheim
             nview = GetComponent<ZNetView>();
             vis = GetComponent<VisEquipment>();
             animator = GetComponentInChildren<Animator>(true);
-            if (nview == null || nview.GetZDO() == null) return;
+            if (animator != null) animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms; // unseen: not posed
+            if (nview == null || nview.GetZDO() == null)
+            {
+                // Made here only (MakeLocal): nothing to share, everything from what was set.
+                look = NextLook ?? new Look { Hair = "Hair3", Beard = "Beard5" };
+                pose = NextPose;
+                sitAnim = NextSitAnimation ?? "";
+                ghost = NextGhost;
+                NextLook = null; NextPose = Stand; NextSitAnimation = ""; NextGhost = GhostSoft;
+                Dress(look);
+                if (ghost != Solid) AddGlow();
+                return;
+            }
             ZDO zdo = nview.GetZDO();
             if (nview.IsOwner() && !zdo.GetBool(KeySet, false))
             {
@@ -144,7 +158,7 @@ namespace IslandsOfValheim
             }
             // As a player standing still on the ground; seated if it was put on a seat.
             SetBool("onGround", true);
-            SetFloat("forward_speed", 0f);
+            SetFloat("forward_speed", walking);
             SetFloat("sideway_speed", 0f);
             if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
             if (ghost == Solid) return;
@@ -289,16 +303,17 @@ namespace IslandsOfValheim
         // once, here, into one picture: skin, then trousers, then shirt.
         Texture BodyTexture(Material source)
         {
-            if (source == null || !source.HasProperty("_ChestTex") || nview == null || nview.GetZDO() == null) return null;
-            ZDO zdo = nview.GetZDO();
+            if (source == null || !source.HasProperty("_ChestTex")) return null;
+            ZDO zdo = nview != null ? nview.GetZDO() : null;
+            if (zdo == null && look == null) return null;
             Texture skin = source.mainTexture;
-            int model = zdo.GetInt(ZDOVars.s_modelIndex, 0);
+            int model = zdo != null ? zdo.GetInt(ZDOVars.s_modelIndex, 0) : look.Model;
             if (vis != null && vis.m_models != null && model >= 0 && model < vis.m_models.Length && vis.m_models[model].m_baseMaterial != null
                 && vis.m_models[model].m_baseMaterial.mainTexture != null)
                 skin = vis.m_models[model].m_baseMaterial.mainTexture;
             if (skin == null) return null;
-            Texture legs = ArmorTexture(zdo.GetInt(ZDOVars.s_legItem, 0), "_LegsTex");
-            Texture chest = ArmorTexture(zdo.GetInt(ZDOVars.s_chestItem, 0), "_ChestTex");
+            Texture legs = ArmorTexture(zdo != null ? zdo.GetInt(ZDOVars.s_legItem, 0) : Hash(look.Legs), "_LegsTex");
+            Texture chest = ArmorTexture(zdo != null ? zdo.GetInt(ZDOVars.s_chestItem, 0) : Hash(look.Chest), "_ChestTex");
             if (legs == null && chest == null) return skin;
             return Paint(skin, false, legs, chest);
         }
@@ -366,6 +381,41 @@ namespace IslandsOfValheim
             GL.TexCoord2(1f, 1f); GL.Vertex3(1f, 1f, 0f);
             GL.TexCoord2(1f, 0f); GL.Vertex3(1f, 0f, 0f);
             GL.End();
+        }
+
+        // ---- made here only ----
+
+        // A person (or ghost) that exists on this client alone: not saved, not sent to anyone, gone when it's
+        // destroyed. For places where everyone works out the same people by themselves (Valhalla's: same
+        // places, same looks, moving by the world's clock). A solid one gets a body you can't walk through.
+        internal static SpiritHuman MakeLocal(Look look, int pose, string sitAnimation, int ghost, Transform under, Vector3 at, Quaternion turn,
+            string rightHand = "", string leftHand = "")
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab(PrefabName);
+            if (prefab == null) return null;
+            NextLook = look; NextPose = pose; NextSitAnimation = sitAnimation; NextGhost = ghost;
+            GameObject go;
+            ZNetView.m_forceDisableInit = true; // the game's own way of making a networked thing local (its build ghosts)
+            try { go = Object.Instantiate(prefab, at, turn, under); }
+            finally { ZNetView.m_forceDisableInit = false; }
+            go.name = PrefabName + "_local";
+            SpiritHuman person = go.GetComponent<SpiritHuman>();
+            VisEquipment vis = go.GetComponent<VisEquipment>();
+            if (vis != null)
+            {
+                if (rightHand.Length > 0) vis.SetRightItem(Hash(rightHand), 1);
+                if (leftHand.Length > 0) vis.SetLeftItem(Hash(leftHand), 0, 1);
+            }
+            if (ghost == Solid)
+            {
+                CapsuleCollider body = go.AddComponent<CapsuleCollider>();
+                bool seated = pose == Sit;
+                body.center = seated ? new Vector3(0f, 0.45f, 0.1f) : new Vector3(0f, 0.95f, 0f);
+                body.height = seated ? 1.3f : 1.9f;
+                body.radius = 0.33f;
+                go.layer = LayerMask.NameToLayer("character");
+            }
+            return person;
         }
 
         // ---- the test (development builds): iov_spirits ----
