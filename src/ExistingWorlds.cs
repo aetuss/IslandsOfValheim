@@ -147,7 +147,7 @@ namespace IslandsOfValheim
         static bool SideAllows(string prefabName, Vector3 p)
         {
             if (prefabName == Story.AshIslet) return p.z <= 0f;
-            if (Story.IsHidden(prefabName)) return p.z > 0f;
+            if (Story.IsHidden(prefabName) || prefabName == RanNet.Graveyard) return p.z > 0f;
             foreach (IsletTier tier in IsletTier.All)
                 if (prefabName.StartsWith(tier.LocationPrefix) || IsletBuilder.IsLargeOf(prefabName, tier)) return tier.Allows(p);
             return true;

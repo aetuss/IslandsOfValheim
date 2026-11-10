@@ -22,6 +22,7 @@ namespace IslandsOfValheim
             HafdisShore();
             HiddenIslet();
             FinalArena();
+            SunkenFleet(); // the Valhalla arc's T3: where Rán holds the drowned (RanNetGraveyard)
         }
 
         static void BeginStory(string name, IsletTier kind, int variant, float seedShift)

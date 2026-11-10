@@ -94,8 +94,9 @@ namespace IslandsOfValheim
                 return true;
             }
             player.AddKnownText("$iov_lore_scattered", "$iov_lore_scattered_text"); // (a page lost is found again)
-            // to the ring; once you've won there, to his captains at the table (T2); all of them freed, onward
-            Say(!Story.Key(ValhallaDuel.WonKey) ? "$iov_valsaevar_ring" : TaleCaptains.AllFreed ? "$iov_valsaevar_t2done" : "$iov_valsaevar_won");
+            // to the ring; once you've won there, to his captains at the table (T2); all of them freed, out to Rán's
+            // net (T3: a page and a chart)
+            Say(!Story.Key(ValhallaDuel.WonKey) ? "$iov_valsaevar_ring" : TaleCaptains.AllFreed ? RanNet.SaevarLine(player) : "$iov_valsaevar_won");
             return true;
         }
 

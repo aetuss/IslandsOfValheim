@@ -21,6 +21,7 @@ namespace IslandsOfValheim
             // The tale's two outer islets: each unique location is its own group.
             if (group == Story.AshIslet && p.z > 0f) { __result = true; return; }
             if (Story.IsHidden(group) && p.z <= 0f) { __result = true; return; }
+            if (group == RanNet.Graveyard && p.z <= 0f) { __result = true; return; } // (the Deep North's waters: no burning sea)
             if (group == IsletBuilder.Group || group == "IoV_Large")
             {
                 if (mappedFor != __instance) Map(__instance);

@@ -116,6 +116,7 @@ namespace IslandsOfValheim
             new[] { Map5, DvergrHold, "$iov_storypin5", "iov_storymap5" },
             new[] { Map6, AshIslet, "$iov_storypin6", "iov_storymap6" },
             new[] { Map7, Arena, "$iov_storypin7", "iov_storymap7" }, // or the old hidden islet (OnRequest)
+            new[] { RanNet.Map, RanNet.Graveyard, "$iov_t3_pin", "iov_t3_map" }, // the Valhalla arc: Rán's net (T3)
         };
 
         // Lore stones on the story islets: prefab, label, text.
@@ -463,7 +464,7 @@ namespace IslandsOfValheim
             Plugin.Debug("Story: " + key);
         }
 
-        static bool Has(Player player, string prefab)
+        internal static bool Has(Player player, string prefab)
         {
             return Find(player, prefab) != null;
         }
@@ -486,7 +487,7 @@ namespace IslandsOfValheim
             return item.GetComponent<ItemDrop>().m_itemData.m_shared.m_name;
         }
 
-        static void Give(Player player, string prefab)
+        internal static void Give(Player player, string prefab)
         {
             string name = Hand(player, prefab);
             if (name != null) player.Message(MessageHud.MessageType.Center, Texts.Get("iov_story_received", name), 0, null, false);
