@@ -110,9 +110,9 @@ namespace IslandsOfValheim
                     floorFront = Mathf.Min(floorFront, tb.min.z);
                     floorBack = Mathf.Max(floorBack, tb.max.z);
                 }
-            // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out; inside, a
-            // banner high on each (but the end ones), and on the four pairs nearest the throne the trophies of
-            // the great foes the world has beaten (on item stands, as a player hangs them).
+            // Pillars along both sides, every 4 m, a shield hung on the outside of each, facing out; inside, on
+            // each but the end ones, a banner high and a hunting trophy below (on item stands, as a player hangs
+            // them).
             int n = 0, banners = 0;
             for (float z = HallStart; z <= HallEnd + 0.01f; z += 4f)
                 foreach (float side in new[] { -1f, 1f })
@@ -124,8 +124,8 @@ namespace IslandsOfValheim
                     PutAgainst(SkyItem(ShieldNames[(n++ * 5 + 3) % ShieldNames.Length], at, new Vector3(side, 0f, 0f), Vector3.up, false), at,
                         new Vector3(-side, 0f, 0f), side > 0f ? pb.max.x : pb.min.x);
                     float inner = side > 0f ? pb.min.x : pb.max.x;
-                    int slot = Mathf.RoundToInt((z - (HallEnd - 16f)) / 4f);
-                    if (slot >= 0 && slot < 4) Trophy(slot * 2 + (side > 0f ? 1 : 0), inner, side, floorTop + 2.1f, z);
+                    int slot = Mathf.RoundToInt((z - (HallStart + 4f)) / 4f);
+                    if (slot >= 0 && z < HallEnd - 0.5f) Trophy(slot * 2 + (side > 0f ? 1 : 0), inner, side, floorTop + 2.1f, z);
                     if (z > HallStart + 0.5f && z < HallEnd - 0.5f) Banner(banners++, inner, side, floorTop + PillarHeight - 0.35f, z);
                 }
             float wallTop = floorTop + PillarHeight;
@@ -178,12 +178,17 @@ namespace IslandsOfValheim
 
         // ---- the hall's trophies, banners and mead ----
 
-        // The einherjar's hunting trophies, in pairs across the hall (left, right), from the door end to the
-        // throne: the hart and the boar, the wolf and the fenring, the troll and the lox, the sea serpent and
-        // the abomination. (The bosses' were seven, one side short, and too big for the hall.) The first of
-        // each list the game has.
+        // The einherjar's hunting trophies, in pairs across the hall (left, right), on every pillar but the end
+        // ones, from the door end to the throne: the greydwarf brute and the fuling berserker, the drake and the
+        // fenring cultist, the ulv and the seeker soldier, the bear and the asksvin; then the hart and the boar,
+        // the wolf and the fenring, the troll and the lox, the sea serpent and the abomination. (The bosses'
+        // were seven, one side short, and too big for the hall.) The first of each list the game has.
         static readonly string[][] Trophies =
         {
+            new[] { "TrophyGreydwarfBrute" }, new[] { "TrophyGoblinBrute" },
+            new[] { "TrophyHatchling" }, new[] { "TrophyCultist" },
+            new[] { "TrophyUlv" }, new[] { "TrophySeekerBrute", "TrophySeeker" },
+            new[] { "TrophyBjorn", "TrophyDraugrElite" }, new[] { "TrophyAsksvin", "TrophyWraith" },
             new[] { "TrophyDeer" }, new[] { "TrophyBoar" },
             new[] { "TrophyWolf" }, new[] { "TrophyFenring", "TrophyWolf" },
             new[] { "TrophyFrostTroll", "TrophyTroll" }, new[] { "TrophyLox" },

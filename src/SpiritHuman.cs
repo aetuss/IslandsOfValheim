@@ -159,7 +159,7 @@ namespace IslandsOfValheim
                 SetFloat("sideway_speed", 0f);
                 if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
                 if (stance >= 0) { SetInt("statei", stance); SetFloat("statef", stance); }
-                SetBool("blocking", blocking);
+                SetBool("blocking", blocking || Time.time < knockUntil);
             }
             if (ghost == Solid) return;
             // Unseen until it's dressed and made a ghost: no glimpse of a living man first.
@@ -254,14 +254,17 @@ namespace IslandsOfValheim
             clangsLeft = times;
         }
 
-        float clangAt = -1f;
+        float clangAt = -1f, knockUntil = -1f;
         int clangsLeft;
 
+        // Each knock: the shield brought up before him (the game's guard pose) and struck, then lowered again;
+        // knocks far enough apart that it's seen coming down between them.
         void Clanging()
         {
             if (clangsLeft <= 0 || Time.time < clangAt) return;
             clangsLeft--;
-            clangAt = Time.time + Random.Range(0.28f, 0.5f);
+            clangAt = Time.time + Random.Range(0.55f, 0.8f);
+            knockUntil = Time.time + 0.32f;
             ItemDrop.ItemData.SharedData own = leftShared ?? rightShared;
             if (own != null) Sound(own.m_blockEffect, transform.position + Vector3.up * 1.2f + transform.forward * 0.4f);
         }
