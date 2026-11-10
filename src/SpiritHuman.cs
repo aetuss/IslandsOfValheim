@@ -74,7 +74,6 @@ namespace IslandsOfValheim
         VisEquipment vis;
         Animator animator;
         Light glow;
-        bool loggedParams;
         int pose, ghost;
         string sitAnim = "";
         Look look; // a local one's (no ZDO)
@@ -148,19 +147,18 @@ namespace IslandsOfValheim
 
         void Update()
         {
-            if (animator == null) return;
-            if (!loggedParams)
+            if (animator == null || !animator.enabled) { if (ghost == Solid) return; }
+            else
             {
-                loggedParams = true;
-                List<string> names = new List<string>();
-                foreach (AnimatorControllerParameter p in animator.parameters) names.Add(p.name + ":" + p.type);
-                Plugin.Debug("Spirits: animator parameters " + string.Join(", ", names.ToArray()));
+                // As a player on the ground, walking as fast as it's moved (or standing); seated if it was put on
+                // a seat; standing as its weapons have it stand.
+                SetBool("onGround", true);
+                SetFloat("forward_speed", walking);
+                SetFloat("sideway_speed", 0f);
+                if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
+                if (stance >= 0) { SetInt("statei", stance); SetFloat("statef", stance); }
+                SetBool("blocking", blocking);
             }
-            // As a player standing still on the ground; seated if it was put on a seat.
-            SetBool("onGround", true);
-            SetFloat("forward_speed", walking);
-            SetFloat("sideway_speed", 0f);
-            if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
             if (ghost == Solid) return;
             // Unseen until it's dressed and made a ghost: no glimpse of a living man first.
             if (!shown)
@@ -176,16 +174,96 @@ namespace IslandsOfValheim
 
         bool shown;
 
-        void SetBool(string name, bool value)
+        // The body's animator parameters, read once (they're the same for everyone; asking the animator for them
+        // makes a new list of 170 each time, which, every frame for dozens of people, cost real frame rate).
+        static Dictionary<string, AnimatorControllerParameterType> parameters;
+
+        bool Has(string name, AnimatorControllerParameterType type)
         {
-            foreach (AnimatorControllerParameter p in animator.parameters)
-                if (p.name == name && p.type == AnimatorControllerParameterType.Bool) { animator.SetBool(name, value); return; }
+            if (parameters == null)
+            {
+                parameters = new Dictionary<string, AnimatorControllerParameterType>();
+                foreach (AnimatorControllerParameter p in animator.parameters) parameters[p.name] = p.type;
+            }
+            AnimatorControllerParameterType t;
+            return parameters.TryGetValue(name, out t) && t == type;
         }
 
-        void SetFloat(string name, float value)
+        void SetBool(string name, bool value) { if (Has(name, AnimatorControllerParameterType.Bool)) animator.SetBool(name, value); }
+        void SetFloat(string name, float value) { if (Has(name, AnimatorControllerParameterType.Float)) animator.SetFloat(name, value); }
+        void SetInt(string name, int value) { if (Has(name, AnimatorControllerParameterType.Int)) animator.SetInteger(name, value); }
+
+        internal void Trigger(string name)
         {
-            foreach (AnimatorControllerParameter p in animator.parameters)
-                if (p.name == name && p.type == AnimatorControllerParameterType.Float) { animator.SetFloat(name, value); return; }
+            if (animator != null && animator.enabled && Has(name, AnimatorControllerParameterType.Trigger)) animator.SetTrigger(name);
+        }
+
+        // ---- holding things, and using them ----
+
+        int stance = -1;          // the weapon stance (statei/statef), as a Humanoid sets it from what it holds
+        string attack = "";       // its weapon's swing
+        int chain;                // in how many steps (a sword's three swings)
+        internal bool blocking;
+
+        // What it holds decides how it stands: the left hand's item (a shield) first, as the game does.
+        internal void Holding(string right, string left)
+        {
+            ItemDrop.ItemData.SharedData r = Shared(right), l = Shared(left);
+            if (l != null) stance = (int)l.m_itemType == 15 ? 6 : (int)l.m_animationState;
+            else if (r != null) stance = (int)r.m_animationState;
+            if (r != null && r.m_attack != null) { attack = r.m_attack.m_attackAnimation ?? ""; chain = r.m_attack.m_attackChainLevels; }
+        }
+
+        static ItemDrop.ItemData.SharedData Shared(string name)
+        {
+            if (string.IsNullOrEmpty(name) || ObjectDB.instance == null) return null;
+            GameObject item = ObjectDB.instance.GetItemPrefab(name);
+            ItemDrop drop = item != null ? item.GetComponent<ItemDrop>() : null;
+            return drop != null ? drop.m_itemData.m_shared : null;
+        }
+
+        // One swing of its weapon (step n of its chain).
+        internal void Strike(int n)
+        {
+            if (attack.Length == 0) return;
+            Trigger(chain > 1 ? attack + (n % chain) : attack);
+        }
+
+        // ---- detail by distance (what keeps dozens of them cheap) ----
+
+        readonly List<Renderer> parts = new List<Renderer>();
+        readonly List<Cloth> capes = new List<Cloth>();
+        float born = -1f, scanned;
+        int detail = -1;
+        internal bool keepMoving; // a walker: its legs keep going further off
+
+        // Near: everything. Further: no shadows, capes not blown about. Far: its pose held still (the animator
+        // off). Very far: not drawn at all. (The living only; the few ghosts stay as they are.)
+        internal void Detail(float distance)
+        {
+            if (ghost != Solid || animator == null) return;
+            if (born < 0f) born = Time.time;
+            int want = distance < 14f ? 0 : distance < 38f ? 1 : distance < 70f ? 2 : 3;
+            // its clothes come a moment after it's made: look again for a while
+            bool rescan = Time.time - born < 6f && Time.time - scanned > 1f;
+            if (want == detail && !rescan) return;
+            if (rescan || parts.Count == 0)
+            {
+                scanned = Time.time;
+                parts.Clear();
+                capes.Clear();
+                foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) if (r != null && !(r is ParticleSystemRenderer)) parts.Add(r);
+                foreach (Cloth c in GetComponentsInChildren<Cloth>(true)) capes.Add(c);
+            }
+            detail = want;
+            foreach (Renderer r in parts)
+            {
+                if (r == null) continue;
+                r.forceRenderingOff = want == 3;
+                r.shadowCastingMode = want == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;
+            }
+            foreach (Cloth c in capes) if (c != null) c.enabled = want == 0;
+            animator.enabled = want <= 1 || (keepMoving && want == 2);
         }
 
         // Every part of it (body, hair, beard, clothes: they come and go as VisEquipment builds them) drawn
@@ -406,6 +484,7 @@ namespace IslandsOfValheim
                 if (rightHand.Length > 0) vis.SetRightItem(Hash(rightHand), 1);
                 if (leftHand.Length > 0) vis.SetLeftItem(Hash(leftHand), 0, 1);
             }
+            if (person != null) person.Holding(rightHand, leftHand);
             if (ghost == Solid)
             {
                 CapsuleCollider body = go.AddComponent<CapsuleCollider>();

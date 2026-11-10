@@ -66,7 +66,7 @@ $refs = @(
     "$Managed\UnityEngine.dll", "$Managed\UnityEngine.CoreModule.dll", "$Managed\assembly_valheim.dll", "$Managed\assembly_utils.dll",
     "$BepInExCore\BepInEx.dll", "$BepInExCore\0Harmony.dll", $Jotunn,
     "$Managed\UnityEngine.PhysicsModule.dll", "$Managed\UnityEngine.ParticleSystemModule.dll", "$Managed\SoftReferenceableAssets.dll",
-    "$Managed\assembly_guiutils.dll", "$Managed\UnityEngine.UI.dll", "$Managed\UnityEngine.AnimationModule.dll", "$Managed\UnityEngine.AudioModule.dll"
+    "$Managed\assembly_guiutils.dll", "$Managed\UnityEngine.UI.dll", "$Managed\UnityEngine.AnimationModule.dll", "$Managed\UnityEngine.AudioModule.dll", "$Managed\UnityEngine.ClothModule.dll"
 ) | ForEach-Object { "/r:$_" }
 
 # The translations go into the dll too (Texts.LoadOwn), so the texts are there however the mod is installed.

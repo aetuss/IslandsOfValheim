@@ -60,6 +60,8 @@ namespace IslandsOfValheim
             foreach (GameObject go in made) if (go != null) Destroy(go);
             made.Clear();
             walkers.Clear();
+            actors.Clear();
+            everyone.Clear();
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -96,7 +98,8 @@ namespace IslandsOfValheim
             Stand(Saevar(), new Vector3(2f, 0f, HallEnd - 6.2f), Vector3.back, 3f);
             yield return null;
 
-            // The feast: on the hall's benches, here one, there two, some places empty.
+            // The feast: on the hall's benches, here one, there two, some places empty; every third with a
+            // tankard in hand. Now and then each takes a bite.
             int b = 0, n = 0;
             foreach (Transform bench in Children("piece_bench01"))
             {
@@ -105,23 +108,26 @@ namespace IslandsOfValheim
                 foreach (float along in new[] { -0.55f, 0.55f })
                 {
                     if (Pick(b * 2 + (along > 0f ? 1 : 0), 17) > 0.42f) continue;
-                    Seat(Warrior(n++, false), bench, along);
+                    Act(Seat(Warrior(n, false), bench, along, n % 3 == 0 ? "Tankard" : ""), Feaster, n * 3.7f);
+                    n++;
                     if (++count % 3 == 0) yield return null;
                 }
                 b++;
             }
 
-            // The yard: two at the dummies, sword and shield in hand, facing them.
-            Stand(Warrior(n++, true), new Vector3(Yard.x - 2f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "SwordIron", "ShieldBanded");
-            Stand(Warrior(n++, true), new Vector3(Yard.x + 6f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "AxeBronze", "ShieldWood");
-            // The ring: two squaring up in it, and three watching from its edge.
-            Stand(Warrior(n++, true), new Vector3(Ring.x - 1.4f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldIronSquare");
-            Stand(Warrior(n++, true), new Vector3(Ring.x + 1.4f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
+            // The yard: two at the dummies, weapon and shield in hand, swinging at them.
+            Act(Stand(Warrior(n++, true), new Vector3(Yard.x - 2f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "SwordIron", "ShieldBanded"), Trainer, 0f);
+            Act(Stand(Warrior(n++, true), new Vector3(Yard.x + 6f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "AxeBronze", "ShieldWood"), Trainer, 2.3f);
+            // The ring: two fighting in it (by turns one swings, the other takes it on his shield), and three
+            // watching from its edge, cheering now and then.
+            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldIronSquare");
+            SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
+            if (one != null && other != null) actors.Add(new Actor { who = one, partner = other, kind = Duel });
             foreach (float deg in new[] { 205f, 240f, 300f })
             {
                 float a = deg * Mathf.Deg2Rad;
                 Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f);
+                Act(Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f), Watcher, deg * 0.05f);
             }
             yield return null;
 
@@ -224,12 +230,12 @@ namespace IslandsOfValheim
 
         // A seat's own place (a bench's, a throne's: the game's Chair, read off the piece's prefab, since the
         // rock's copies have had their workings taken out), slid along the seat for a second sitter.
-        void Seat(SpiritHuman.Look look, Transform piece, float along)
+        SpiritHuman Seat(SpiritHuman.Look look, Transform piece, float along, string right = "")
         {
-            if (piece == null) return;
+            if (piece == null) return null;
             GameObject prefab = PrefabManager.Instance.GetPrefab(Clean(piece.name));
             Chair chair = prefab != null ? prefab.GetComponentInChildren<Chair>(true) : null;
-            if (chair == null || chair.m_attachPoint == null) { Plugin.Debug("Valhalla: " + piece.name + " has no seat"); return; }
+            if (chair == null || chair.m_attachPoint == null) { Plugin.Debug("Valhalla: " + piece.name + " has no seat"); return null; }
             Vector3 local = prefab.transform.InverseTransformPoint(chair.m_attachPoint.position);
             Quaternion turn = Quaternion.Inverse(prefab.transform.rotation) * chair.m_attachPoint.rotation;
             Vector3 at = piece.TransformPoint(local);
@@ -240,18 +246,108 @@ namespace IslandsOfValheim
                 Vector3 axis = size.size.x >= size.size.z ? Vector3.right : Vector3.forward;
                 at += axis * along;
             }
-            Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, Solid, transform, at, piece.rotation * turn));
+            return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, Solid, transform, at, piece.rotation * turn, right));
         }
 
-        void Stand(SpiritHuman.Look look, Vector3 local, Vector3 facing, float from, string right = "", string left = "")
+        SpiritHuman Stand(SpiritHuman.Look look, Vector3 local, Vector3 facing, float from, string right = "", string left = "")
         {
             local.y = Ground(local.x, local.z, from);
             facing.y = 0f;
             Quaternion turn = transform.rotation * Quaternion.LookRotation(facing.sqrMagnitude > 0.001f ? facing.normalized : Vector3.forward);
-            Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
+            return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", Solid, transform, transform.TransformPoint(local), turn, right, left));
         }
 
-        void Add(SpiritHuman person) { if (person != null) made.Add(person.gameObject); }
+        SpiritHuman Add(SpiritHuman person)
+        {
+            if (person != null) { made.Add(person.gameObject); everyone.Add(person); }
+            return person;
+        }
+
+        // ---- what they do (by the world's clock, so everyone sees the same swing at the same moment) ----
+
+        const int Feaster = 0, Trainer = 1, Duel = 2, Watcher = 3;
+        static readonly string[] Cheers = { "emote_cheer", "emote_challenge", "emote_roar", "emote_laugh", "emote_thumbsup" };
+
+        class Actor
+        {
+            internal SpiritHuman who, partner;
+            internal int kind;
+            internal float offset;
+            internal long last = long.MinValue;
+            internal float stopAt;
+        }
+
+        readonly List<Actor> actors = new List<Actor>();
+        readonly List<SpiritHuman> everyone = new List<SpiritHuman>();
+
+        void Act(SpiritHuman who, int kind, float offset)
+        {
+            if (who != null) actors.Add(new Actor { who = who, kind = kind, offset = offset });
+        }
+
+        void Perform(double now)
+        {
+            foreach (Actor a in actors)
+            {
+                if (a.who == null) continue;
+                double t = now + a.offset;
+                switch (a.kind)
+                {
+                    case Feaster:
+                    {
+                        // a bite every quarter minute or so
+                        long slot = (long)(t / 15.0);
+                        if (slot != a.last) { if (a.last != long.MinValue) a.who.Trigger("eat"); a.last = slot; }
+                        break;
+                    }
+                    case Trainer:
+                    {
+                        // three swings in a row at the dummy, then a breath
+                        long slot = (long)(t / 0.9);
+                        if (slot != a.last) { int k = (int)(slot % 6); if (k < 3) a.who.Strike(k); a.last = slot; }
+                        break;
+                    }
+                    case Duel:
+                    {
+                        // 3.5 s each: one swings three times, the other holds up his shield; then the other way
+                        long turnOf = (long)(t / 3.5);
+                        bool firstSwings = turnOf % 2 == 0;
+                        SpiritHuman swinger = firstSwings ? a.who : a.partner, guard = firstSwings ? a.partner : a.who;
+                        if (guard == null || swinger == null) break;
+                        guard.blocking = true;
+                        swinger.blocking = false;
+                        long slot = (long)(t / 1.0);
+                        if (slot != a.last) { int k = (int)(slot - turnOf * 3.5); if (k >= 0 && k < 3) swinger.Strike(k); a.last = slot; }
+                        break;
+                    }
+                    case Watcher:
+                    {
+                        // a cheer (or a shout, a laugh) every twelve seconds or so, ended after a while
+                        long slot = (long)(t / 12.0);
+                        if (slot != a.last)
+                        {
+                            if (a.last != long.MinValue) { a.who.Trigger(Cheers[(int)(Pick((int)(slot % 100000), 29) * Cheers.Length) % Cheers.Length]); a.stopAt = Time.time + 3.5f; }
+                            a.last = slot;
+                        }
+                        if (a.stopAt > 0f && Time.time > a.stopAt) { a.who.Trigger("emote_stop"); a.stopAt = 0f; }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // How much of each is worked out, by how far it is from the camera.
+        float nextDetail;
+
+        void Details()
+        {
+            if (Time.time < nextDetail) return;
+            nextDetail = Time.time + 0.25f;
+            Camera cam = Utils.GetMainCamera();
+            if (cam == null) return;
+            Vector3 eye = cam.transform.position;
+            foreach (SpiritHuman p in everyone) if (p != null) p.Detail(Vector3.Distance(eye, p.transform.position));
+        }
 
         // ---- walking ----
 
@@ -288,6 +384,8 @@ namespace IslandsOfValheim
             w.facing = Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.y));
             w.who = SpiritHuman.MakeLocal(look, SpiritHuman.Stand, "", ghost, transform, transform.TransformPoint(start), transform.rotation * w.facing);
             if (w.who == null) return;
+            w.who.keepMoving = true;
+            everyone.Add(w.who);
             if (ghost == Solid)
             {
                 w.body = w.who.gameObject.AddComponent<Rigidbody>();
@@ -329,6 +427,9 @@ namespace IslandsOfValheim
 
         void Update()
         {
+            if (made.Count == 0) return;
+            Details();
+            Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             if (walkers.Count == 0) return;
             Player player = Player.m_localPlayer;
             Vector3 you = player != null ? transform.InverseTransformPoint(player.transform.position) : new Vector3(9999f, 0f, 0f);
