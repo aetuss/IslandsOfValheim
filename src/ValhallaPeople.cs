@@ -129,7 +129,7 @@ namespace IslandsOfValheim
             {
                 float a = deg * Mathf.Deg2Rad;
                 Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                Act(Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f), Watcher, deg * 0.05f);
+                Act(Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f, Watching[(int)(deg / 10f) % Watching.Length], "ShieldWood"), Watcher, deg * 0.05f);
             }
             yield return null;
 
@@ -268,7 +268,7 @@ namespace IslandsOfValheim
         // ---- what they do (by the world's clock, so everyone sees the same swing at the same moment) ----
 
         const int Feaster = 0, Trainer = 1, Duel = 2, Watcher = 3;
-        static readonly string[] Cheers = { "emote_cheer", "emote_challenge", "emote_roar", "emote_laugh", "emote_thumbsup" };
+        static readonly string[] Watching = { "AxeIron", "SwordIron", "MaceBronze", "AxeBronze" };
 
         class Actor
         {
@@ -276,7 +276,6 @@ namespace IslandsOfValheim
             internal int kind;
             internal float offset;
             internal long last = long.MinValue;
-            internal float stopAt;
         }
 
         readonly List<Actor> actors = new List<Actor>();
@@ -323,48 +322,11 @@ namespace IslandsOfValheim
                         break;
                     }
                     case Watcher:
-                    {
-                        // a cheer (or a shout, a laugh) every quarter minute or so: played out whole, as the game
-                        // plays it for a player; only one that goes on by itself (the game's not "one shot")
-                        // is ended, and not soon
-                        long slot = (long)(t / 16.0);
-                        if (slot != a.last)
-                        {
-                            if (a.last != long.MinValue)
-                            {
-                                string cheer = Cheers[(int)(Pick((int)(slot % 100000), 29) * Cheers.Length) % Cheers.Length];
-                                a.who.Trigger(cheer);
-                                a.stopAt = OneShot(cheer) ? 0f : Time.time + 6f;
-                            }
-                            a.last = slot;
-                        }
-                        if (a.stopAt > 0f && Time.time > a.stopAt) { a.who.Trigger("emote_stop"); a.stopAt = 0f; }
+                        // They only watch, weapon in hand. (The player's emotes, cheering and shouting, looked
+                        // like bobbing up and down on them: two tries, both dropped.)
                         break;
-                    }
                 }
             }
-        }
-
-        // Whether the game plays an emote once and returns (its Emotes' "one shot"), read off the game's own list.
-        static readonly Dictionary<string, bool> oneShot = new Dictionary<string, bool>();
-        static bool OneShot(string trigger)
-        {
-            bool once;
-            if (oneShot.TryGetValue(trigger, out once)) return once;
-            once = false;
-            try
-            {
-                string name = trigger.StartsWith("emote_") ? trigger.Substring(6) : trigger;
-                foreach (System.Reflection.FieldInfo f in typeof(Emotes).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
-                {
-                    if (!string.Equals(f.Name, name, System.StringComparison.OrdinalIgnoreCase)) continue;
-                    foreach (object attribute in f.GetCustomAttributes(typeof(Emote), false)) once = ((Emote)attribute).OneShot;
-                }
-            }
-            catch (System.Exception e) { Plugin.Debug("Valhalla: couldn't read emote " + trigger + ": " + e.Message); }
-            oneShot[trigger] = once;
-            Plugin.Debug("Valhalla: emote " + trigger + (once ? " plays once" : " goes on till stopped"));
-            return once;
         }
 
         // How much of each is worked out, by how far it is from the camera.

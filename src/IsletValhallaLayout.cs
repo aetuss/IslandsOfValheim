@@ -37,7 +37,7 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, DuelRing, DuelRadius + 3f));
             pad = Mathf.Max(pad, CirclePad(x, z, Feast, 11f));
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
-            pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 8f));
+            pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
         }
 
@@ -772,43 +772,104 @@ namespace IslandsOfValheim
 
         // ---- Hliðskjálf, Odin's high seat, behind the hall at the north rim ----
 
-        // Three tiers of black marble (each its own step all round), and on top a throne looking out over the
-        // clouds, two tall posts behind it with Huginn and Muninn, and a fire either side in front.
+        // A stepped pyramid of black marble with steps up all four sides, and on top a throne looking out over the
+        // clouds, fires at its corners; marble columns at the foot's corners, Huginn and Muninn on the two before
+        // him, fires on the two behind.
         static void Lookout()
         {
+            // A stepped pyramid of black marble, four tiers to 2.4 m (the seat over the whole rock), each tier
+            // 1.5 m in from the one under it, with steps up the middle of every side, all four ways.
             float z0 = LookoutZ;
-            float first = Block(new Vector3(0f, 0f, z0), 10f, 0.5f, 10f);
-            float second = Block(new Vector3(0f, first, z0), 7.6f, 0.5f, 7.6f);
-            float top = Block(new Vector3(0f, second, z0), 5.2f, 0.5f, 5.2f);
-            // steps up each tier on the south, the hall's side
-            Stair(0f, 0f, first, z0 - 5f, -1f, 3f);
-            Stair(0f, first, second, z0 - 3.8f, -1f, 3f);
-            Stair(0f, second, top, z0 - 2.6f, -1f, 3f);
-            GameObject throne = SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
-            foreach (float x in new[] { -2f, 2f })
-                SkyProp("piece_brazierfloor01", new Vector3(x, top, z0 + 2f), Vector3.zero);
-            // Huginn and Muninn on the throne's back, one at each top corner, looking out with Odin (the tall
-            // posts their carved perches stood on hid him, seen from the front). The game's own raven (the
-            // one that brings the player its counsel), its body shown and its workings taken out.
-            if (throne == null) return;
-            Bounds back = SkySolid(throne);
-            foreach (float side in new[] { -1f, 1f })
+            float[] sizes = { 14f, 11f, 8f, 5f };
+            const float rise = 0.6f;
+            float[] tops = new float[sizes.Length];
+            float under = 0f;
+            for (int i = 0; i < sizes.Length; i++)
             {
-                Vector3 at = new Vector3(back.center.x + side * (back.extents.x - 0.12f), back.max.y, back.min.z + 0.2f);
-                string bird = side < 0f || PrefabManager.Instance.GetPrefab("Munin") == null ? "Raven" : "Munin";
-                GameObject raven = SkyPivot(bird, at, Quaternion.Euler(0f, side * 18f, 0f), StillRaven);
-                if (raven != null) Plugin.Debug("Valhalla: " + bird + " on the high seat's back at " + at.ToString("F2") + ", its size " + SkyBounds(raven).size.ToString("F2"));
+                tops[i] = Block(new Vector3(0f, under, z0), sizes[i], rise, sizes[i]);
+                float half = sizes[i] * 0.5f;
+                Stair(0f, under, tops[i], z0 - half, -1f, 3f);
+                Stair(0f, under, tops[i], z0 + half, 1f, 3f);
+                StairAlongX(z0, under, tops[i], -half, -1f, 3f);
+                StairAlongX(z0, under, tops[i], half, 1f, 3f);
+                under = tops[i];
             }
+            float top = under;
+            GameObject throne = SkySeat("piece_blackmarble_throne", new Vector3(0f, top, z0), Vector3.forward);
+            // fire at the top tier's four corners
+            foreach (float x in new[] { -1.9f, 1.9f })
+                foreach (float z in new[] { -1.9f, 1.9f })
+                    SkyProp("piece_brazierfloor01", new Vector3(x, top, z0 + z), Vector3.zero);
+            if (throne == null) Plugin.Log.LogWarning("Valhalla: no high seat on Hlidskjalf");
+            // and at the lowest tier's corners, marble columns: far enough out to frame him, never to hide him
+            float corner = sizes[0] * 0.5f - 0.9f;
+            foreach (float x in new[] { -corner, corner })
+                foreach (float z in new[] { -corner, corner })
+                {
+                    GameObject column = SkyProp("blackmarble_column_3", new Vector3(x, tops[0], z0 + z), Vector3.zero);
+                    if (column == null) continue;
+                    float columnTop = SkyBounds(column).max.y;
+                    // Huginn and Muninn on the two columns before him, looking out the way he looks; fire on
+                    // the two behind
+                    if (z > 0f) Raven(new Vector3(x, columnTop, z0 + z), x);
+                    else SkyProp("piece_brazierfloor01", new Vector3(x, columnTop, z0 + z), Vector3.zero);
+                }
         }
 
-        // The game's raven as a still bird: its body shown (the game shows it only when it comes to talk), the
-        // "!" over it hidden.
-        static void StillRaven(GameObject go)
+        // Steps up to an edge running along z (the east or west side of something square), out the way way
+        // along x; the same as Stair, turned.
+        static void StairAlongX(float zMiddle, float from, float to, float edge, float way, float width)
         {
-            global::Raven raven = go.GetComponent<global::Raven>();
-            if (raven == null) return;
-            if (raven.m_visual != null) raven.m_visual.SetActive(true);
-            if (raven.m_exclamation != null) raven.m_exclamation.SetActive(false);
+            float risen = to - from;
+            if (risen < 0.15f) return;
+            int count = Mathf.Max(2, Mathf.CeilToInt(risen / 0.25f));
+            const float depth = 0.45f;
+            for (int i = 1; i <= count; i++)
+                Block(new Vector3(edge + way * (depth * (count - i) + depth * 0.5f), from, zMiddle), depth, risen * i / (count + 1f), width);
+        }
+
+        // A raven as the darkwood carving has it, without its board: the carving is a board 3.2 m long with the
+        // bird 2.76 m along it; only the meshes out at the bird's end are kept, set with the bird's feet on at.
+        // (The game's own raven, Hugin, only shows itself through its workings: it didn't appear when tried.)
+        static void Raven(Vector3 at, float side)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab("darkwood_raven");
+            if (prefab == null) return;
+            List<string> parts = new List<string>();
+            bool any = false;
+            Bounds bird = new Bounds();
+            foreach (MeshFilter f in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (f.sharedMesh == null) continue;
+                Bounds b = PartBounds(prefab, f);
+                parts.Add(f.name + " " + b.center.ToString("F2") + " size " + b.size.ToString("F2"));
+                if (b.center.z < 1.8f || b.size.z > 1.6f) continue; // the board
+                if (!any) { bird = b; any = true; } else bird.Encapsulate(b);
+            }
+            Plugin.Debug("Valhalla: darkwood_raven's parts: " + string.Join("; ", parts.ToArray()));
+            if (!any) { Plugin.Debug("Valhalla: the raven carving has no bird of its own to take; no ravens"); return; }
+            Quaternion turn = Quaternion.Euler(0f, Mathf.Sign(side) * 15f, 0f);
+            GameObject go = SkyPivot("darkwood_raven", at - turn * new Vector3(bird.center.x, bird.min.y, bird.center.z), turn);
+            if (go == null) return;
+            // the board's meshes (and their colliders) away
+            foreach (MeshFilter f in go.GetComponentsInChildren<MeshFilter>(true))
+            {
+                Bounds b = PartBounds(go, f);
+                if (b.center.z >= 1.8f && b.size.z <= 1.6f) continue;
+                MeshRenderer r = f.GetComponent<MeshRenderer>();
+                if (r != null) r.enabled = false;
+            }
+            foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+        }
+
+        // A mesh's bounds in its piece's own space.
+        static Bounds PartBounds(GameObject piece, MeshFilter f)
+        {
+            Matrix4x4 m = piece.transform.worldToLocalMatrix * f.transform.localToWorldMatrix;
+            Bounds mb = f.sharedMesh.bounds, result = new Bounds(m.MultiplyPoint3x4(mb.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                result.Encapsulate(m.MultiplyPoint3x4(mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+            return result;
         }
 
         // ---- the Brim Folk's feast, under the trees to the west ----
