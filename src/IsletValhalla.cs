@@ -632,13 +632,8 @@ namespace IslandsOfValheim
             env.m_psystems = new GameObject[0];
             env.m_envObject = null;
             env.m_rainCloudAlpha = 0f;
-            // its music by the time of day (the game's own pieces): the dawn and dusk calls now and then, the
-            // meadows' tune by day, and under the northern lights the far north's. (The hall and the Brim
-            // Folk's feast have their own: ValhallaSky.Music.)
-            env.m_musicMorning = "morning";
-            env.m_musicDay = "meadows";
-            env.m_musicEvening = "evening";
-            env.m_musicNight = "deepnorth";
+            // no music of its own: ValhallaSky.Music plays it, by the time of day and the place
+            env.m_musicMorning = env.m_musicDay = env.m_musicEvening = env.m_musicNight = "";
             return env;
         }
 
@@ -939,8 +934,7 @@ namespace IslandsOfValheim
             }
             else
             {
-                if (placeMusic != null && MusicMan.instance != null) MusicMan.instance.LocationMusic(null);
-                placeMusic = null;
+                MusicOff();
                 env.SetForceEnvironment("");
                 if (heldTime)
                 {
@@ -974,28 +968,130 @@ namespace IslandsOfValheim
             }
         }
 
-        // Places with music of their own, over the time of day's (the game's location music, as at Haldor's):
-        // in the hall, the mead and merriment of the game's closing song; at the Brim Folk's feast under the
-        // birches, the far north's memorial. Asked again every second while you're there (a piece that ends
-        // starts again), let go when you step out.
-        const string HallMusic = "credits", FeastMusic = "location_deepnorth_memorialsite";
+        // ---- music ----
+        //
+        // All of it the game's own pieces, played through its music player (as a location's, like Haldor's),
+        // so the player's music volume and settings hold. Each time of day and each place has a few pieces
+        // that take turns, one after another; going from one to another, the old one fades out and the new
+        // fades in slowly. At dawn and at dusk the game's own short call for it comes first.
+        static readonly string[] DayMusic = { "meadows", "home", "location_haldor" };
+        static readonly string[] DuskMusic = { "plains", "home" };
+        static readonly string[] NightMusic = { "deepnorth", "mistlands" };
+        static readonly string[] HallMusic = { "credits", "location_deepnorth_timberhallvillage" };
+        static readonly string[] FeastMusic = { "location_deepnorth_memorialsite", "location_ashlands_ruins" };
+        const float Fade = 6f; // seconds each way between pieces
         static readonly Vector2 FeastAt = new Vector2(-42f, 8f);
-        string placeMusic;
-        float nextMusic;
+
+        string[] playlist;            // what's being taken turns at now
+        string playing;               // the piece asked for
+        float playingUntil, nextMusic;
+        string lastTimeOfDay;
+        readonly Dictionary<string[], int> turn = new Dictionary<string[], int>();
+        float savedFade = -1f;
+        readonly Dictionary<MusicMan.NamedMusic, float> savedFadeIn = new Dictionary<MusicMan.NamedMusic, float>();
 
         void Music(Vector3 local)
         {
             if (Time.time < nextMusic) return;
             nextMusic = Time.time + 1f;
             MusicMan music = MusicMan.instance;
-            if (music == null) return;
-            string want = null;
-            if (Mathf.Abs(local.x) < 8.5f && local.z > 3.5f && local.z < 40.5f && local.y < 12f) want = HallMusic;
-            else if (new Vector2(local.x - FeastAt.x, local.z - FeastAt.y).magnitude < 18f) want = FeastMusic;
-            if (want != null) music.LocationMusic(want);
-            else if (placeMusic != null) music.LocationMusic(null);
-            if (want != placeMusic) Plugin.Debug("Valhalla: music " + (want ?? "by the time of day"));
-            placeMusic = want;
+            if (music == null || EnvMan.instance == null) return;
+            SlowFades(music, true);
+
+            // the place first (a few metres' grace on the way out, so its edge doesn't flicker)
+            float grace = playlist == HallMusic || playlist == FeastMusic ? 3f : 0f;
+            string[] want = null;
+            if (Mathf.Abs(local.x) < 8.5f + grace && local.z > 3.5f - grace && local.z < 40.5f + grace && local.y < 12f) want = HallMusic;
+            else if (new Vector2(local.x - FeastAt.x, local.z - FeastAt.y).magnitude < 18f + grace) want = FeastMusic;
+
+            // else the time of day (the sun's place in Valhalla's day: see ValhallaWeather.Turns)
+            float t = EnvMan.instance.m_debugTime;
+            string timeOfDay = t >= 0.30f && t < 0.70f ? "day" : t >= 0.70f && t < 0.90f ? "dusk" : t >= 0.25f && t < 0.30f ? "dawn" : "night";
+            string call = null;
+            if (lastTimeOfDay != null && timeOfDay != lastTimeOfDay)
+            {
+                if (timeOfDay == "dawn") call = "morning";
+                if (timeOfDay == "dusk") call = "evening";
+            }
+            lastTimeOfDay = timeOfDay;
+            if (want == null) want = timeOfDay == "night" ? NightMusic : timeOfDay == "dusk" ? DuskMusic : DayMusic;
+
+            if (call != null && want != HallMusic && want != FeastMusic) Play(call, null);           // dawn's or dusk's call, once
+            else if (want != playlist && !(playlist == null && playing != null && Time.time < playingUntil)) Play(Next(want), want);
+            else if (Time.time >= playingUntil) Play(Next(want), want);                                     // this one's done: the next
+            music.LocationMusic(playing);
+        }
+
+        string Next(string[] list)
+        {
+            int i;
+            turn.TryGetValue(list, out i);
+            turn[list] = i + 1;
+            return list[i % list.Length];
+        }
+
+        // Starts a piece; the next is asked for a fade before it ends.
+        void Play(string name, string[] list)
+        {
+            if (name == playing && list == playlist) return;
+            playing = name;
+            playlist = list;
+            float length = 120f;
+            MusicMan.NamedMusic piece = Piece(name);
+            if (piece != null && piece.m_clips != null)
+            {
+                float shortest = float.MaxValue;
+                foreach (AudioClip c in piece.m_clips) if (c != null) shortest = Mathf.Min(shortest, c.length);
+                if (shortest < float.MaxValue) length = shortest;
+            }
+            playingUntil = Time.time + Mathf.Max(20f, length - Fade);
+            Plugin.Debug("Valhalla: music " + name + " (" + length.ToString("F0") + " s)");
+        }
+
+        static MusicMan.NamedMusic Piece(string name)
+        {
+            if (MusicMan.instance == null) return null;
+            foreach (MusicMan.NamedMusic m in MusicMan.instance.m_music) if (m != null && m.m_name == name) return m;
+            return null;
+        }
+
+        // Slow fades while here (the game's are quick), put back as they were on leaving.
+        void SlowFades(MusicMan music, bool on)
+        {
+            Traverse fade = Traverse.Create(music).Field("m_musicFadeTime");
+            if (on && savedFade < 0f)
+            {
+                savedFade = fade.GetValue<float>();
+                fade.SetValue(Mathf.Max(savedFade, Fade));
+                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, new[] { "morning", "evening" } })
+                    foreach (string name in list)
+                    {
+                        MusicMan.NamedMusic piece = Piece(name);
+                        if (piece == null || savedFadeIn.ContainsKey(piece)) continue;
+                        savedFadeIn[piece] = piece.m_fadeInTime;
+                        piece.m_fadeInTime = Mathf.Max(piece.m_fadeInTime, Fade);
+                    }
+            }
+            else if (!on && savedFade >= 0f)
+            {
+                fade.SetValue(savedFade);
+                foreach (KeyValuePair<MusicMan.NamedMusic, float> kv in savedFadeIn) if (kv.Key != null) kv.Key.m_fadeInTime = kv.Value;
+                savedFadeIn.Clear();
+                savedFade = -1f;
+            }
+        }
+
+        void MusicOff()
+        {
+            MusicMan music = MusicMan.instance;
+            if (music != null)
+            {
+                if (playing != null) music.LocationMusic(null);
+                SlowFades(music, false);
+            }
+            playing = null;
+            playlist = null;
+            lastTimeOfDay = null;
         }
 
         // The meadow's random sounds (birds by day) instead of whatever the sea far below would play.
