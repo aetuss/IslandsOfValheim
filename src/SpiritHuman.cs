@@ -325,6 +325,8 @@ namespace IslandsOfValheim
         // see-through and pale.
         void Ghostly()
         {
+            // (first: the body's picture is painted with them, before any material is made)
+            Look4Shaders();
             foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null || r is ParticleSystemRenderer || ghosted.Contains(r)) continue;
@@ -471,6 +473,7 @@ namespace IslandsOfValheim
             Texture made;
             if (painted.TryGetValue(key, out made) && made != null) return made;
             if (wash && blend == null) return under;
+            if (sprite == null) return under; // nothing to paint with
             int size = under.width; // as sharp as its sharpest layer (the skin's own picture is small)
             foreach (Texture layer in over) if (layer != null) size = Mathf.Max(size, layer.width);
             size = Mathf.Clamp(size, 16, 2048);

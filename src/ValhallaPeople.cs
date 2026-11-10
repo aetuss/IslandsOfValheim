@@ -141,9 +141,11 @@ namespace IslandsOfValheim
             yield return null;
 
 #if IOV_DEV
-            // The Brim Folk's ghosts: round their own feast, slowly. (In the tale they come as the tasks bring them.)
+            // The Brim Folk's ghosts: round their own feast, slowly, outside its tables and inside its torches
+            // (a circle cut across the tables' ends: they walked over them). (In the tale they come as the tasks
+            // bring them.)
             for (int i = 0; i < 3; i++)
-                Walk(BrimFolk(i), SpiritHuman.GhostSoft, 0.7f, 3f, true, Circle(Feast, 9.5f + i * 1.5f, 12, i * 2.1f));
+                Walk(BrimFolk(i), SpiritHuman.GhostSoft, 0.7f, 3f, true, Around(Feast, 6.8f, 11.2f, 1.5f));
 #endif
 
             // iov_people crowd N: so many more, standing in rows west of the way, to see what they cost.
@@ -416,7 +418,9 @@ namespace IslandsOfValheim
             heading = Vector2.zero;
         }
 
-        Vector3 Lift(Vector2 p) { return new Vector3(p.x, Ground(p.x, p.y, 4f), p.y); }
+        // On the ground or the paving under a walker: looked for from a metre over the meadow, so never on a
+        // table or a bench it passes.
+        Vector3 Lift(Vector2 p) { return new Vector3(p.x, Ground(p.x, p.y, IsletBuilder.SkyGround(p.x, p.y) + 1f), p.y); }
 
         void Update()
         {
@@ -464,6 +468,16 @@ namespace IslandsOfValheim
             if (Physics.Raycast(top, -transform.up, out hit, from + 30f, mask, QueryTriggerInteraction.Ignore))
                 return transform.InverseTransformPoint(hit.point).y;
             return IsletBuilder.SkyGround(x, z);
+        }
+
+        // A loop round a rectangle (half sizes hx, hz), its corners cut by cut.
+        static Vector2[] Around(Vector2 c, float hx, float hz, float cut)
+        {
+            return new[]
+            {
+                c + new Vector2(hx, hz - cut), c + new Vector2(hx - cut, hz), c + new Vector2(-hx + cut, hz), c + new Vector2(-hx, hz - cut),
+                c + new Vector2(-hx, -hz + cut), c + new Vector2(-hx + cut, -hz), c + new Vector2(hx - cut, -hz), c + new Vector2(hx, -hz + cut),
+            };
         }
 
         static Vector2[] Circle(Vector2 centre, float radius, int steps, float start)
