@@ -143,15 +143,23 @@ namespace IslandsOfValheim
             SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldBanded");
             SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
             if (one != null && other != null) { ringPair = new Actor { who = one, partner = other, kind = Duel }; actors.Add(ringPair); }
-            foreach (float deg in new[] { 205f, 240f, 300f })
+            // One watching in every gap between the ring's columns (the two gaps the sparring pair walk out to
+            // are kept for them), a little behind the blue fires.
+            int w = 0;
+            foreach (float deg in new[] { 18f, 54f, 90f, 162f, 198f, 234f, 270f, 306f })
             {
                 float a = deg * Mathf.Deg2Rad;
-                Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                SpiritHuman watcher = Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f, Watching[(int)(deg / 10f) % Watching.Length], "ShieldWood");
+                Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 13f, 0f, Ring.y + Mathf.Sin(a) * 13f);
+                SpiritHuman watcher = Stand(Warrior(n++, w % 3 != 1), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f,
+                    Watching[w % Watching.Length], WatchingShields[(w * 3) % WatchingShields.Length]);
                 Act(watcher, Watcher, deg * 0.05f);
-                // the one in the middle keeps the ring: talk to him to challenge the einherjar
-                if (deg == 240f) Speaks(watcher, ValhallaSpeaker.RingMaster, 2.3f);
+                w++;
+                if (count++ % 3 == 2) yield return null;
             }
+            // and the ring's master, on his dais on the hall's side, over it all: talk to him to challenge the
+            // einherjar
+            Vector2 m = IsletBuilder.RingMasterAt;
+            Speaks(Stand(RingMaster(), new Vector3(m.x, 0f, m.y), new Vector3(Ring.x - m.x, 0f, Ring.y - m.y), 4f, "Battleaxe"), ValhallaSpeaker.RingMaster, 2.7f);
             yield return null;
 
             // Those who walk.
@@ -336,7 +344,18 @@ namespace IslandsOfValheim
         // ---- what they do (by the world's clock, so everyone sees the same swing at the same moment) ----
 
         const int Feaster = 0, Trainer = 1, Duel = 2, Watcher = 3;
-        static readonly string[] Watching = { "AxeIron", "SwordIron", "MaceBronze", "AxeBronze" };
+        static readonly string[] Watching = { "AxeIron", "SwordIron", "MaceBronze", "AxeBronze", "SwordSilver", "MaceIron" };
+        static readonly string[] WatchingShields = { "ShieldWood", "ShieldBanded", "ShieldBronzeBuckler", "ShieldSilver", "ShieldWood", "ShieldBlackmetal" };
+
+        // The ring's master: an old champion, in a berserker's war-gear and a wolf cape, a great axe in hand.
+        static SpiritHuman.Look RingMaster()
+        {
+            return new SpiritHuman.Look
+            {
+                Hair = "Hair6", Beard = "Beard10", HairColor = new Vector3(0.62f, 0.6f, 0.58f), SkinColor = Vector3.one * 0.9f,
+                Helmet = "HelmetBerserker", Chest = "ArmorBerserkerChest", Legs = "ArmorBerserkerLegs", Shoulder = "CapeWolf",
+            };
+        }
 
         class Actor
         {
@@ -428,9 +447,10 @@ namespace IslandsOfValheim
             Vector3 ring = transform.TransformPoint(new Vector3(Ring.x, 0f, Ring.y));
             foreach (Actor a in actors)
             {
-                if (a.kind != Watcher || a.who == null || Random.value < 0.4f) continue;
-                if (Utils.DistanceXZ(a.who.transform.position, ring) < 16f) a.who.Clang(Random.Range(0f, 0.35f));
-                if (a.partner != null && Utils.DistanceXZ(a.partner.transform.position, ring) < 16f) a.partner.Clang(Random.Range(0f, 0.35f));
+                // about half of them, each in his own time, once to three times
+                if (a.kind != Watcher || a.who == null) continue;
+                if (Random.value < 0.5f && Utils.DistanceXZ(a.who.transform.position, ring) < 16f) a.who.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
+                if (a.partner != null && Random.value < 0.5f && Utils.DistanceXZ(a.partner.transform.position, ring) < 16f) a.partner.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
             }
         }
 

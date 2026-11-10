@@ -279,6 +279,8 @@ namespace IslandsOfValheim
             float paved = Mathf.Max(Soft(Box(x, z, 0f, (ValhallaArrival.z + HallStart) * 0.5f, 2.6f, (HallStart - ValhallaArrival.z) * 0.5f + 1f)),
                 Mathf.Max(Soft(Box(x, z, 0f, ValhallaArrival.z, 5.5f, 4.5f)), Soft(Box(x, z, 0f, (HallStart + HallEnd) * 0.5f, HallHalfWidth + 2f, (HallEnd - HallStart) * 0.5f + 2f))));
             paved = Mathf.Max(paved, Soft(new Vector2(x, z - LookoutZ).magnitude - 6.5f));
+            // round the ring's master's dais (no grass through it)
+            paved = Mathf.Max(paved, Soft(new Vector2(x - RingMasterAt.x, z - RingMasterAt.y).magnitude - 2.4f));
             // a paved way from the hall's back steps to Hliðskjálf's, as wide as its steps
             float wayFrom = HallEnd, wayTo = LookoutZ - 6.5f;
             if (wayTo > wayFrom) paved = Mathf.Max(paved, Soft(Box(x, z, 0f, (wayFrom + wayTo) * 0.5f, 1.6f, (wayTo - wayFrom) * 0.5f)));

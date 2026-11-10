@@ -23,6 +23,7 @@ namespace IslandsOfValheim
         const float HallHalfWidth = 8f, HallStart = 4f, HallEnd = 40f, PillarHeight = 6f, FloorRise = 0.6f;
         static readonly Vector2 DuelRing = new Vector2(40f, 6f);
         const float DuelRadius = 10f;
+        internal static readonly Vector2 RingMasterAt = new Vector2(DuelRing.x - 16.5f, DuelRing.y); // his dais, west of the ring
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
         static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
@@ -687,6 +688,12 @@ namespace IslandsOfValheim
                 float a = (i * 4 + 1) * Mathf.PI / 10f; // halfway between two columns, every other gap
                 Lamp("piece_groundtorch_blue", "MountainKit_brazier", new Vector3(DuelRing.x + Mathf.Cos(a) * (DuelRadius + 1.5f), 0f, DuelRing.y + Mathf.Sin(a) * (DuelRadius + 1.5f)));
             }
+            // the ring's master's place: a low marble dais on the hall's side, looking over the ring, a fire either
+            // side of it
+            Vector2 m = RingMasterAt;
+            Block(new Vector3(m.x, G(m.x, m.y), m.y), 2.6f, 0.45f, 2.6f);
+            foreach (float side in new[] { -1f, 1f })
+                SkyProp("piece_brazierfloor01", new Vector3(m.x + 0.4f, G(m.x + 0.4f, m.y + side * 2.1f), m.y + side * 2.1f), Vector3.zero);
             // shields of those who fought here, leaning on the columns, facing in
             for (int i = 0; i < 3; i++)
             {

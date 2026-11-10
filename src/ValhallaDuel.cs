@@ -77,11 +77,20 @@ namespace IslandsOfValheim
             ai.m_attackPlayerObjects = false;
             ai.m_circulateWhileCharging = true;
             ai.m_minAttackInterval = champion ? 1.2f : 1.8f;
-            ai.m_circleTargetInterval = champion ? 10f : 7f;
-            ai.m_circleTargetDuration = 2f;
-            ai.m_circleTargetDistance = 4f;
+            // They stand and fight: no circling off, and none of the running away a creature does when hurt
+            // and (to its pathfinding) you can't be reached; on the rock up in the sky it often thinks so, and
+            // they kept turning their backs mid-fight and running off before coming back.
+            ai.m_circleTargetInterval = 0f;
+            ai.m_circleTargetDuration = 0f;
+            ai.m_circleTargetDistance = 0f;
             ai.m_maxChaseDistance = 40f;
             ai.m_fleeIfLowHealth = 0f;
+            ai.m_fleeIfHurtWhenTargetCantBeReached = false;
+            ai.m_fleeIfNotAlerted = false;
+            ai.m_fleeInLava = false;
+            ai.m_fleeUnreachableSinceAttacking = 9999f;
+            ai.m_fleeUnreachableSinceHurt = 9999f;
+            ai.m_fleeTimeSinceHurt = 0f;
             ai.m_alertedEffects = new EffectList();
             ai.m_idleSound = new EffectList();
             ai.m_wakeupEffects = new EffectList();
@@ -384,10 +393,11 @@ namespace IslandsOfValheim
         void Spawn(Player player, Vector3 centre)
         {
             int tier = Tier();
-            Vector3 away = centre - player.transform.position;
+            // always the same way in: the ring's far half from its master's dais (east), unless you stand on it
+            Vector3 away = transform.TransformDirection(Vector3.right);
             away.y = 0f;
-            if (away.sqrMagnitude < 1f) away = -player.transform.forward;
             away.Normalize();
+            if (Utils.DistanceXZ(player.transform.position, centre + away * 4.5f) < 2.5f) away = -away;
             if (round == 1)
             {
                 Vector3 at = centre + away * 4.5f;
@@ -396,13 +406,13 @@ namespace IslandsOfValheim
             else if (round == 2)
             {
                 Vector3 side = Vector3.Cross(Vector3.up, away);
-                Vector3 one = centre + away * 4f + side * 2.5f, other = centre + away * 4f - side * 2.5f;
+                Vector3 one = centre + away * 4.5f + side * 2.5f, other = centre + away * 4.5f - side * 2.5f;
                 Later(one, () => Fighter(PrefabName(false), one, player, tier, Health[tier] * 0.7f, 0, Pick(Axes, tier), Pick(Shields, tier), "Hair9", "Beard7", Capes[tier]));
                 Later(other, () => Fighter(PrefabName(false), other, player, tier, Health[tier] * 0.7f, 1, Pick(Polearms, tier), "", "Hair14", "", Capes[tier]));
             }
             else
             {
-                Vector3 at = centre + away * 5f;
+                Vector3 at = centre + away * 4.5f;
                 Later(at, () => Fighter(PrefabName(true), at, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf"));
             }
             Plugin.Debug("Duel: bout " + round + ", " + pending.Count + " coming into the ring (tier " + tier + ")");
