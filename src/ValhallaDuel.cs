@@ -393,26 +393,28 @@ namespace IslandsOfValheim
         void Spawn(Player player, Vector3 centre)
         {
             int tier = Tier();
-            // always the same way in: the ring's far half from its master's dais (east), unless you stand on it
-            Vector3 away = transform.TransformDirection(Vector3.right);
+            // always the same way in: the ring's north side, by the gap with the blue fire (a little in from the
+            // columns), unless you stand on it
+            const float In = 7.5f;
+            Vector3 away = transform.TransformDirection(Vector3.forward);
             away.y = 0f;
             away.Normalize();
-            if (Utils.DistanceXZ(player.transform.position, centre + away * 4.5f) < 2.5f) away = -away;
+            if (Utils.DistanceXZ(player.transform.position, centre + away * In) < 2.5f) away = -away;
             if (round == 1)
             {
-                Vector3 at = centre + away * 4.5f;
+                Vector3 at = centre + away * In;
                 Later(at, () => Fighter(PrefabName(false), at, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]));
             }
             else if (round == 2)
             {
                 Vector3 side = Vector3.Cross(Vector3.up, away);
-                Vector3 one = centre + away * 4.5f + side * 2.5f, other = centre + away * 4.5f - side * 2.5f;
+                Vector3 one = centre + away * In + side * 2.2f, other = centre + away * In - side * 2.2f;
                 Later(one, () => Fighter(PrefabName(false), one, player, tier, Health[tier] * 0.7f, 0, Pick(Axes, tier), Pick(Shields, tier), "Hair9", "Beard7", Capes[tier]));
                 Later(other, () => Fighter(PrefabName(false), other, player, tier, Health[tier] * 0.7f, 1, Pick(Polearms, tier), "", "Hair14", "", Capes[tier]));
             }
             else
             {
-                Vector3 at = centre + away * 4.5f;
+                Vector3 at = centre + away * In;
                 Later(at, () => Fighter(PrefabName(true), at, player, Mathf.Max(tier, 6), Health[tier] * 2.5f, 0, Pick(Great, tier), "", "Hair8", "Beard10", "CapeWolf"));
             }
             Plugin.Debug("Duel: bout " + round + ", " + pending.Count + " coming into the ring (tier " + tier + ")");

@@ -127,7 +127,7 @@ namespace IslandsOfValheim
             nextGreetLook = Time.time + 0.5f;
             Player player = Player.m_localPlayer;
             if (player == null || !Welcomed || ValhallaDuel.Active || Story.Key(ValhallaDuel.WonKey) || Time.time - calledAt < 45f) return;
-            if (Vector3.Distance(player.transform.position, transform.position) > 14f) return;
+            if (Vector3.Distance(player.transform.position, transform.position) > 18f) return;
             calledAt = Time.time;
             Say("$iov_ringmaster_call");
         }
