@@ -65,6 +65,7 @@ namespace IslandsOfValheim
             everyone.Clear();
             moves.Clear();
             voices.Clear();
+            howlers.Clear();
             ringPair = null;
             ringCleared = false;
             ringHomeKnown[0] = ringHomeKnown[1] = false;
@@ -347,6 +348,40 @@ namespace IslandsOfValheim
 
         static bool Has(EffectList e) { return e != null && e.m_effectPrefabs != null && e.m_effectPrefabs.Length > 0; }
 
+        // A beast whose howl is an animation: its sound as that animation starts (watched by the clip playing;
+        // the clip names seen go to the log, once each, to know them by).
+        class Howler { internal Transform who; internal Animator legs; internal EffectList sound; internal string name; internal bool howling; internal float last; }
+        readonly List<Howler> howlers = new List<Howler>();
+        static readonly HashSet<string> clipsSeen = new HashSet<string>();
+
+        void Howls()
+        {
+            Player player = Player.m_localPlayer;
+            foreach (Howler h in howlers)
+            {
+                if (h.legs == null || h.who == null || !h.legs.isActiveAndEnabled) continue;
+                bool howling = false;
+                foreach (AnimatorClipInfo info in h.legs.GetCurrentAnimatorClipInfo(0))
+                {
+                    if (info.clip == null) continue;
+                    string clip = info.clip.name;
+                    if (clipsSeen.Add(h.name + ":" + clip)) Plugin.Debug("Valhalla: " + h.name + " plays " + clip);
+                    string lower = clip.ToLowerInvariant();
+                    if (lower.Contains("howl") || lower.Contains("haul") || lower.Contains("alert")) howling = true;
+                }
+                // (and if its howl isn't known by its clip's name, now and then all the same)
+                if (h.last <= 0f) h.last = Time.time;
+                bool due = Time.time - h.last > 100f;
+                if (((howling && !h.howling) || due) && player != null && Vector3.Distance(player.transform.position, h.who.position) < 60f)
+                {
+                    h.sound.Create(h.who.position + Vector3.up, h.who.rotation);
+                    h.last = Time.time + Random.Range(0f, 40f);
+                    Plugin.Debug("Valhalla: " + h.name + " howls" + (due ? " (by the clock)" : ""));
+                }
+                h.howling = howling;
+            }
+        }
+
         // Each beast's voice every so often (a while apart, never on the dot), heard only near it.
         void Voices()
         {
@@ -394,11 +429,13 @@ namespace IslandsOfValheim
             go.name = prefabName + "_local";
             // its own voice, now and then, kept before its mind goes: what the game's creature makes idling, or
             // (a wolf has none) the call it gives when it spots you: a wolf's howl, now and then, longer apart
-            // (A wolf has no idle sound: its howl belongs to its howling, a sound inside it that its animation
-            // switches on; its sound scripts stay, so that's heard with it.)
+            // (A wolf has no idle sound, and its howl, one of its idle animations, plays without one: so its
+            // call when it spots you, a howl, goes with that animation whenever it plays.)
             BaseAI mind = go.GetComponent<BaseAI>();
             if (Has(mind != null ? mind.m_idleSound : null))
                 voices.Add(new Voice { who = go.transform, sound = mind.m_idleSound, every = Mathf.Max(12f, mind.m_idleSoundInterval * 2f), next = Time.time + Random.Range(3f, 12f), name = prefabName });
+            else if (Has(mind != null ? mind.m_alertedEffects : null))
+                howlers.Add(new Howler { who = go.transform, legs = go.GetComponentInChildren<Animator>(true), sound = mind.m_alertedEffects, name = prefabName });
             List<string> sounds = new List<string>();
             foreach (AudioSource a in go.GetComponentsInChildren<AudioSource>(true))
                 sounds.Add(a.name + (a.clip != null ? " (" + a.clip.name + ")" : ""));
@@ -764,6 +801,7 @@ namespace IslandsOfValheim
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Strolls(Time.deltaTime);
             Voices();
+            Howls();
             if (walkers.Count == 0) return;
             Player player = Player.m_localPlayer;
             Vector3 you = player != null ? transform.InverseTransformPoint(player.transform.position) : new Vector3(9999f, 0f, 0f);

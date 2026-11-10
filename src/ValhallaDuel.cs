@@ -75,7 +75,9 @@ namespace IslandsOfValheim
             ai.m_avoidWater = true;
             ai.m_enableHuntPlayer = true;
             ai.m_attackPlayerObjects = false;
-            ai.m_circulateWhileCharging = true;
+            // (not circling while their next blow comes ready: up close that was running on the spot, round
+            // and round; they stand their ground, facing you, instead)
+            ai.m_circulateWhileCharging = false;
             ai.m_minAttackInterval = champion ? 1.2f : 1.8f;
             // They stand and fight: no circling off, and none of the running away a creature does when hurt
             // and (to its pathfinding) you can't be reached; on the rock up in the sky it often thinks so, and
@@ -133,7 +135,7 @@ namespace IslandsOfValheim
             yielded = true;
             yieldedAt = Time.time;
             if (slamGlow != null) Destroy(slamGlow.gameObject); // (beaten mid-blow)
-            slamAt = -1f;
+            slamAt = shockAt = -1f;
             if (ai != null)
             {
                 ai.m_viewRange = ai.m_hearRange = ai.m_alertRange = 0f;
@@ -155,9 +157,8 @@ namespace IslandsOfValheim
         // the ground, a shock round him that throws back and hurts whoever's still close (step away, or block) ----
 
         internal float slamDamage;        // set for the champion: how hard his slam hits (by the world's tier)
-        const float SlamWindUp = 1.7f, SlamReach = 5f;
-        float nextSlam = -1f, slamAt = -1f;
-        bool swung;
+        const float SlamWindUp = 1.4f, SlamReach = 5f, SlamLands = 0.6f;
+        float nextSlam = -1f, slamAt = -1f, shockAt = -1f;
         Light slamGlow;
 
         void Champion()
@@ -166,19 +167,33 @@ namespace IslandsOfValheim
             ZNetView nview = GetComponent<ZNetView>();
             if (player == null || nview == null || !nview.IsOwner()) return;
             if (nextSlam < 0f) nextSlam = Time.time + 9f;
+            if (shockAt > 0f)
+            {
+                // his own heavy blow on its way down (his weapon's second attack, as the game swings it): the
+                // shock where it lands
+                body.SetMoveDir(Vector3.zero);
+                if (Time.time >= shockAt) Slam(player);
+                return;
+            }
             if (slamAt > 0f)
             {
-                // winding up: still, glowing brighter, then the swing down
+                // winding up: still, glowing brighter; then the blow
                 body.SetMoveDir(Vector3.zero);
                 if (slamGlow != null) slamGlow.intensity = Mathf.Lerp(0.5f, 7f, 1f - (slamAt - Time.time) / SlamWindUp);
-                if (!swung && Time.time >= slamAt - 0.45f) { swung = true; Trigger("swing_sledge"); }
-                if (Time.time >= slamAt) Slam(player);
+                if (Time.time >= slamAt)
+                {
+                    slamAt = -1f;
+                    Trigger("emote_stop");
+                    Humanoid me = body as Humanoid;
+                    bool swinging = me != null && (me.StartAttack(player, true) || me.StartAttack(player, false));
+                    if (!swinging) Trigger("swing_sledge");
+                    shockAt = Time.time + SlamLands;
+                }
                 return;
             }
             if (Time.time < nextSlam || Vector3.Distance(player.transform.position, transform.position) > 7f) return;
             // the wind-up
             slamAt = Time.time + SlamWindUp;
-            swung = false;
             if (ai != null) ai.enabled = false;
             Vector3 face = player.transform.position - transform.position;
             face.y = 0f;
@@ -200,7 +215,7 @@ namespace IslandsOfValheim
 
         void Slam(Player player)
         {
-            slamAt = -1f;
+            slamAt = shockAt = -1f;
             nextSlam = Time.time + Random.Range(13f, 18f);
             if (slamGlow != null) Destroy(slamGlow.gameObject);
             if (ai != null && !yielded) ai.enabled = true;

@@ -178,8 +178,8 @@ namespace IslandsOfValheim
 
         // ---- the hall's trophies, banners and mead ----
 
-        // The great foes, in the order they're met, each with the world's key that says it's been beaten
-        // (ValhallaSky shows a trophy only once that key is set: the hall honours what this world has done).
+        // The great foes, in the order they're met (all of them, whatever this world has beaten: they're the
+        // hall's, not the player's). (The game has no trophy of the Deep North's king: his stand isn't put up.)
         static readonly string[,] Trophies =
         {
             { "TrophyEikthyr", "defeated_eikthyr" }, { "TrophyTheElder", "defeated_gdking" }, { "TrophyBonemass", "defeated_bonemass" },
@@ -194,6 +194,9 @@ namespace IslandsOfValheim
         static void Trophy(int k, float inner, float side, float y, float z)
         {
             if (k >= Trophies.GetLength(0)) return;
+            GameObject item = PrefabManager.Instance.GetPrefab(Trophies[k, 0]);
+            Transform look = item != null ? item.transform.Find("attach") : null;
+            if (look == null) { Plugin.Debug("Valhalla: no trophy " + Trophies[k, 0]); return; }
             Transform attach = null;
             Vector3 at = new Vector3(inner - side * 0.06f, y, z);
             GameObject stand = SkyProp("itemstand", at, Vector3.zero, false, go =>
@@ -210,9 +213,6 @@ namespace IslandsOfValheim
                 stand.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * stand.transform.localRotation;
                 Put(stand, at, false);
             }
-            GameObject item = PrefabManager.Instance.GetPrefab(Trophies[k, 0]);
-            Transform look = item != null ? item.transform.Find("attach") : null;
-            if (look == null) { Plugin.Debug("Valhalla: no trophy " + Trophies[k, 0]); return; }
             Transform holder = attach != null ? attach : stand.transform;
             GameObject trophy = Object.Instantiate(look.gameObject, holder, false);
             trophy.transform.localPosition = attach != null ? look.localPosition : new Vector3(0f, 0f, 0.15f);
@@ -241,13 +241,14 @@ namespace IslandsOfValheim
             banner.transform.localPosition += new Vector3(inner - back, 0f, 0f);
         }
 
-        // Mead: a fermenter in each of the hall's back corners, beside the throne's dais, and barrels by the door.
+        // Mead: a fermenter in each of the hall's back corners, beside the throne's dais (behind the last
+        // trophies, clear of them: the Queen's, as wide as she is, sat in one), and barrels by the door.
         static void Mead(float floorTop)
         {
             foreach (float side in new[] { -1f, 1f })
             {
                 string fermenter = First("fermenter");
-                if (fermenter != null) SkyProp(fermenter, new Vector3(side * 6.1f, floorTop, HallEnd - 3.5f), new Vector3(0f, side > 0f ? -90f : 90f, 0f));
+                if (fermenter != null) SkyProp(fermenter, new Vector3(side * 5.3f, floorTop, HallEnd - 1f), new Vector3(0f, side > 0f ? -90f : 90f, 0f));
                 string barrel = First("barrell", "piece_barrel", "piece_chest_barrel");
                 if (barrel == null) continue;
                 SkyProp(barrel, new Vector3(side * 6.6f, floorTop, HallStart + 1.6f), new Vector3(0f, side * 20f, 0f));

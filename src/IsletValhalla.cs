@@ -906,7 +906,6 @@ namespace IslandsOfValheim
                 inside = here;
                 Here = here;
                 arrivedAt = Time.time;
-                if (here) ShowTrophies();
                 Apply(here);
                 Canopy(here);
                 if (people != null) people.Show(here);
@@ -979,30 +978,6 @@ namespace IslandsOfValheim
                 lastPart = part;
                 lastWeather = weather;
             }
-        }
-
-        // ---- the hall's trophies: only of the foes this world has beaten ----
-
-        List<KeyValuePair<GameObject, string>> trophies;
-
-        void ShowTrophies()
-        {
-            if (trophies == null)
-            {
-                trophies = new List<KeyValuePair<GameObject, string>>();
-                foreach (Transform t in GetComponentsInChildren<Transform>(true))
-                    if (t.name.StartsWith(IsletBuilder.TrophyMark))
-                        trophies.Add(new KeyValuePair<GameObject, string>(t.gameObject, t.name.Substring(IsletBuilder.TrophyMark.Length)));
-            }
-            if (ZoneSystem.instance == null) return;
-            int shown = 0;
-            foreach (KeyValuePair<GameObject, string> t in trophies)
-            {
-                bool beaten = ZoneSystem.instance.GetGlobalKey(t.Value);
-                if (t.Key != null) t.Key.SetActive(beaten);
-                if (beaten) shown++;
-            }
-            Plugin.Debug("Valhalla: " + shown + " of " + trophies.Count + " trophies in the hall");
         }
 
         // ---- nothing built, nothing broken ----
