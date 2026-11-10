@@ -631,7 +631,7 @@ namespace IslandsOfValheim
             if (fishCaught < FishAtMost && Random.value >= FishChance) return;
             fishCaught = 0;
             string name = Hand(player, Piece2);
-            if (name != null) player.Message(MessageHud.MessageType.Center, Texts.Get("iov_story_swallowed", name), 0, null, false);
+            if (name != null) IsletFishing.Say(player, Texts.Get("iov_story_swallowed", name));
             Plugin.Debug("Story: the fish had Sigrún's fragment");
         }
 
