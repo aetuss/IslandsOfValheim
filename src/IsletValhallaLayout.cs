@@ -963,8 +963,8 @@ namespace IslandsOfValheim
         static readonly string[] RunesOut = { "$iov_rune_out1", "$iov_rune_out2", "$iov_rune_out3", "$iov_rune_out4" };
 
         // Which way a rune stone's carved face looks, along its thin side: +1 or -1 (set by what's seen in the
-        // game: the carving is on one face only).
-        const float RuneFace = 1f;
+        // game: the carving is on one face only; +1 turned the carvings the wrong way round).
+        const float RuneFace = -1f;
 
         // A rune stone turned so its carved face looks along look, and set back on its foot.
         static void FaceRune(GameObject stone, Vector3 look, Vector3 foot)

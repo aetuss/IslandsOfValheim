@@ -137,16 +137,20 @@ namespace IslandsOfValheim
             Walk(Warrior(n++, true), Solid, 1.3f, 4f, false, new Vector2(0.9f, -57f), new Vector2(0.9f, -3f));
             Walk(Warrior(n++, false), Solid, 1.2f, 0f, true, Circle(Ring, 14.5f, 16, 0f));
             Walk(Warrior(n++, true), Solid, 1.25f, 5f, false, new Vector2(Yard.x - 8f, Yard.y + 5.8f), new Vector2(Yard.x + 8f, Yard.y + 5.8f));
-            Walk(Warrior(n++, false), Solid, 1.2f, 6f, false, new Vector2(-1.5f, 43.5f), new Vector2(-1.2f, 51f));
+            // (one went to and fro behind the hall, before the Allfather's seat: now between the hall's west
+            // side and the Brim Folk's feast, clear of the birches there)
+            Walk(Warrior(n++, false), Solid, 1.2f, 6f, false, new Vector2(-14f, 26f), new Vector2(-27f, 20f));
             yield return null;
 
-            // The guard: Einherjar in gold-red flametal with polearms, alike as a guard is. Two at the gate, two
-            // at the hall's door, four round Hliðskjálf's foot looking out (they speak up if you come too close
-            // to the Allfather), and two who walk their rounds: round the hall, round the high seat.
-            float high = IsletBuilder.LookoutZ, gate = IsletBuilder.ValhallaGateZ;
+            // The guard: Einherjar in gold-red flametal with polearms, alike as a guard is. Four on the landing's
+            // side slabs facing the way, two at the hall's door, four round Hliðskjálf's foot looking out (they
+            // speak up if you come too close to the Allfather), and two who walk their rounds: round the hall,
+            // round the high seat.
+            float high = IsletBuilder.LookoutZ, land = IsletBuilder.ValhallaArrival.z;
             int g = 0;
-            foreach (float x in new[] { -3.6f, 3.6f })
-                Speaks(Stand(Guard(g++), new Vector3(x, 0f, gate + 2.5f), Vector3.forward, 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
+            foreach (float z in new[] { land - 2f, land + 2f })
+                foreach (float x in new[] { -3.2f, 3.2f })
+                    Speaks(Stand(Guard(g++), new Vector3(x, 0f, z), new Vector3(-x, 0f, 0f), 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             foreach (float x in new[] { -5.2f, 5.2f })
                 Speaks(Stand(Guard(g++), new Vector3(x, 0f, 2.2f), Vector3.back, 3f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             foreach (float x in new[] { -8.2f, 8.2f })
