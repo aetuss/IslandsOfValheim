@@ -109,9 +109,9 @@ namespace IslandsOfValheim
             if (Vector3.Distance(player.transform.position, highSeat) > 5.5f) return;
             ValhallaSpeaker nearest = null;
             float best = float.MaxValue;
-            foreach (ValhallaSpeaker s in FindObjectsOfType<ValhallaSpeaker>())
+            foreach (ValhallaSpeaker s in all)
             {
-                if (s.who != HighSeatGuard) continue;
+                if (s == null || s.who != HighSeatGuard) continue;
                 float d = Vector3.Distance(s.transform.position, player.transform.position);
                 if (d < best) { best = d; nearest = s; }
             }
@@ -138,9 +138,16 @@ namespace IslandsOfValheim
         // A line from whichever of them is the one (the ring's master, as the bouts end).
         internal static void Shout(int one, string line)
         {
-            foreach (ValhallaSpeaker s in FindObjectsOfType<ValhallaSpeaker>())
-                if (s.who == one) { s.Say(line); return; }
+            foreach (ValhallaSpeaker s in all)
+                if (s != null && s.who == one) { s.Say(line); return; }
         }
+
+        // Everyone who speaks, kept as they come and go (looking them up across the whole scene, as the
+        // high seat's guards did all at once when you came close, made the game catch for a moment).
+        static readonly System.Collections.Generic.List<ValhallaSpeaker> all = new System.Collections.Generic.List<ValhallaSpeaker>();
+
+        void OnEnable() { if (!all.Contains(this)) all.Add(this); }
+        void OnDisable() { all.Remove(this); }
 
         void Say(string line)
         {

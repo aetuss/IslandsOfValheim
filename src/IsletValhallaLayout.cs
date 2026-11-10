@@ -178,13 +178,16 @@ namespace IslandsOfValheim
 
         // ---- the hall's trophies, banners and mead ----
 
-        // The great foes, in the order they're met (all of them, whatever this world has beaten: they're the
-        // hall's, not the player's). (The game has no trophy of the Deep North's king: his stand isn't put up.)
-        static readonly string[,] Trophies =
+        // The einherjar's hunting trophies, in pairs across the hall (left, right), from the door end to the
+        // throne: the hart and the boar, the wolf and the fenring, the troll and the lox, the sea serpent and
+        // the abomination. (The bosses' were seven, one side short, and too big for the hall.) The first of
+        // each list the game has.
+        static readonly string[][] Trophies =
         {
-            { "TrophyEikthyr", "defeated_eikthyr" }, { "TrophyTheElder", "defeated_gdking" }, { "TrophyBonemass", "defeated_bonemass" },
-            { "TrophyDragonQueen", "defeated_dragon" }, { "TrophyGoblinKing", "defeated_goblinking" }, { "TrophySeekerQueen", "defeated_queen" },
-            { "TrophyFader", "defeated_fader" }, { "TrophyFrozenKing", "defeated_frozenking" },
+            new[] { "TrophyDeer" }, new[] { "TrophyBoar" },
+            new[] { "TrophyWolf" }, new[] { "TrophyFenring", "TrophyWolf" },
+            new[] { "TrophyFrostTroll", "TrophyTroll" }, new[] { "TrophyLox" },
+            new[] { "TrophySerpent" }, new[] { "TrophyAbomination", "TrophyLox" },
         };
         internal const string TrophyMark = "IoV_Trophy:";
 
@@ -193,10 +196,17 @@ namespace IslandsOfValheim
         // point); the trophy's object named for its key.
         static void Trophy(int k, float inner, float side, float y, float z)
         {
-            if (k >= Trophies.GetLength(0)) return;
-            GameObject item = PrefabManager.Instance.GetPrefab(Trophies[k, 0]);
-            Transform look = item != null ? item.transform.Find("attach") : null;
-            if (look == null) { Plugin.Debug("Valhalla: no trophy " + Trophies[k, 0]); return; }
+            if (k >= Trophies.Length) return;
+            Transform look = null;
+            string kind = "";
+            foreach (string name in Trophies[k])
+            {
+                GameObject item = PrefabManager.Instance.GetPrefab(name);
+                look = item != null ? item.transform.Find("attach") : null;
+                kind = name;
+                if (look != null) break;
+            }
+            if (look == null) { Plugin.Debug("Valhalla: no trophy of " + string.Join(", ", Trophies[k])); return; }
             Transform attach = null;
             Vector3 at = new Vector3(inner - side * 0.06f, y, z);
             GameObject stand = SkyProp("itemstand", at, Vector3.zero, false, go =>
@@ -219,7 +229,7 @@ namespace IslandsOfValheim
             trophy.transform.localRotation = look.localRotation;
             trophy.transform.localScale = look.localScale;
             Strip(trophy);
-            trophy.name = TrophyMark + Trophies[k, 1];
+            trophy.name = TrophyMark + kind;
             built++;
         }
 

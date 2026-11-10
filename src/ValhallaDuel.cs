@@ -135,6 +135,7 @@ namespace IslandsOfValheim
             yielded = true;
             yieldedAt = Time.time;
             if (slamGlow != null) Destroy(slamGlow.gameObject); // (beaten mid-blow)
+            if (ring != null) Destroy(ring.gameObject);
             slamAt = shockAt = -1f;
             if (ai != null)
             {
@@ -160,6 +161,8 @@ namespace IslandsOfValheim
         const float SlamWindUp = 1.4f, SlamReach = 5f, SlamLands = 0.6f;
         float nextSlam = -1f, slamAt = -1f, shockAt = -1f;
         Light slamGlow;
+        Vector3 slamCentre;
+        SlamRing ring;
 
         void Champion()
         {
@@ -198,6 +201,10 @@ namespace IslandsOfValheim
             Vector3 face = player.transform.position - transform.position;
             face.y = 0f;
             if (face.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(face);
+            // where it'll land, and how far it reaches: a ring of gold on the ground, brightening (out of it,
+            // and you're safe)
+            slamCentre = transform.position + transform.forward * 1.2f;
+            ring = SlamRing.Make(slamCentre, SlamReach, SlamWindUp + SlamLands);
             Emote("emote_challenge");
             GameObject light = new GameObject("IoV_SlamGlow");
             light.transform.SetParent(transform, false);
@@ -219,9 +226,13 @@ namespace IslandsOfValheim
             nextSlam = Time.time + Random.Range(13f, 18f);
             if (slamGlow != null) Destroy(slamGlow.gameObject);
             if (ai != null && !yielded) ai.enabled = true;
-            Vector3 centre = transform.position + transform.forward * 1.2f;
+            Vector3 centre = slamCentre;
             EffectList hit = SledgeEffects(false);
             if (hit != null) hit.Create(centre, Quaternion.identity);
+            // the ring bursts out from where it struck, and the ground shakes
+            if (ring != null) ring.Burst();
+            ring = null;
+            if (GameCamera.instance != null) GameCamera.instance.AddShake(centre, 20f, 2.5f, false);
             Vector3 away = player.transform.position - centre;
             away.y = 0f;
             if (away.magnitude > SlamReach) return;
@@ -309,6 +320,82 @@ namespace IslandsOfValheim
                 }
                 return true;
             }
+        }
+    }
+
+    // Starkaðr's slam made plain: a ring on the ground as far as it reaches, gold and brightening as he winds
+    // up (turning fiery as it comes), then, as it lands, a wave bursting out from the middle past the ring's
+    // edge and fading. Only on this client (it's the duelling player who needs to see it).
+    class SlamRing : MonoBehaviour
+    {
+        const int Points = 72;
+        const float BurstTime = 0.4f;
+        LineRenderer line;
+        Vector3 centre;
+        float radius, born, windup, burstAt = -1f;
+        static Material material;
+
+        internal static SlamRing Make(Vector3 centre, float radius, float windup)
+        {
+            GameObject go = new GameObject("IoV_SlamRing");
+            SlamRing ring = go.AddComponent<SlamRing>();
+            ring.centre = centre;
+            ring.radius = radius;
+            ring.windup = windup;
+            ring.born = Time.time;
+            ring.line = go.AddComponent<LineRenderer>();
+            ring.line.useWorldSpace = true;
+            ring.line.loop = true;
+            ring.line.positionCount = Points;
+            ring.line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            ring.line.receiveShadows = false;
+            if (material == null)
+            {
+                Shader shader = null;
+                foreach (string name in new[] { "Sprites/Default", "Legacy Shaders/Particles/Additive", "Unlit/Transparent" })
+                    if ((shader = Shader.Find(name)) != null) break;
+                if (shader != null) material = new Material(shader);
+            }
+            if (material != null) ring.line.sharedMaterial = material;
+            ring.Draw(radius, 0.12f, new Color(1f, 0.8f, 0.3f, 0.3f));
+            return ring;
+        }
+
+        internal void Burst() { burstAt = Time.time; }
+
+        // A circle on the ground: each point dropped onto whatever's under it.
+        void Draw(float r, float width, Color colour)
+        {
+            line.startWidth = line.endWidth = width;
+            line.startColor = line.endColor = colour;
+            for (int i = 0; i < Points; i++)
+            {
+                float a = i * Mathf.PI * 2f / Points;
+                Vector3 p = centre + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                RaycastHit hit;
+                if (Physics.Raycast(p + Vector3.up * 2f, Vector3.down, out hit, 5f, LayerMask.GetMask("Default", "static_solid", "piece", "terrain"), QueryTriggerInteraction.Ignore))
+                    p.y = hit.point.y;
+                line.SetPosition(i, p + Vector3.up * 0.06f);
+            }
+        }
+
+        void Update()
+        {
+            if (burstAt < 0f)
+            {
+                // winding up: brighter and thicker, pulsing, gold going to fire
+                float k = Mathf.Clamp01((Time.time - born) / windup);
+                float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * (6f + 14f * k));
+                Color c = Color.Lerp(new Color(1f, 0.82f, 0.3f), new Color(1f, 0.35f, 0.1f), k);
+                c.a = Mathf.Lerp(0.3f, 0.95f, k) * pulse;
+                Draw(radius, Mathf.Lerp(0.1f, 0.22f, k), c);
+                if (Time.time - born > windup + 1f) Destroy(gameObject); // (never struck: gone all the same)
+                return;
+            }
+            float t = (Time.time - burstAt) / BurstTime;
+            if (t >= 1f) { Destroy(gameObject); return; }
+            Color wave = new Color(1f, 0.75f, 0.35f, 1f - t);
+            Draw(Mathf.Lerp(0.6f, radius * 1.15f, t), Mathf.Lerp(0.5f, 0.15f, t), wave);
         }
     }
 
