@@ -65,6 +65,8 @@ namespace IslandsOfValheim
             everyone.Clear();
             moves.Clear();
             voices.Clear();
+            captains.Clear();
+            captainSeats.Clear();
             ringPair = null;
             ringCleared = false;
             ringHomeKnown[0] = ringHomeKnown[1] = false;
@@ -102,6 +104,7 @@ namespace IslandsOfValheim
             // Sævar, waiting at his own people's table (the Brim Folk's, under the golden birches to the west):
             // at its head, between the two rows, looking out towards the way you come by.
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
+            CaptainsAtTable();
             yield return null;
 
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
@@ -315,7 +318,7 @@ namespace IslandsOfValheim
 
         // A seat's own place (a bench's, a throne's: the game's Chair, read off the piece's prefab, since the
         // rock's copies have had their workings taken out), slid along the seat for a second sitter.
-        SpiritHuman Seat(SpiritHuman.Look look, Transform piece, float along, string right = "")
+        SpiritHuman Seat(SpiritHuman.Look look, Transform piece, float along, string right = "", int ghost = SpiritHuman.Solid)
         {
             if (piece == null) return null;
             GameObject prefab = PrefabManager.Instance.GetPrefab(Clean(piece.name));
@@ -331,7 +334,90 @@ namespace IslandsOfValheim
                 Vector3 axis = size.size.x >= size.size.z ? Vector3.right : Vector3.forward;
                 at += axis * along;
             }
-            return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, Solid, transform, at, piece.rotation * turn, right));
+            return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, ghost, transform, at, piece.rotation * turn, right));
+        }
+
+        // ---- the tale's captains at the Brim Folk's table (T2: TaleCaptains) ----
+
+        readonly Dictionary<string, SpiritHuman> captains = new Dictionary<string, SpiritHuman>();
+        readonly Dictionary<string, KeyValuePair<Transform, float>> captainSeats = new Dictionary<string, KeyValuePair<Transform, float>>();
+
+        // On the two inner benches of the table nearest Sævar, two to a bench: Ketill and Sigrún, Ormr and his
+        // son Grímr. Ghosts until freed (you can still talk to them: a body to point at, nothing to bump into but
+        // that).
+        void CaptainsAtTable()
+        {
+            if (!TaleCaptains.Begun) return;
+            List<Transform> benches = new List<Transform>();
+            foreach (Transform bench in Children("piece_bench01"))
+            {
+                Vector3 p = bench.localPosition;
+                if (Mathf.Abs(p.x - Feast.x) < 3.5f && Mathf.Abs(p.z - (Feast.y - 6f)) < 1.5f) benches.Add(bench);
+            }
+            benches.Sort((a, b) => a.localPosition.x.CompareTo(b.localPosition.x));
+            if (benches.Count < 2) { Plugin.Debug("Valhalla: no benches for the captains (" + benches.Count + ")"); return; }
+            captainSeats[TaleCaptains.Ketill] = new KeyValuePair<Transform, float>(benches[0], -0.55f);
+            captainSeats[TaleCaptains.Sigrun] = new KeyValuePair<Transform, float>(benches[0], 0.55f);
+            captainSeats[TaleCaptains.Ormr] = new KeyValuePair<Transform, float>(benches[1], -0.55f);
+            captainSeats[TaleCaptains.Grimr] = new KeyValuePair<Transform, float>(benches[1], 0.55f);
+            foreach (string id in TaleCaptains.All) Captain(id);
+        }
+
+        // The duels just won, here: they come to the table now, each in a column of light.
+        internal void CaptainsArrive()
+        {
+            if (captains.Count > 0 || made.Count == 0) return;
+            CaptainsAtTable();
+            foreach (SpiritHuman c in captains.Values) if (c != null) LightBeam.Over(c.transform.position, 3.4f, 1.6f, 0.4f, 2.4f, true);
+        }
+
+        void Captain(string id)
+        {
+            KeyValuePair<Transform, float> seat;
+            if (!captainSeats.TryGetValue(id, out seat)) return;
+            bool free = TaleCaptains.Freed(id);
+            SpiritHuman person = Seat(CaptainLook(id), seat.Key, seat.Value, "", free ? Solid : SpiritHuman.GhostSoft);
+            if (person == null) return;
+            if (!free)
+            {
+                CapsuleCollider body = person.gameObject.AddComponent<CapsuleCollider>();
+                body.center = new Vector3(0f, 0.45f, 0.1f);
+                body.height = 1.3f;
+                body.radius = 0.33f;
+                person.gameObject.layer = LayerMask.NameToLayer("character");
+            }
+            Speaks(person, ValhallaSpeaker.Captain, 1.7f);
+            ValhallaSpeaker speaker = person.GetComponent<ValhallaSpeaker>();
+            if (speaker != null) speaker.captain = id;
+            captains[id] = person;
+        }
+
+        // Freed while you watch: the ghost goes in a column of light, and in its place sits the man.
+        internal void FreeCaptain(string id)
+        {
+            SpiritHuman ghost;
+            if (!captains.TryGetValue(id, out ghost) || ghost == null) return;
+            LightBeam.Over(ghost.transform.position, 3.4f, 1.6f, 0.6f, 2.4f, true);
+            made.Remove(ghost.gameObject);
+            everyone.Remove(ghost);
+            Destroy(ghost.gameObject);
+            captains.Remove(id);
+            Captain(id);
+        }
+
+        static SpiritHuman.Look CaptainLook(string id)
+        {
+            switch (id)
+            {
+                case TaleCaptains.Ketill:
+                    return new SpiritHuman.Look { Hair = "Hair2", Beard = "Beard9", HairColor = new Vector3(0.35f, 0.24f, 0.15f), Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
+                case TaleCaptains.Sigrun:
+                    return new SpiritHuman.Look { Model = 1, Hair = "Hair16", HairColor = new Vector3(0.85f, 0.7f, 0.45f), Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = "CapeLinen" };
+                case TaleCaptains.Ormr:
+                    return new SpiritHuman.Look { Hair = "Hair6", Beard = "Beard12", HairColor = new Vector3(0.55f, 0.53f, 0.5f), Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = "CapeWolf" };
+                default:
+                    return new SpiritHuman.Look { Hair = "Hair1", Beard = "Beard2", HairColor = new Vector3(0.3f, 0.22f, 0.15f), Chest = "ArmorWolfChest", Legs = "ArmorWolfLegs", Shoulder = "CapeWolf" };
+            }
         }
 
         SpiritHuman Stand(SpiritHuman.Look look, Vector3 local, Vector3 facing, float from, string right = "", string left = "")

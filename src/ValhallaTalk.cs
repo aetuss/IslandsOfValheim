@@ -11,7 +11,8 @@ namespace IslandsOfValheim
     class ValhallaSpeaker : MonoBehaviour, Hoverable, Interactable
     {
         internal const string WelcomedKey = "iovvalhallawelcomed";
-        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5;
+        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5, Captain = 6;
+        internal string captain = ""; // which of the tale's captains (TaleCaptains), for Captain
 
         // Hliðskjálf's seat (world), and when its guards last spoke up about it
         internal static Vector3 highSeat;
@@ -27,7 +28,14 @@ namespace IslandsOfValheim
 
         static readonly string[] BragiTalk = { "$iov_bragi_talk1", "$iov_bragi_talk2", "$iov_bragi_talk3" };
 
-        string Name { get { return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard"; } }
+        string Name
+        {
+            get
+            {
+                if (who == Captain) return TaleCaptains.Of(captain).Name;
+                return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
+            }
+        }
 
         public string GetHoverText()
         {
@@ -45,6 +53,19 @@ namespace IslandsOfValheim
         {
             Player player = user as Player;
             if (hold || player == null || player != Player.m_localPlayer || who == Odin) return false;
+            if (who == Captain)
+            {
+                string free;
+                string line = TaleCaptains.Talk(player, captain, out free);
+                if (free != null) TaleCaptains.Free(free);
+                // (freed himself, he's a new body at the table: that one speaks)
+                ValhallaSpeaker speaking = this;
+                if (free == captain)
+                    foreach (ValhallaSpeaker s in all)
+                        if (s != null && s != this && s.who == Captain && s.captain == captain) speaking = s;
+                speaking.Say(line);
+                return true;
+            }
             if (who == RingMaster)
             {
                 // Sævar sends you here; then the ring is yours whenever you like (again after you've won)
@@ -77,8 +98,8 @@ namespace IslandsOfValheim
                 return true;
             }
             player.AddKnownText("$iov_lore_scattered", "$iov_lore_scattered_text"); // (a page lost is found again)
-            // to the ring; once you've won there, on to what his captains left undone (the next task)
-            Say(Story.Key(ValhallaDuel.WonKey) ? "$iov_valsaevar_won" : "$iov_valsaevar_ring");
+            // to the ring; once you've won there, to his captains at the table (T2); all of them freed, onward
+            Say(!Story.Key(ValhallaDuel.WonKey) ? "$iov_valsaevar_ring" : TaleCaptains.AllFreed ? "$iov_valsaevar_t2done" : "$iov_valsaevar_won");
             return true;
         }
 

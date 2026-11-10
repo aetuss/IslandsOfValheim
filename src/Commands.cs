@@ -65,6 +65,16 @@ namespace IslandsOfValheim
                 }, true);
 
 #if IOV_DEV
+            new Terminal.ConsoleCommand("iov_t2",
+                "[found|free|reset] [ketill|sigrun|ormr|grimr|all] - IslandsOfValheim (development): the captains' task: mark a captain's deed done on his islet (found), free him at the table (free), or undo it all (reset)",
+                args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    string who = args.Length > 2 ? args[2].ToLowerInvariant() : "all";
+                    if (what != "found" && what != "free" && what != "reset") { args.Context.AddString("iov_t2 found|free|reset ketill|sigrun|ormr|grimr|all"); return; }
+                    TaleCaptains.Dev(what, who, args.Context);
+                }, true);
+
             new Terminal.ConsoleCommand("iov_duel",
                 "[start|stop|round 1-3|reset] - IslandsOfValheim (development): the einherjar's duels in Valhalla's ring: start (or from a given round), stop, or reset (as if never won)",
                 args =>

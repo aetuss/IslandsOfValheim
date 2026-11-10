@@ -131,6 +131,7 @@ namespace IslandsOfValheim
             CourtyardGuardsAndChest(floor, new Vector3(-0.6f, floor, 3.4f), 180f);
             PlaceNetworked(Story.KetillSpawner, new Vector3(0f, floor + 0.2f, -1.6f), 0f);
             Graves();
+            HrafnsStone(); // T2: the stone Ketill never raised (TaleCaptainsIslets)
             RidgeGuard();
             PlaceWreck(cliffDeg + 194f);
             PlaceDock(cliffDeg + 140f);

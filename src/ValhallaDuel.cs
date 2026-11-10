@@ -451,6 +451,7 @@ namespace IslandsOfValheim
             Message("$iov_duel_won");
             ValhallaSpeaker.Shout(ValhallaSpeaker.RingMaster, "$iov_ringmaster_won");
             Story.Set(WonKey);
+            if (ValhallaPeople.Current != null) ValhallaPeople.Current.CaptainsArrive(); // (T2: the captains come to Sævar's table)
             endAt = Time.time + 5f;
             Plugin.Debug("Duel: won");
         }
