@@ -24,8 +24,29 @@ namespace IslandsOfValheim
         bool told;
         CallLight beam;
 
+        // The game's raven-style text sits a little low over the middle of the view; ours goes up a little while
+        // it shows, and back when it's closed (others that use it keep theirs).
+        static RectTransform raised;
+        static Vector2 raisedFrom;
+        const float RaiseBy = 60f;
+
+        static void Raise()
+        {
+            if (TextViewer.instance == null || TextViewer.instance.m_ravenRoot == null) return;
+            RectTransform panel = TextViewer.instance.m_ravenRoot.GetComponent<RectTransform>();
+            if (panel == null || raised != null) return;
+            raised = panel;
+            raisedFrom = panel.anchoredPosition;
+            panel.anchoredPosition = raisedFrom + new Vector2(0f, RaiseBy);
+        }
+
         void Update()
         {
+            if (raised != null && (TextViewer.instance == null || !TextViewer.instance.IsVisible()))
+            {
+                raised.anchoredPosition = raisedFrom;
+                raised = null;
+            }
             if (Time.time < next) return;
             next = Time.time + 1f;
             ZoneSystem zones = ZoneSystem.instance;
@@ -57,6 +78,7 @@ namespace IslandsOfValheim
                     // Hugin's tips turned off in the settings: he doesn't come at all, so his words come the way
                     // he'd show them, without him
                     TextViewer.instance.ShowText(TextViewer.Style.Raven, "$iov_call_topic", "$iov_call_text", false);
+                    Raise();
                     player.SetSeenTutorial(CallKey);
                     Plugin.Debug("Odin's call: shown without Hugin (his tips are off)");
                 }
