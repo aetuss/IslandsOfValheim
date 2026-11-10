@@ -676,7 +676,10 @@ namespace IslandsOfValheim
             {
                 float a = i * Mathf.PI * 2f / 10f;
                 Vector3 at = new Vector3(DuelRing.x + Mathf.Cos(a) * DuelRadius, 0f, DuelRing.y + Mathf.Sin(a) * DuelRadius);
-                SkyProp("blackmarble_column_3", at, new Vector3(0f, -a * Mathf.Rad2Deg, 0f));
+                GameObject column = SkyProp("blackmarble_column_3", at, new Vector3(0f, -a * Mathf.Rad2Deg, 0f));
+                // a standing blue brazier on its top, as on the memorial path's pillars
+                if (column != null)
+                    Lamp("piece_brazierfloor02", "MountainKit_brazier_blue", new Vector3(at.x, SkyBounds(column).max.y, at.z));
             }
             // cold blue fire round the ring, between the columns
             for (int i = 0; i < 5; i++)
