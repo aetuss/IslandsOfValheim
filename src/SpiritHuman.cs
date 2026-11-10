@@ -148,6 +148,7 @@ namespace IslandsOfValheim
         void Update()
         {
             Land();
+            Clanging();
             if (animator == null || !animator.enabled) { if (ghost == Solid) return; }
             else
             {
@@ -242,6 +243,24 @@ namespace IslandsOfValheim
 
         float swingLands = -1f;
         SpiritHuman swingGuard;
+
+        // Weapon knocked on shield, a moment from now (one watching a duel, cheering it on): the shield's own
+        // sound when it's struck.
+        internal void Clang(float after)
+        {
+            if (!Near) return;
+            clangAt = Time.time + after;
+        }
+
+        float clangAt = -1f;
+
+        void Clanging()
+        {
+            if (clangAt < 0f || Time.time < clangAt) return;
+            clangAt = -1f;
+            ItemDrop.ItemData.SharedData own = leftShared ?? rightShared;
+            if (own != null) Sound(own.m_blockEffect, transform.position + Vector3.up * 1.2f + transform.forward * 0.4f);
+        }
 
         void Land()
         {

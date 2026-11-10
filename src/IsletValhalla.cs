@@ -710,6 +710,7 @@ namespace IslandsOfValheim
             }
             Grass();
             people = gameObject.AddComponent<ValhallaPeople>();
+            gameObject.AddComponent<ValhallaDuel>();
             if (Plugin.DebugLog.Value)
             {
                 Light[] lights = GetComponentsInChildren<Light>(true);
@@ -941,6 +942,7 @@ namespace IslandsOfValheim
             }
             else
             {
+                if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
                 LightAllWayLamps();
                 MusicOff();
                 env.SetForceEnvironment("");
@@ -1137,6 +1139,8 @@ namespace IslandsOfValheim
             }
             lastTimeOfDay = timeOfDay;
             if (want == null) want = timeOfDay == "night" ? NightMusic : timeOfDay == "dusk" ? DuskMusic : DayMusic;
+            // a bout in the ring: its fighting music over everything
+            if (ValhallaDuel.Music != null) { want = ValhallaDuel.Music; call = null; }
 
             if (call != null && want != HallMusic && want != FeastMusic) Play(call, null);           // dawn's or dusk's call, once
             else if (want != playlist && !(playlist == null && playing != null && Time.time < playingUntil)) Play(Next(want), want);
@@ -1196,7 +1200,7 @@ namespace IslandsOfValheim
             {
                 savedFade = fade.GetValue<float>();
                 fade.SetValue(Mathf.Max(savedFade, Fade));
-                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, new[] { "morning", "evening" } })
+                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, new[] { "morning", "evening" }, ValhallaDuel.BoutMusic, ValhallaDuel.ChampionMusic })
                     foreach (string name in list)
                     {
                         MusicMan.NamedMusic piece = Piece(name);

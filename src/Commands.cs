@@ -65,6 +65,21 @@ namespace IslandsOfValheim
                 }, true);
 
 #if IOV_DEV
+            new Terminal.ConsoleCommand("iov_duel",
+                "[start|stop|round 1-3|reset] - IslandsOfValheim (development): the einherjar's duels in Valhalla's ring: start (or from a given round), stop, or reset (as if never won)",
+                args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    ValhallaDuel duel = ValhallaDuel.Current;
+                    if (what == "reset") { if (ZoneSystem.instance != null) ZoneSystem.instance.RemoveGlobalKey(ValhallaDuel.WonKey); args.Context.AddString("The duels are not won yet."); return; }
+                    if (duel == null) { args.Context.AddString("Not in Valhalla."); return; }
+                    if (what == "stop") { duel.Stop(); args.Context.AddString("Duel stopped."); return; }
+                    int from = 1;
+                    if (what == "round" && args.Length > 2) int.TryParse(args[2], out from);
+                    if (what == "start" || what == "round") { duel.Begin(from); args.Context.AddString("Duel from round " + Mathf.Clamp(from, 1, 3) + ": into the ring!"); return; }
+                    args.Context.AddString("iov_duel start | stop | round 1-3 | reset");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_call",
                 "[now|reset] - IslandsOfValheim (development): now: Odin's call comes at once (the gate wakes, Hugin comes, the light stands over the harbour), tale or not; reset: as if Sævar's tale had just ended",
                 args =>

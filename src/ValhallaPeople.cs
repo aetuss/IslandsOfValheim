@@ -139,12 +139,15 @@ namespace IslandsOfValheim
             // a round one, as the trainers' stand right)
             SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldBanded");
             SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
-            if (one != null && other != null) actors.Add(new Actor { who = one, partner = other, kind = Duel });
+            if (one != null && other != null) { ringPair = new Actor { who = one, partner = other, kind = Duel }; actors.Add(ringPair); }
             foreach (float deg in new[] { 205f, 240f, 300f })
             {
                 float a = deg * Mathf.Deg2Rad;
                 Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                Act(Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f, Watching[(int)(deg / 10f) % Watching.Length], "ShieldWood"), Watcher, deg * 0.05f);
+                SpiritHuman watcher = Stand(Warrior(n++, deg != 240f), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f, Watching[(int)(deg / 10f) % Watching.Length], "ShieldWood");
+                Act(watcher, Watcher, deg * 0.05f);
+                // the one in the middle keeps the ring: talk to him to challenge the einherjar
+                if (deg == 240f) Speaks(watcher, ValhallaSpeaker.RingMaster, 2.3f);
             }
             yield return null;
 
@@ -342,6 +345,56 @@ namespace IslandsOfValheim
 
         readonly List<Actor> actors = new List<Actor>();
         readonly List<SpiritHuman> everyone = new List<SpiritHuman>();
+
+        // ---- the ring, while you duel in it ----
+
+        Actor ringPair;                       // the two who spar in the ring
+        readonly Vector3[] ringHome = new Vector3[2];
+        readonly Quaternion[] ringTurn = new Quaternion[2];
+        bool ringCleared;
+
+        // The two sparring step out to the ring's edge and watch with the rest; afterwards back to it.
+        internal void RingCleared(bool clear)
+        {
+            if (ringPair == null || clear == ringCleared) return;
+            ringCleared = clear;
+            SpiritHuman[] two = { ringPair.who, ringPair.partner };
+            float[] degrees = { 160f, 340f };
+            for (int i = 0; i < 2; i++)
+            {
+                if (two[i] == null) continue;
+                two[i].blocking = false;
+                if (clear)
+                {
+                    ringHome[i] = two[i].transform.position;
+                    ringTurn[i] = two[i].transform.rotation;
+                    float a = degrees[i] * Mathf.Deg2Rad;
+                    Vector3 local = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
+                    local.y = Ground(local.x, local.z, 4f);
+                    Vector3 facing = new Vector3(Ring.x - local.x, 0f, Ring.y - local.z);
+                    two[i].transform.position = transform.TransformPoint(local);
+                    two[i].transform.rotation = transform.rotation * Quaternion.LookRotation(facing.normalized);
+                }
+                else
+                {
+                    two[i].transform.position = ringHome[i];
+                    two[i].transform.rotation = ringTurn[i];
+                }
+            }
+            ringPair.kind = clear ? Watcher : Duel;
+        }
+
+        // A blow landed in the ring: some of those watching knock weapon on shield.
+        internal void Cheer()
+        {
+            Vector3 ring = transform.TransformPoint(new Vector3(Ring.x, 0f, Ring.y));
+            foreach (Actor a in actors)
+            {
+                if (a.kind != Watcher || a.who == null || Random.value < 0.4f) continue;
+                if (Utils.DistanceXZ(a.who.transform.position, ring) < 16f) a.who.Clang(Random.Range(0f, 0.35f));
+                if (a.partner != null && Utils.DistanceXZ(a.partner.transform.position, ring) < 16f) a.partner.Clang(Random.Range(0f, 0.35f));
+            }
+        }
 
         void Act(SpiritHuman who, int kind, float offset)
         {

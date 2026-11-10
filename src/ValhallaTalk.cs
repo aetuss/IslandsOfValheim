@@ -11,7 +11,7 @@ namespace IslandsOfValheim
     class ValhallaSpeaker : MonoBehaviour, Hoverable, Interactable
     {
         internal const string WelcomedKey = "iovvalhallawelcomed";
-        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4;
+        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5;
 
         // Hliðskjálf's seat (world), and when its guards last spoke up about it
         internal static Vector3 highSeat;
@@ -27,11 +27,13 @@ namespace IslandsOfValheim
 
         static readonly string[] BragiTalk = { "$iov_bragi_talk1", "$iov_bragi_talk2", "$iov_bragi_talk3" };
 
-        string Name { get { return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : "$iov_guard"; } }
+        string Name { get { return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard"; } }
 
         public string GetHoverText()
         {
             if (who == Odin) return Localization.instance.Localize(Name);
+            if (who == RingMaster)
+                return Localization.instance.Localize(Name + (ValhallaDuel.Active ? "" : "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_duel_challenge"));
             return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
         }
 
@@ -43,6 +45,15 @@ namespace IslandsOfValheim
         {
             Player player = user as Player;
             if (hold || player == null || player != Player.m_localPlayer || who == Odin) return false;
+            if (who == RingMaster)
+            {
+                // Sævar sends you here; then the ring is yours whenever you like (again after you've won)
+                if (ValhallaDuel.Active || ValhallaDuel.Current == null) return false;
+                if (!Welcomed) { Say("$iov_ringmaster_wait"); return true; }
+                Say(Story.Key(ValhallaDuel.WonKey) ? "$iov_ringmaster_again" : "$iov_ringmaster_start");
+                ValhallaDuel.Current.Begin();
+                return true;
+            }
             if (who == Guard || who == HighSeatGuard)
             {
                 Say(GuardTalk[Random.Range(0, GuardTalk.Length)]);
