@@ -106,6 +106,8 @@ namespace IslandsOfValheim
             if (drops != null) drops.m_drops.Clear(); // (what it leaves comes later, with the arc's rewards)
             BossKit.Tint(go, BossKit.Cast(new Color(0.05f, 0.12f, 0.16f), 0.75f, 0.75f), 0.4f, "Hafgufa");
             Eyes(go);
+            try { HafgufaLooks.Dress(go); }
+            catch (System.Exception e) { Plugin.Log.LogWarning("Hafgufa's looks: " + e); }
             go.AddComponent<HafgufaFight>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Debug("Hafgufa made from Serpent");
