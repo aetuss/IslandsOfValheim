@@ -523,17 +523,24 @@ namespace IslandsOfValheim
                 foreach (char w in new[] { 'L', 'R' })
                     foreach (float z in new[] { -back + 3f, -back + 9.7f, back - 4.5f })
                         Sconce(w, z, 2.2f, side, back);
-                // the walls hung as Valhalla's hall is (the user found them bare): a banner high over each table's
-                // middle, and between the sconces and the banners hunting trophies on the game's item stands,
-                // across the hall from each other in pairs
+                // The walls hung as a fishing village's hall (the user found them bare and asked for them filled
+                // as Valhalla's are, in the village's own way; 1.10.101 hung Valhalla's very banners and hunting
+                // trophies here): on the game's item stands, between the sconces, the catches the village was
+                // proud of, a different fish on each, the folk's own plain shields above them; by the door its
+                // rod and its harpoon; by the high seat the sea serpent's head and the great angler.
                 float inner = side - 0.15f;
-                int banners = 0, trophies = 0;
-                foreach (float z in new[] { -back + 6.3f, -back + 13.1f })
+                int n = 0;
+                foreach (float z in new[] { -back + 4.6f, -back + 8f, -back + 11.4f, -back + 14.8f })
                     foreach (float s in new[] { -1f, 1f })
-                        SpBanner(banners++, s * inner, s, wallsTop - 0.25f, z);
-                foreach (float z in new[] { -back + 4.6f, -back + 8f, -back + 11.4f, -back + 14.8f, back - 2.8f })
-                    foreach (float s in new[] { -1f, 1f })
-                        SpTrophy(trophies++, s * inner, s, 2.1f, z);
+                    {
+                        SpOnStand(HallCatches[n % HallCatches.Length], s * inner, s, 2.1f, z);
+                        SpOnStand(HallShields[n % HallShields.Length], s * inner, s, Mathf.Min(3.5f, wallsTop - 1.4f), z);
+                        n++;
+                    }
+                SpOnStand(new[] { "FishingRod" }, -inner, -1f, 2.1f, -back + 1.4f);
+                SpOnStand(new[] { "SpearChitin", "FishingRod" }, inner, 1f, 2.1f, -back + 1.4f);
+                SpOnStand(new[] { "TrophySerpent", "Fish9" }, -inner, -1f, 2.1f, back - 2.8f);
+                SpOnStand(new[] { "Fish9", "TrophySerpent" }, inner, 1f, 2.1f, back - 2.8f);
                 SpProp(new[] { "rug_fur", "rug_wolf", "rug_deer" }, new Vector3(0f, 0.02f, daisZ - 2.8f), 0f, false);
                 SpProp(new[] { "rug_wolf", "rug_fur" }, new Vector3(0f, 0.02f, -back + 3f), 90f, false);
                 return;
@@ -988,38 +995,36 @@ namespace IslandsOfValheim
             return middle + (longZ ? new Vector3(c, 0f, a) : new Vector3(a, 0f, c));
         }
 
-        // A banner of the game's hanging high on a wall's inner face (at x = inner, side its sign), flat against
-        // it, as Valhalla's hang on its pillars.
-        static void SpBanner(int i, float inner, float side, float top, float z)
+        // The hall's catches, one to a stand (the first of each the game shows on a stand): perch, pike,
+        // tuna, troll fish, giant herring, grouper, coral cod, northern salmon; a beast of the shore where the
+        // game has no such fish.
+        static readonly string[][] HallCatches =
         {
-            string name = "piece_banner0" + (1 + (i * 3) % 7);
-            Vector3 at = new Vector3(inner - side * 0.08f, top, z);
-            GameObject banner = SpProp(new[] { name, "piece_banner01" }, at, 0f, true);
-            if (banner == null) return;
-            if (LocalBounds(banner).size.x > LocalBounds(banner).size.z)
-            {
-                banner.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * banner.transform.localRotation;
-                banner.transform.localPosition = Vector3.zero;
-                Move(banner, LocalBounds(banner), at, true);
-            }
-            Bounds b = LocalBounds(banner);
-            float back = side > 0f ? b.max.x : b.min.x;
-            banner.transform.localPosition += new Vector3(inner - back, 0f, 0f);
-        }
+            new[] { "Fish1", "TrophyNeck" }, new[] { "Fish2", "TrophyNeck" }, new[] { "Fish3", "TrophyDeer" }, new[] { "Fish5", "TrophyBoar" },
+            new[] { "Fish6", "TrophyNeck" }, new[] { "Fish7", "TrophyDeer" }, new[] { "Fish8", "TrophyBoar" }, new[] { "Fish10", "TrophyNeck" },
+        };
 
-        // A hunting trophy on the game's item stand on a wall's inner face (as Valhalla's): the stand flat on
-        // the wall, its face into the hall, the trophy on it as the game shows one there.
-        static void SpTrophy(int k, float inner, float side, float y, float z)
+        // The village folk's own shields: wood, banded, bronze, a tall wooden one.
+        static readonly string[][] HallShields =
         {
-            if (k >= Trophies.Length) return;
+            new[] { "ShieldWood" }, new[] { "ShieldBanded", "ShieldWood" }, new[] { "ShieldBronzeBuckler", "ShieldWood" }, new[] { "ShieldWoodTower", "ShieldBanded" },
+        };
+
+        // An item on the game's wall item stand on a wall's inner face (at x = inner, side its sign), the stand
+        // flat on the wall, its face into the hall, the item shown on it as the game itself shows one (its
+        // "attach" part, or that part's "attachobj", on the stand's attach point, at the part's own place, turn
+        // and size: ItemStand.SetVisualItem). The first of the names the game can show so.
+        static void SpOnStand(string[] names, float inner, float side, float y, float z)
+        {
             Transform look = null;
-            foreach (string name in Trophies[k])
+            string shown = null;
+            foreach (string name in names)
             {
                 GameObject item = PrefabManager.Instance.GetPrefab(name);
                 look = item != null ? item.transform.Find("attach") : null;
-                if (look != null) break;
+                if (look != null) { shown = name; break; }
             }
-            if (look == null) { Plugin.Debug("Brim village: no trophy of " + string.Join(", ", Trophies[k])); return; }
+            if (look == null) { Plugin.Debug("Brim village: none of " + string.Join(", ", names) + " can be shown on a stand"); return; }
             Transform attach = null;
             Vector3 at = new Vector3(inner - side * 0.06f, y, z);
             GameObject stand = SpProp(new[] { "itemstand" }, at, 0f, false, -1, false, false, go =>
@@ -1034,23 +1039,27 @@ namespace IslandsOfValheim
                 stand.transform.localPosition = Vector3.zero;
                 Move(stand, LocalBounds(stand), at, false);
             }
+            // its attach point into the hall, away from the wall
             if (attach != null && (root.transform.InverseTransformPoint(attach.position).x - LocalBounds(stand).center.x) * -side < 0f)
             {
                 stand.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * stand.transform.localRotation;
                 stand.transform.localPosition = Vector3.zero;
                 Move(stand, LocalBounds(stand), at, false);
             }
-            // flat on the wall
             Bounds sb = LocalBounds(stand);
             stand.transform.localPosition += new Vector3(inner - (side > 0f ? sb.max.x : sb.min.x), 0f, 0f);
             Transform holder = attach != null ? attach : stand.transform;
-            GameObject trophy = Object.Instantiate(look.gameObject, holder, false);
-            trophy.transform.localPosition = attach != null ? look.localPosition : new Vector3(0f, 0f, 0.15f);
-            trophy.transform.localRotation = look.localRotation;
-            trophy.transform.localScale = look.localScale;
-            Strip(trophy);
-            trophy.name = TrophyMark + look.parent.name;
+            Transform obj = look.Find("attachobj");
+            GameObject thing = Object.Instantiate(obj != null ? obj.gameObject : look.gameObject, holder, false);
+            thing.transform.localPosition = attach != null ? look.localPosition : new Vector3(0f, 0f, 0.15f);
+            thing.transform.localRotation = look.localRotation;
+            thing.transform.localScale = look.localScale;
+            thing.SetActive(true);
+            Strip(thing);
+            SpQuiet(thing);
+            thing.name = "IoV_OnStand:" + shown;
             built++;
+            Plugin.Debug("Brim village: " + shown + " on a stand by the hall's " + (side > 0f ? "right" : "left") + " wall, " + z.ToString("F1") + " m along");
         }
 
         // Meat roasting over a fire (a fire burning with nothing on it looked purposeless to the user): the
