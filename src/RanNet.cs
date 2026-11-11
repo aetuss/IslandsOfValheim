@@ -25,6 +25,8 @@ namespace IslandsOfValheim
         internal const string Buoy = "IoV_RanBuoy";
         internal const string Drowned = "IoV_DrownedSoul";
         internal const string SoulBeam = "IoV_SoulBeam";
+        internal const string EndBeam = "IoV_HafgufaEndBeam";
+        internal const string LastLight = "IoV_HafgufaLastLight";
 
         // The world's keys (lower case; none starts with iov_, which the build reads as a text's key).
         internal const string DoneKey = "iovt3done";
@@ -43,6 +45,8 @@ namespace IslandsOfValheim
             RegisterBuoy();
             RegisterDrowned();
             BossKit.RegisterBeam(SoulBeam, 2.5f, 0.7f, 1.2f); // a drowned soul comes up out of the sea in it
+            BossKit.RegisterBeam(EndBeam, 8f, 3.5f, 3f);      // where Hafgufa falls
+            BossKit.RegisterLight(LastLight, SoulColour, 30f, 5f, 8f);
             GameObject stand = PrefabManager.Instance.CreateEmptyPrefab(Stand, true);
             Object.DestroyImmediate(stand.GetComponent<MeshRenderer>());
             Object.DestroyImmediate(stand.GetComponent<MeshFilter>());
@@ -284,6 +288,19 @@ namespace IslandsOfValheim
             }
         }
 
+        // ---- nothing pushes Hafgufa back ----
+
+        // Every arrow pushed it (a serpent's light body, however big it's drawn), and while pushed it couldn't swim:
+        // it stopped for a moment at each hit. (The log showed it wasn't its roar: it bit, it didn't roar.)
+        [HarmonyPatch(typeof(Character), "ApplyPushback", new[] { typeof(Vector3), typeof(float) })]
+        static class NoPushbackPatch
+        {
+            static bool Prefix(Character __instance)
+            {
+                return __instance == null || __instance.GetComponent<HafgufaFight>() == null;
+            }
+        }
+
         // ---- a knot breaks in three or four blows, whatever they are ----
 
         // (By the barrel's own health and resistances an arrow did too little; now each blow takes a share of it.)
@@ -335,6 +352,7 @@ namespace IslandsOfValheim
                     if (ZoneSystem.instance != null) ZoneSystem.instance.RemoveGlobalKey(DoneKey);
                     if (player != null) RemoveSeen(player, ToldKey);
                     GraveyardStand.ClearAll();
+                    GraveyardStand.resetPending = true; // (a graveyard not loaded now forgets too, when it next loads)
                     break;
                 case "start":
                     if (GraveyardStand.Current == null) { context.AddString("Not near the graveyard (iov_goto graveyard)."); return; }
@@ -426,10 +444,22 @@ namespace IslandsOfValheim
         }
 
         // Its death (on the client that ran it): the net is torn, for the world.
+        // Its end, seen by everyone: a burst of the sea where it falls, a great pale light going up through it, and
+        // the cold light of its eyes fading slowly over the water.
+        protected override string LastLight { get { return RanNet.LastLight; } }
+
         internal override void Fallen()
         {
             base.Fallen();
             Story.Set(RanNet.DoneKey);
+            Vector3 at = transform.position;
+            float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : at.y;
+            Vector3 surface = new Vector3(at.x, water, at.z);
+            BossKit.Effect("vfx_serpent_death", surface);
+            for (int i = 0; i < 4; i++)
+                BossKit.Effect("vfx_WaterImpact_VikingShip", surface + transform.forward * (i * 6f - 6f));
+            GameObject beam = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(RanNet.EndBeam) : null;
+            if (beam != null) Instantiate(beam, surface, Quaternion.identity);
             Plugin.Debug("T3: Hafgufa falls; the net is torn");
         }
     }
@@ -440,6 +470,7 @@ namespace IslandsOfValheim
     class GraveyardStand : MonoBehaviour
     {
         static readonly List<GraveyardStand> loaded = new List<GraveyardStand>();
+        internal static bool resetPending; // (development: iov_t3 reset, for a graveyard not loaded at the time)
         internal static GraveyardStand Current
         {
             get
@@ -472,6 +503,12 @@ namespace IslandsOfValheim
             nview = GetComponent<ZNetView>();
             if (nview == null || nview.GetZDO() == null) return;
             loaded.Add(this);
+            if (resetPending && nview.IsOwner())
+            {
+                resetPending = false;
+                nview.GetZDO().Set(DoneHere, false);
+                nview.GetZDO().Set(BeastHere, ZDOID.None);
+            }
             wasDone = RanNet.Done;
             MakeSouls();
             InvokeRepeating("Tick", 5f, 1f);
@@ -744,7 +781,12 @@ namespace IslandsOfValheim
                 LightBeam.Over(at, 9f);
                 yield return new WaitForSeconds(1.1f);
                 local = Player.m_localPlayer;
-                if (i == 3 && local != null) local.Message(MessageHud.MessageType.Center, "$iov_ran_free", 0, null, false);
+                if (i == 4 && local != null)
+                {
+                    // (the middle of the screen holds a line only a few seconds: over the water too, for longer)
+                    local.Message(MessageHud.MessageType.Center, "$iov_ran_free", 0, null, false);
+                    if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 6f, 250f, 16f, "", "$iov_ran_free", false);
+                }
             }
             yield return new WaitForSeconds(4f);
             if (souls != null) souls.SetActive(false);
