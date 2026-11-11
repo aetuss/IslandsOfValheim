@@ -115,7 +115,7 @@ namespace IslandsOfValheim
             SpiritYardAt = new Vector3(yard.x, Height(yard.x, yard.y), yard.y);
             SpYard(yard);
             Field(field);
-            Memorial(memorial);
+            Memorial(memorial, At(7.75f, -15.5f)); // its path comes from the gap south-east of the square (se)
             Taken(Vector2.zero, 9f);
             Taken(lighthouse, 5f);
             Taken(yard, SpiritYardRadius + 1f);
@@ -230,6 +230,7 @@ namespace IslandsOfValheim
             string[] rows = new string[style.Rows.Length];
             float wallTop = 0f;
             for (int r = 0; r < rows.Length; r++) { rows[r] = Have(style.Rows[r], Planks); wallTop += Size(rows[r]).y; }
+            wallsTop = wallTop;
 
             // the doorway: the hall's great dark gate, the game's own (1.10.92/93 made a copy of it that the game
             // never had, and a wooden door stood in for it), or a wooden door a quarter taller than the game's
@@ -291,6 +292,7 @@ namespace IslandsOfValheim
         static FramePose homePose;
         // the doorway of the building being built: its middle's x, its width and height
         static float doorAt, doorWide = 2f, doorHigh = 2f;
+        static float wallsTop = 3f; // how high its walls stand
 
         static void Floor(float length, float width, string kind)
         {
@@ -488,9 +490,14 @@ namespace IslandsOfValheim
                 // two fires down the middle, meat roasting over them (hearth and spit along the hall, so the way
                 // past them stays open); a long table either side well clear of them, benches both sides, the
                 // feast laid on every other table, drink on the rest
+                // (each fire its own: red meat on one, fish and fowl on the other; 1.10.99-100 put nearly the
+                // same meats on both)
                 int k = 0;
                 foreach (float z in new[] { -back + 7f, back - 9f })
-                    SpSpit(Hearth(new Vector3(0f, 0f, z)), k++, null, true);
+                {
+                    SpSpit(Hearth(new Vector3(0f, 0f, z)), 0, HallSpits[k], true);
+                    k++;
+                }
                 // (the oak table is 6.6 m long: 1.10.89-97 set them 4.5 m apart, one into the next, and the
                 // drink at their ends lay hidden in the next one's feast) two either side, end to end with a gap
                 foreach (float s in new[] { -1f, 1f })
@@ -499,7 +506,7 @@ namespace IslandsOfValheim
                         float x = s * (side - 2.6f);
                         GameObject t = SpProp(new[] { "piece_table_oak", "piece_table" }, new Vector3(x, 0f, z), 0f, false);
                         SpAlongZ(t, new Vector3(x, 0f, z));
-                        SpLaid(t, k++);
+                        SpFeastTable(t, k++);
                         foreach (float off in new[] { -1.15f, 1.15f })
                             foreach (float dz in new[] { -1.6f, 1.6f })
                                 SpSeat(new[] { "piece_bench01" }, new Vector3(x + off, 0f, z + dz), new Vector3(-Mathf.Sign(off), 0f, 0f));
@@ -516,6 +523,17 @@ namespace IslandsOfValheim
                 foreach (char w in new[] { 'L', 'R' })
                     foreach (float z in new[] { -back + 3f, -back + 9.7f, back - 4.5f })
                         Sconce(w, z, 2.2f, side, back);
+                // the walls hung as Valhalla's hall is (the user found them bare): a banner high over each table's
+                // middle, and between the sconces and the banners hunting trophies on the game's item stands,
+                // across the hall from each other in pairs
+                float inner = side - 0.15f;
+                int banners = 0, trophies = 0;
+                foreach (float z in new[] { -back + 6.3f, -back + 13.1f })
+                    foreach (float s in new[] { -1f, 1f })
+                        SpBanner(banners++, s * inner, s, wallsTop - 0.25f, z);
+                foreach (float z in new[] { -back + 4.6f, -back + 8f, -back + 11.4f, -back + 14.8f, back - 2.8f })
+                    foreach (float s in new[] { -1f, 1f })
+                        SpTrophy(trophies++, s * inner, s, 2.1f, z);
                 SpProp(new[] { "rug_fur", "rug_wolf", "rug_deer" }, new Vector3(0f, 0.02f, daisZ - 2.8f), 0f, false);
                 SpProp(new[] { "rug_wolf", "rug_fur" }, new Vector3(0f, 0.02f, -back + 3f), 90f, false);
                 return;
@@ -890,6 +908,151 @@ namespace IslandsOfValheim
                 }
         }
 
+        // What the hall's two fires roast: red meat on one, fish and fowl on the other.
+        static readonly string[][] HallSpits =
+        {
+            new[] { "CookedMeat", "CookedLoxMeat", "CookedBjornMeat", "CookedDeerMeat" },
+            new[] { "FishCooked", "CookedChickenMeat", "SerpentMeatCooked", "CookedHareMeat" },
+        };
+
+        // The dishes beside a feast (the first of each the game has).
+        static readonly string[][] TableFood =
+        {
+            new[] { "MeatPlatter", "CookedMeat" }, new[] { "HoneyGlazedChicken", "CookedChickenMeat" }, new[] { "Bread", "CookedMeat" },
+            new[] { "Sausages", "CookedMeat" }, new[] { "FishAndBread", "FishCooked" }, new[] { "CookedLoxMeat", "CookedMeat" },
+            new[] { "QueensJam", "Bread" }, new[] { "CookedDeerMeat", "CookedMeat" },
+        };
+
+        // A hall table laid for a feast (the user: food and drink on every table, so it shows it's a feast):
+        // the game's feast in the middle as Valhalla's; past it at each end two more dishes, then the drink of
+        // those sitting at the ends; and beside the feast, where the board has room, a tankard before each place.
+        static void SpFeastTable(GameObject table, int k)
+        {
+            if (table == null) return;
+            Bounds tb = LocalBounds(table);
+            float board = SolidBounds(table).max.y;
+            bool longZ = tb.size.z >= tb.size.x;
+            float length = Mathf.Max(tb.size.x, tb.size.z), width = Mathf.Min(tb.size.x, tb.size.z);
+            Vector3 middle = new Vector3(tb.center.x, board, tb.center.z);
+            string feast = FeastNames[k % FeastNames.Length];
+            if (Find(new[] { feast }) == null) feast = FeastNames[0];
+            GameObject dish = SpProp(new[] { feast }, middle, 0f, false, -1, false, false, FullFeast);
+            float half = 1.75f, beside = 0.5f;
+            if (dish != null)
+            {
+                Bounds db = LocalBounds(dish);
+                if ((db.size.z >= db.size.x) != longZ)
+                {
+                    dish.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * dish.transform.localRotation;
+                    dish.transform.localPosition = Vector3.zero;
+                    Move(dish, LocalBounds(dish), middle, false);
+                    db = LocalBounds(dish);
+                }
+                half = longZ ? db.extents.z : db.extents.x;
+                beside = longZ ? db.extents.x : db.extents.z;
+                SpQuiet(dish);
+            }
+            float end = length * 0.5f - 0.2f, edge = width * 0.5f - 0.12f;
+            float across = Mathf.Min(0.35f, edge - 0.25f), drinkAcross = Mathf.Min(0.45f, edge - 0.1f);
+            int j = 0;
+            foreach (float e in new[] { -1f, 1f })
+            {
+                float food = half + 0.4f, drink = food + 0.65f;
+                if (food + 0.25f < end)
+                    foreach (float c in new[] { -across, across })
+                    {
+                        SpQuiet(SpProp(TableFood[(k * 3 + j) % TableFood.Length], OnBoard(middle, longZ, e * food, c), k * 53f + j * 71f, false));
+                        j++;
+                    }
+                if (drink + 0.1f < end)
+                    foreach (float c in new[] { -drinkAcross, drinkAcross })
+                    {
+                        SpQuiet(SpProp(new[] { (j + k) % 4 == 3 ? TankardNames[1] : TankardNames[0], TankardNames[0] }, OnBoard(middle, longZ, e * drink, c), k * 47f + j * 83f, false));
+                        j++;
+                    }
+            }
+            float room = edge - beside;
+            if (room > 0.2f)
+                for (float a = -half + 0.4f; a <= half - 0.39f; a += 0.8f)
+                    foreach (float s in new[] { -1f, 1f })
+                    {
+                        SpQuiet(SpProp(new[] { TankardNames[0] }, OnBoard(middle, longZ, a, s * (beside + room * 0.5f)), k * 29f + j * 61f, false));
+                        j++;
+                    }
+            Plugin.Debug("Brim village: a hall table " + length.ToString("F1") + " x " + width.ToString("F1") + " m, its feast " + (half * 2f).ToString("F1") + " x " + (beside * 2f).ToString("F1") + " m, " + j + " dishes and drinks round it");
+        }
+
+        // A point on a table's board, `a` along it and `c` across from its middle.
+        static Vector3 OnBoard(Vector3 middle, bool longZ, float a, float c)
+        {
+            return middle + (longZ ? new Vector3(c, 0f, a) : new Vector3(a, 0f, c));
+        }
+
+        // A banner of the game's hanging high on a wall's inner face (at x = inner, side its sign), flat against
+        // it, as Valhalla's hang on its pillars.
+        static void SpBanner(int i, float inner, float side, float top, float z)
+        {
+            string name = "piece_banner0" + (1 + (i * 3) % 7);
+            Vector3 at = new Vector3(inner - side * 0.08f, top, z);
+            GameObject banner = SpProp(new[] { name, "piece_banner01" }, at, 0f, true);
+            if (banner == null) return;
+            if (LocalBounds(banner).size.x > LocalBounds(banner).size.z)
+            {
+                banner.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * banner.transform.localRotation;
+                banner.transform.localPosition = Vector3.zero;
+                Move(banner, LocalBounds(banner), at, true);
+            }
+            Bounds b = LocalBounds(banner);
+            float back = side > 0f ? b.max.x : b.min.x;
+            banner.transform.localPosition += new Vector3(inner - back, 0f, 0f);
+        }
+
+        // A hunting trophy on the game's item stand on a wall's inner face (as Valhalla's): the stand flat on
+        // the wall, its face into the hall, the trophy on it as the game shows one there.
+        static void SpTrophy(int k, float inner, float side, float y, float z)
+        {
+            if (k >= Trophies.Length) return;
+            Transform look = null;
+            foreach (string name in Trophies[k])
+            {
+                GameObject item = PrefabManager.Instance.GetPrefab(name);
+                look = item != null ? item.transform.Find("attach") : null;
+                if (look != null) break;
+            }
+            if (look == null) { Plugin.Debug("Brim village: no trophy of " + string.Join(", ", Trophies[k])); return; }
+            Transform attach = null;
+            Vector3 at = new Vector3(inner - side * 0.06f, y, z);
+            GameObject stand = SpProp(new[] { "itemstand" }, at, 0f, false, -1, false, false, go =>
+            {
+                ItemStand s = go.GetComponent<ItemStand>();
+                if (s != null) attach = s.m_attachOther;
+            });
+            if (stand == null) return;
+            if (LocalBounds(stand).size.z < LocalBounds(stand).size.x)
+            {
+                stand.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * stand.transform.localRotation;
+                stand.transform.localPosition = Vector3.zero;
+                Move(stand, LocalBounds(stand), at, false);
+            }
+            if (attach != null && (root.transform.InverseTransformPoint(attach.position).x - LocalBounds(stand).center.x) * -side < 0f)
+            {
+                stand.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * stand.transform.localRotation;
+                stand.transform.localPosition = Vector3.zero;
+                Move(stand, LocalBounds(stand), at, false);
+            }
+            // flat on the wall
+            Bounds sb = LocalBounds(stand);
+            stand.transform.localPosition += new Vector3(inner - (side > 0f ? sb.max.x : sb.min.x), 0f, 0f);
+            Transform holder = attach != null ? attach : stand.transform;
+            GameObject trophy = Object.Instantiate(look.gameObject, holder, false);
+            trophy.transform.localPosition = attach != null ? look.localPosition : new Vector3(0f, 0f, 0.15f);
+            trophy.transform.localRotation = look.localRotation;
+            trophy.transform.localScale = look.localScale;
+            Strip(trophy);
+            trophy.name = TrophyMark + look.parent.name;
+            built++;
+        }
+
         // Meat roasting over a fire (a fire burning with nothing on it looked purposeless to the user): the
         // game's spit over it, along its length, the cooked meat's own look on each of its places (as Valhalla's).
         static GameObject Hearth(Vector3 at)
@@ -1087,14 +1250,15 @@ namespace IslandsOfValheim
             marker.AddComponent<SpiritYard>();
         }
 
-        // The village's field: ploughed ground (always), weeds in the ruin, sown once rebuilt, a fence round it
-        // once cleared, open on the side towards the village (1.10.92's was open at its back).
+        // The village's field: ploughed ground (always), weeds in the ruin, sown once rebuilt; open, no fence.
         static void Field(Vector2 at)
         {
             parent = groupAll;
-            for (float dx = -4f; dx <= 4.01f; dx += 1f)
-                for (float dz = -3f; dz <= 3.01f; dz += 1f)
-                    SpPaint(at.x + dx, at.y + dz, 1.1f, TerrainModifier.PaintType.Cultivate);
+            // tilled within its 8 by 6 m and no further (1.10.92-100 painted circles 1.1 m wide out to its
+            // edge, and the soil ran a metre past it)
+            for (float dx = -3.5f; dx <= 3.51f; dx += 0.5f)
+                for (float dz = -2.5f; dz <= 2.51f; dz += 0.5f)
+                    SpPaint(at.x + dx, at.y + dz, 0.5f, TerrainModifier.PaintType.Cultivate);
             string[][] crops = { new[] { "Pickable_Barley", "Pickable_Carrot" }, new[] { "Pickable_Flax", "Pickable_Turnip" }, new[] { "Pickable_Carrot" }, new[] { "Pickable_Turnip" } };
             for (float dx = -3.5f; dx <= 3.51f; dx += 1f)
                 for (float dz = -2.5f; dz <= 2.51f; dz += 1f)
@@ -1109,32 +1273,26 @@ namespace IslandsOfValheim
                         SpPlant("Bush01", q.x, q.y, q.z, (float)villageRandom.NextDouble() * 360f, 0.1f);
                     }
                 }
-            Vector3[] c =
-            {
-                new Vector3(at.x - 4.5f, 0f, at.y - 3.5f), new Vector3(at.x + 4.5f, 0f, at.y - 3.5f),
-                new Vector3(at.x + 4.5f, 0f, at.y + 3.5f), new Vector3(at.x - 4.5f, 0f, at.y + 3.5f),
-            };
-            // the side nearest the village's middle is its gate
-            int open = 0;
-            float nearest = float.MaxValue;
-            for (int i = 0; i < 4; i++)
-            {
-                Vector3 m = (c[i] + c[(i + 1) % 4]) * 0.5f;
-                float d = new Vector2(m.x, m.z).sqrMagnitude;
-                if (d < nearest) { nearest = d; open = i; }
-            }
-            foreach (int stage in new[] { 1, 2 })
-            {
-                parent = stageGroups[stage];
-                for (int i = 0; i < 4; i++)
-                {
-                    Vector3 a = c[i], b = c[(i + 1) % 4];
-                    a.y = Height(a.x, a.z); b.y = Height(b.x, b.z);
-                    Pole(a, 1.2f, stage == 1 ? 1 : 0);
-                    if (i == open) continue;
-                    Beam(new Vector3(a.x, Mathf.Max(a.y, b.y) + 0.9f, a.z), new Vector3(b.x, Mathf.Max(a.y, b.y) + 0.9f, b.z), stage == 1 ? 1 : 0);
-                }
-            }
+            // (no fence round it: the user, 1.10.101)
+        }
+
+        // A dark beam from one point to another, sloping as they do, stretched to fit, its middle on the line
+        // between them (a fence's rail from one post's top to the next).
+        static void Rail(Vector3 from, Vector3 to, int wear)
+        {
+            Vector3 d = to - from, mid = (from + to) * 0.5f;
+            if (d.magnitude < 0.1f) return;
+            GameObject go = SpProp(new[] { "darkwood_beam", "wood_beam" }, mid, 0f, false, wear);
+            if (go == null) return;
+            Bounds b = LocalBounds(go);
+            bool alongX = b.size.x >= b.size.z;
+            float own = Mathf.Max(0.1f, alongX ? b.size.x : b.size.z);
+            go.transform.localScale = alongX ? new Vector3(d.magnitude / own, 1f, 1f) : new Vector3(1f, 1f, d.magnitude / own);
+            // its long side (its own x or z) turned onto the line, kept upright
+            go.transform.localRotation = Quaternion.LookRotation(d.normalized, Vector3.up) * (alongX ? Quaternion.Euler(0f, -90f, 0f) : Quaternion.identity);
+            go.transform.localPosition = Vector3.zero;
+            Bounds nb = LocalBounds(go);
+            Move(go, nb, new Vector3(mid.x, mid.y - nb.size.y * 0.5f, mid.z), false);
         }
 
         // A dark beam from one point to another (level), stretched to fit: its middle at their height, or its
@@ -1161,15 +1319,20 @@ namespace IslandsOfValheim
 
         // The memorial of the drowned: a ring of standing stones round a cold blue fire, lit once the village is
         // cleared (the souls Rán held), looking out to sea.
-        static void Memorial(Vector2 at)
+        static void Memorial(Vector2 at, Vector2 from)
         {
             float ground = Height(at.x, at.y);
             parent = groupAll;
-            SpPaint(at.x, at.y, 4.5f, TerrainModifier.PaintType.Paved);
+            // the stones stand on the paving's edge, all round (1.10.92-100 painted it 4.5 m out and set them at
+            // 3.4 m: they stood in the middle of it, the user said)
+            const float ring = 3.9f;
+            SpPaint(at.x, at.y, ring, TerrainModifier.PaintType.Paved);
+            // a gap between two of them where its path comes in
+            float gap = Mathf.Atan2(from.x - at.x, from.y - at.y) * Mathf.Rad2Deg;
             for (int i = 0; i < 7; i++)
             {
-                float a = i * (360f / 7f);
-                Vector3 q = new Vector3(at.x, 0f, at.y) + Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, 3.4f);
+                float a = gap + (i + 0.5f) * (360f / 7f);
+                Vector3 q = new Vector3(at.x, 0f, at.y) + Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, ring);
                 q.y = Height(q.x, q.z) - 0.2f;
                 GameObject stone = SpProp(new[] { "stone_pillar", "stone_wall_1x1" }, q, a, false);
                 if (stone == null) continue;
@@ -1388,23 +1551,7 @@ namespace IslandsOfValheim
                     SpProp(new[] { "barrell" }, new Vector3(b1.x, deck, b1.y), 10f, false);
                     SpProp(new[] { "barrell" }, new Vector3(b2.x, deck, b2.y), 50f, false);
                     SpProp(new[] { "piece_chest_wood" }, new Vector3(b3.x, deck, b3.y), yawAlong + 90f, false);
-                    if (stage == 2)
-                    {
-                        Vector2 rack = u * (land + 1f) - side * 2.1f;
-                        GameObject rackGo = SpProp(new[] { "piece_cookingstation" }, new Vector3(rack.x, deck, rack.y), yawAlong, false, -1, false, false, go => MeatOn(go, FishNames, 1));
-                        if (rackGo != null)
-                        {
-                            // lying along the walk (the pier runs along the islet's z or x), not out over it
-                            Bounds kb = LocalBounds(rackGo);
-                            bool acrossOnX = Mathf.Abs(side.x) > 0.5f;
-                            if ((acrossOnX ? kb.size.x : kb.size.z) > (acrossOnX ? kb.size.z : kb.size.x))
-                            {
-                                rackGo.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * rackGo.transform.localRotation;
-                                rackGo.transform.localPosition = Vector3.zero;
-                                Move(rackGo, LocalBounds(rackGo), new Vector3(rack.x, deck, rack.y), false);
-                            }
-                        }
-                    }
+                    // (no fish on a spit across the walk: the user had it taken away, 1.10.101)
                 }
                 if (stage < 2) continue;
                 // its end: two torches, and the ship along it
@@ -1420,6 +1567,13 @@ namespace IslandsOfValheim
             Taken(foot, 4f);
             for (float r = start - 3f; r < end; r += 3f) Taken(u * r, 3.2f);
             if (land > 0f) Taken(u * (land + 1f), 4.5f);
+            // no grass under the walk and the landing (1.10.100's grew up through their planks)
+            for (float r = start - 1f; r < end; r += 1.5f)
+            {
+                Vector2 q = u * r;
+                if (Height(q.x, q.y) < -0.5f) break;
+                SpPaint(q.x, q.y, land > 0f && r > land - 1.5f && r < land + 3.5f ? 3.4f : 1.6f, TerrainModifier.PaintType.ClearVegetation);
+            }
             return foot;
         }
 
@@ -1438,7 +1592,6 @@ namespace IslandsOfValheim
             return true;
         }
 
-        static readonly string[] FishNames = { "FishCooked", "Fish1", "Fish2", "FishCooked" };
 
         // A ship as it lies moored: its sail furled away, no wake or spray, no sound.
         static void Becalmed(GameObject ship)
@@ -1591,11 +1744,10 @@ namespace IslandsOfValheim
                                 bool clear = walked + s < total - 2.5f && PostFree(post.x, post.y) && OffLanes(post.x, post.y, width + 0.35f);
                                 bool stands = clear && (stage > 0 || villageRandom.NextDouble() < 0.35);
                                 if (stands) Pole(new Vector3(post.x, Height(post.x, post.y) - 0.1f, post.y), 1.2f, wear);
+                                // the rail from post to post, as high over the ground at each (1.10.98-100 laid it
+                                // level at the higher one's height: on a slope it hung in the air past the lower post)
                                 if (stands && have && stage > 0)
-                                {
-                                    float y = Mathf.Max(Height(prev.x, prev.y), Height(post.x, post.y)) + 0.85f;
-                                    Beam(new Vector3(prev.x, y, prev.y), new Vector3(post.x, y, post.y), wear);
-                                }
+                                    Rail(new Vector3(prev.x, Height(prev.x, prev.y) + 0.85f, prev.y), new Vector3(post.x, Height(post.x, post.y) + 0.85f, post.y), wear);
                                 prev = post;
                                 have = stands;
                             }
