@@ -334,7 +334,7 @@ namespace IslandsOfValheim
                 if (attacker == Player.m_localPlayer && Time.time - shieldSaidAt > 6f)
                 {
                     shieldSaidAt = Time.time;
-                    Player.m_localPlayer.Message(MessageHud.MessageType.Center, "$iov_ran_shielded", 0, null, false);
+                    RanVoice.SayIfQuiet(Player.m_localPlayer, "$iov_ran_shielded", 4f);
                 }
                 return false;
             }
@@ -576,12 +576,12 @@ namespace IslandsOfValheim
             if (beast != null && knots == 0 && sawKnots)
             {
                 sawKnots = false;
-                if (here) local.Message(MessageHud.MessageType.Center, "$iov_ran_knotsbroken", 0, null, false);
+                if (here) RanVoice.Say(local, "$iov_ran_knotsbroken", 5f);
             }
             int stage = fight != null ? fight.CurrentStage : -1;
             // (not as it dies: its last blow takes it past half and to nothing at once)
             if (stage >= 1 && lastStage == 0 && here && !done && beast.GetHealth() > 0f)
-                local.Message(MessageHud.MessageType.Center, "$iov_ran_hull", 0, null, false);
+                RanVoice.Say(local, "$iov_ran_hull", 5f);
             lastStage = stage;
 
             if (done) return;
@@ -592,7 +592,7 @@ namespace IslandsOfValheim
                 if (here && Utils.DistanceXZ(local.transform.position, Middle) < RanNet.Reach && Time.time >= nextWaiting)
                 {
                     nextWaiting = Time.time + 90f;
-                    local.Message(MessageHud.MessageType.Center, "$iov_t3_waiting", 0, null, false);
+                    RanVoice.Say(local, "$iov_t3_waiting", 5f);
                 }
                 return;
             }
@@ -698,7 +698,7 @@ namespace IslandsOfValheim
             Player near = Player.GetClosestPlayer(middle, RanNet.Area);
             foreach (Player p in Player.GetAllPlayers())
                 if (p != null && Utils.DistanceXZ(p.transform.position, middle) < RanNet.Area)
-                    p.Message(MessageHud.MessageType.Center, "$iov_ran_rise", 0, null, false);
+                    RanVoice.Say(p, "$iov_ran_rise", 5f);
             if (RanKnot.CountNear(middle, Search) == 0)
             {
                 GameObject knot = ZNetScene.instance.GetPrefab(RanNet.Buoy);
@@ -776,22 +776,17 @@ namespace IslandsOfValheim
         {
             rising = true;
             Player local = Player.m_localPlayer;
-            if (local != null) local.Message(MessageHud.MessageType.Center, "$iov_ran_torn", 0, null, false);
+            // the net torn, then Rán's last words while the souls are still going up, held 8 s (the user's wish), one
+            // after the other, never over each other (RanVoice)
+            RanVoice.Say(local, "$iov_ran_torn", 5f);
+            RanVoice.Say(local, "$iov_ran_free", 8f);
             Vector3 middle = Middle;
-            // (Rán's last words come while the souls are still going up, not later when you may have sailed off)
             for (int i = 0; i < 7; i++)
             {
                 float a = Random.Range(0f, Mathf.PI * 2f);
                 Vector3 at = middle + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(8f, 50f);
                 LightBeam.Over(at, 5f);
                 yield return new WaitForSeconds(1.1f);
-                local = Player.m_localPlayer;
-                if (i == 4 && local != null)
-                {
-                    // (the middle of the screen holds a line only a few seconds: over the water too, for longer)
-                    local.Message(MessageHud.MessageType.Center, "$iov_ran_free", 0, null, false);
-                    if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 6f, 250f, 16f, "", "$iov_ran_free", false);
-                }
             }
             yield return new WaitForSeconds(4f);
             if (souls != null) souls.SetActive(false);
