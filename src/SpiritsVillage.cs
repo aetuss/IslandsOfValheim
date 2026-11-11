@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Jotunn.Managers;
 using UnityEngine;
 
 namespace IslandsOfValheim
@@ -115,29 +116,28 @@ namespace IslandsOfValheim
             SpYard(yard);
             Field(field);
             Memorial(memorial);
-            Commons();
             Taken(Vector2.zero, 9f);
             Taken(lighthouse, 5f);
             Taken(yard, SpiritYardRadius + 1f);
             Taken(memorial, 5f);
             occupied.Add(new Footprint { At = field, Yaw = 0f, Half = new Vector2(5.5f, 4.5f) });
             float dock = cliffDeg + 180f;
+            // the paths: from the square to every door, and to the edges of the lighthouse, the yard, the field,
+            // the memorial and the pier. The hall's paved with stone, the rest worn earth; fences along those to
+            // the field, the yard and the lighthouse (the user: no two alike); torches along them once rebuilt.
+            Path(Vector2.zero, Door(hall, hallStyle), 8.5f, 0, true, false);
+            for (int i = 0; i < places.Length; i++) Path(Vector2.zero, Door(places[i], styles[i]), 8.5f, i + 1, false, false);
+            Path(Vector2.zero, lighthouse - lighthouse.normalized * 4.5f, 8.5f, 6, false, true);
+            Path(Vector2.zero, yard - yard.normalized * SpiritYardRadius, 8.5f, 7, false, true);
+            Path(Vector2.zero, field - field.normalized * 5f, 8.5f, 8, false, true);
+            Path(Vector2.zero, memorial - memorial.normalized * 4.5f, 8.5f, 9, false, false);
+            Vector2 pierFoot = Pier(dock);
+            Path(Vector2.zero, pierFoot, 8.5f, 10, false, false);
+            // what stands between, where the paths leave room (1.10.94's evening fire sat on a path)
+            Commons();
             parent = groupAll;
-            PlaceDock(dock);
             Trees(kind);
             Slopes(kind);
-            // the paths: from the square to every door, and to the edges of the lighthouse, the yard, the field,
-            // the memorial and the jetty; torches along them once rebuilt
-            List<Vector2> ends = new List<Vector2>();
-            ends.Add(Door(hall, hallStyle));
-            for (int i = 0; i < places.Length; i++) ends.Add(Door(places[i], styles[i]));
-            ends.Add(lighthouse - lighthouse.normalized * 4.5f);
-            ends.Add(yard - yard.normalized * SpiritYardRadius);
-            ends.Add(field - field.normalized * 4.5f);
-            ends.Add(memorial - memorial.normalized * 4.5f);
-            ends.Add(Polar(dock, PlateauAt(dock)));
-            for (int i = 0; i < ends.Count; i++) Path(Vector2.zero, ends[i], 8.5f, i);
-            SpShore(dock);
             SpMeadow(kind);
 
             // Every building's frames to where it stands (built square to the islet, so measured bounds held).
@@ -227,7 +227,7 @@ namespace IslandsOfValheim
 
             // the doorway: the hall's great dark gate, the game's own (1.10.92/93 made a copy of it that the game
             // never had, and a wooden door stood in for it), or a wooden door a quarter taller than the game's
-            GameObject gate = style.Trade == Trade.Hall ? Find(new[] { "darkwood_gate" }) : null;
+            GameObject gate = style.Trade == Trade.Hall ? SpiritsIslet.DarkGate() : null;
             GameObject wood = Find(new[] { "wood_door" });
             if (gate != null)
             {
@@ -266,7 +266,7 @@ namespace IslandsOfValheim
             if (style.Trade == Trade.Home) homePose = new FramePose { At = pose, Yaw = yaw };
             // its door(s), in the islet's space (the altar puts the real ones in: SpiritsIslet.BuildDoors)
             if (gate != null)
-                DoorPieces.Add(new HomePiece { Prefab = new[] { "darkwood_gate", "wood_door" }, At = pose + turn * new Vector3(0f, 0f, -length * 0.5f), Yaw = yaw, Scale = 1f });
+                DoorPieces.Add(new HomePiece { Prefab = new[] { gate.name, "wood_door" }, At = pose + turn * new Vector3(0f, 0f, -length * 0.5f), Yaw = yaw, Scale = 1f });
             else
                 DoorPieces.Add(new HomePiece { Prefab = new[] { "wood_door" }, At = pose + turn * new Vector3(doorAt, 0f, -length * 0.5f), Yaw = yaw, Scale = DoorScale });
         }
@@ -467,12 +467,13 @@ namespace IslandsOfValheim
             }
             if (trade == Trade.Hall)
             {
-                if (stage == 1) { SpSpit(SpProp(new[] { "hearth" }, new Vector3(0f, 0f, -back + 7f), 0f, false, -1, true), 0); return; }
-                // two fires down the middle, meat roasting over them; a long table either side well clear of
-                // them, benches both sides, the feast laid
+                if (stage == 1) { SpSpit(Hearth(new Vector3(0f, 0f, -back + 7f)), 0, null, true); return; }
+                // two fires down the middle, meat roasting over them (hearth and spit along the hall, so the way
+                // past them stays open); a long table either side well clear of them, benches both sides, the
+                // feast laid on every other table, drink on the rest
                 int k = 0;
                 foreach (float z in new[] { -back + 7f, back - 9f })
-                    SpSpit(SpProp(new[] { "hearth" }, new Vector3(0f, 0f, z), 0f, false, -1, true), k++);
+                    SpSpit(Hearth(new Vector3(0f, 0f, z)), k++, null, true);
                 foreach (float s in new[] { -1f, 1f })
                     for (float z = -back + 4f; z < back - 5f; z += 4.5f)
                     {
@@ -567,27 +568,37 @@ namespace IslandsOfValheim
         static void Outside(Trade trade, int stage, float length, float width)
         {
             if (trade == Trade.Hall || trade == Trade.Home || stage == 0) return;
-            float side = width * 0.5f + 0.9f;
-            if (stage == 1) { SpProp(new[] { "wood_stack" }, new Vector3(side + 0.3f, 0f, 1f), 0f, false); return; }
+            float wall = width * 0.5f + 0.15f; // the walls' outer faces
+            if (stage == 1) { Out(SpProp(new[] { "wood_stack" }, new Vector3(wall + 1f, 0f, 1f), 0f, false), 1f, wall); return; }
             switch (trade)
             {
                 case Trade.Smith:
-                    SpProp(new[] { "wood_stack" }, new Vector3(side, 0f, 1.5f), 0f, false);
-                    SpProp(new[] { "wood_core_stack", "wood_stack" }, new Vector3(side, 0f, -1.2f), 0f, false);
+                    Out(SpProp(new[] { "wood_stack" }, new Vector3(wall + 1f, 0f, 1.5f), 0f, false), 1f, wall);
+                    Out(SpProp(new[] { "wood_core_stack", "wood_stack" }, new Vector3(wall + 1f, 0f, -1.4f), 0f, false), 1f, wall);
                     break;
                 case Trade.Weaver:
-                    SpProp(new[] { "piece_beehive" }, new Vector3(-side - 0.3f, 0f, 1.5f), 90f, false);
-                    SpProp(new[] { "piece_beehive" }, new Vector3(-side - 0.3f, 0f, -0.5f), 90f, false);
+                    Out(SpProp(new[] { "piece_beehive" }, new Vector3(-wall - 1f, 0f, 1.5f), 90f, false), -1f, wall);
+                    Out(SpProp(new[] { "piece_beehive" }, new Vector3(-wall - 1f, 0f, -0.5f), 90f, false), -1f, wall);
                     break;
                 case Trade.Fisher:
-                    SpProp(new[] { "barrell" }, new Vector3(side, 0f, -1.5f), 0f, false);
-                    SpProp(new[] { "wood_stack" }, new Vector3(side, 0f, 1.2f), 90f, false);
+                    Out(SpProp(new[] { "barrell" }, new Vector3(wall + 1f, 0f, -1.5f), 0f, false), 1f, wall);
+                    Out(SpProp(new[] { "wood_stack" }, new Vector3(wall + 1f, 0f, 1.2f), 90f, false), 1f, wall);
                     break;
                 case Trade.Brewer:
                     foreach (float z in new[] { -2f, -0.8f, 0.4f })
-                        SpProp(new[] { "barrell" }, new Vector3(side - 0.2f, 0f, z), z * 40f, false);
+                        Out(SpProp(new[] { "barrell" }, new Vector3(wall + 1f, 0f, z), z * 40f, false), 1f, wall);
                     break;
             }
+        }
+
+        // Moved out from a side wall (side 1 right, -1 left) until its inner side is a hand clear of the wall's
+        // outer face (1.10.94's piles reached into the houses).
+        static void Out(GameObject go, float side, float wall)
+        {
+            if (go == null) return;
+            Bounds b = LocalBounds(go);
+            float inner = side > 0f ? b.min.x : -b.max.x;
+            go.transform.localPosition += new Vector3(side * (wall + 0.12f - inner), 0f, 0f);
         }
 
         // Where the real pieces of the player's house go, in the house's own space (turned into the islet's
@@ -672,6 +683,19 @@ namespace IslandsOfValheim
             bool longZ = tb.size.z >= tb.size.x;
             float length = Mathf.Max(tb.size.x, tb.size.z), width = Mathf.Min(tb.size.x, tb.size.z);
             Vector3 middle = new Vector3(tb.center.x, board, tb.center.z);
+            if (length >= 3f && k % 2 == 1)
+            {
+                // a table of drink: tankards and horns down both sides (the user asked for drink on the hall's)
+                int j = 0;
+                for (float a = -length * 0.5f + 0.5f; a < length * 0.5f - 0.3f; a += 0.75f)
+                    foreach (float c in new[] { -0.3f, 0.3f })
+                    {
+                        Vector3 at = middle + (longZ ? new Vector3(c * width, 0f, a) : new Vector3(a, 0f, c * width));
+                        SpQuiet(SpProp(new[] { (j + k) % 5 == 2 ? TankardNames[1] : TankardNames[0], TankardNames[0] }, at, k * 31f + j * 67f, false));
+                        j++;
+                    }
+                return;
+            }
             if (length >= 3f)
             {
                 string feast = FeastNames[k % FeastNames.Length];
@@ -700,16 +724,27 @@ namespace IslandsOfValheim
 
         // Meat roasting over a fire (a fire burning with nothing on it looked purposeless to the user): the
         // game's spit over it, along its length, the cooked meat's own look on each of its places (as Valhalla's).
-        static void SpSpit(GameObject fire, int k)
+        static GameObject Hearth(Vector3 at)
+        {
+            GameObject h = SpProp(new[] { "hearth" }, at, 0f, false, -1, true);
+            SpAlongZ(h, at);
+            return h;
+        }
+
+        // alongZ: the spit lies along its frame's z (in the hall, along the hall: across it, its legs stood in the
+        // way between the fire and the benches).
+        static void SpSpit(GameObject fire, int k, string[] items = null, bool alongZ = false)
         {
             if (fire == null) return;
             Bounds hb = LocalBounds(fire);
             Vector3 at = new Vector3(hb.center.x, hb.min.y, hb.center.z);
             bool hearth = fire.name.StartsWith("hearth");
-            GameObject spit = SpProp(hearth ? new[] { "piece_cookingstation_iron", "piece_cookingstation" } : new[] { "piece_cookingstation" }, at, 0f, false, -1, false, false, go => Meat(go, k));
+            GameObject spit = SpProp(hearth ? new[] { "piece_cookingstation_iron", "piece_cookingstation" } : new[] { "piece_cookingstation" }, at, 0f, false, -1, false, false,
+                go => { if (items == null) Meat(go, k); else MeatOn(go, items, k); });
             if (spit == null) return;
             Bounds sb = LocalBounds(spit);
-            if ((sb.size.x > sb.size.z) != (hb.size.x > hb.size.z))
+            bool turn = alongZ ? sb.size.x > sb.size.z : (sb.size.x > sb.size.z) != (hb.size.x > hb.size.z);
+            if (turn)
             {
                 spit.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * spit.transform.localRotation;
                 spit.transform.localPosition = Vector3.zero;
@@ -961,11 +996,20 @@ namespace IslandsOfValheim
             }
         }
 
-        // The middle ring between the square and the houses, in mirrored pairs: a well and the evening fire
-        // (its meat on a spit) south, either side of the axis; drying racks and a cart north, by the hall.
+        // Between the square and the houses: a well, the evening fire (its meat on a spit, benches round it), the
+        // village's wood and a cart; each at the first of its places the paths and buildings leave room for
+        // (1.10.94 set the fire where a path then ran through it).
         static void Commons()
         {
-            Vector2 well = At(8f, -15f), fire = At(-8f, -15f), drying = At(-11f, 16f), cart = At(11f, 16f);
+            Vector2 well = PickFree(2.8f, At(9f, -15f), At(-9f, -15f), At(11f, 15f), At(-26f, 1f), At(26f, 0f));
+            Taken(well, 2.8f);
+            Vector2 fire = PickFree(4f, At(-12f, -15f), At(12f, -16f), At(-26f, -3f), At(27f, -2f), At(-12f, 16f), At(10f, -30f));
+            Taken(fire, 4f);
+            Vector2 drying = PickFree(2.5f, At(-11f, 16f), At(-13f, 18f), At(-27f, 12f), At(-9f, -29f));
+            Taken(drying, 2.5f);
+            Vector2 cart = PickFree(2.5f, At(11f, 16f), At(13f, 18f), At(27f, 13f), At(9f, -29f));
+            Taken(cart, 2.5f);
+            Plugin.Debug("Brim village: the well at " + well.ToString("F0") + ", the evening fire at " + fire.ToString("F0") + ", wood at " + drying.ToString("F0") + ", the cart at " + cart.ToString("F0"));
             parent = groupAll;
             float wg = Height(well.x, well.y);
             for (int i = 0; i < 8; i++)
@@ -1020,6 +1064,15 @@ namespace IslandsOfValheim
 
         static void Taken(Vector2 at, float radius) { takenCircles.Add(new Vector3(at.x, at.y, radius)); }
 
+        // The first of these spots with room for something of this size (clear of buildings, paths and what's
+        // been put already); the last if none has.
+        static Vector2 PickFree(float radius, params Vector2[] spots)
+        {
+            foreach (Vector2 s in spots)
+                if (Free(s.x, s.y, radius - 0.5f)) return s;
+            return spots[spots.Length - 1];
+        }
+
         static bool Free(float x, float z, float margin)
         {
             foreach (Vector3 c in takenCircles)
@@ -1048,20 +1101,26 @@ namespace IslandsOfValheim
                 {
                     float x = gx + 2f * (Mathf.PerlinNoise(gx * 0.31f + 5f, gz * 0.17f) - 0.5f) * 2f, z = gz + 2f * (Mathf.PerlinNoise(gz * 0.23f, gx * 0.29f + 9f) - 0.5f) * 2f;
                     if (x * x + z * z > reach * reach || Height(x, z) < 0.8f || !Free(x, z, 0.8f)) continue;
-                    float pick = Mathf.PerlinNoise(x * 0.05f + 300f, z * 0.05f + 77f);
+                    // which kind grows here: in drifts (noise), stretched over the whole range (raw noise sits mostly
+                    // in its middle, and 1.10.94 laid wild flax nearly everywhere: the user kept it, but asked for
+                    // the rest mixed in)
+                    float pick = Mathf.Clamp01((Mathf.PerlinNoise(x * 0.07f + 300f, z * 0.07f + 77f) - 0.25f) / 0.5f);
                     float jitter = Mathf.PerlinNoise(x * 0.9f + 11f, z * 0.9f + 3f);
                     if (jitter < 0.3f) continue; // the gaps between drifts
                     string name;
                     float sink = 0f;
-                    if (pick < 0.3f) { name = bushes[(int)(jitter * 10f) % bushes.Length]; sink = 0.1f; }
-                    else if (pick < 0.48f) name = "Pickable_Flax_Wild";
-                    else if (pick < 0.56f) name = "Pickable_Thistle";
+                    if (pick < 0.2f) { name = bushes[(int)(jitter * 10f) % bushes.Length]; sink = 0.1f; }
+                    else if (pick < 0.28f) { name = jitter > 0.55f ? "Beech_small1" : "Beech_small2"; sink = 0.05f; }
+                    else if (pick < 0.36f) { name = jitter > 0.6f ? "RaspberryBush" : "BlueberryBush"; sink = 0.05f; }
+                    else if (pick < 0.46f) name = "Pickable_Flax_Wild";
+                    else if (pick < 0.55f) name = "Pickable_Thistle";
                     else if (pick < 0.63f) { name = jitter > 0.6f ? "Rock_4" : "Rock_7_meadows"; sink = 0.15f; }
-                    else if (pick < 0.7f) name = "Pickable_Mushroom";
+                    else if (pick < 0.72f) name = "Pickable_Mushroom";
                     else name = "Pickable_Dandelion";
+                    if (Find(new[] { name }) == null) name = "Pickable_Dandelion";
                     SpPlant(name, x, Height(x, z), z, Mathf.Repeat(x * 37f + z * 11f, 360f), sink);
                     placed++;
-                    if (name == "Pickable_Flax_Wild" || name == "Pickable_Dandelion")
+                    if (name == "Pickable_Dandelion")
                         for (int k = 0; k < 3; k++)
                         {
                             float cx = x + 1.3f * Mathf.Cos(k * 2.1f + jitter * 6f), cz = z + 1.3f * Mathf.Sin(k * 2.1f + jitter * 6f);
@@ -1073,17 +1132,118 @@ namespace IslandsOfValheim
             Plugin.Debug("Brim village: its meadow, " + placed + " plants and stones");
         }
 
-        // The jetty's side: a wreck on the shore in the ruin, a ship moored alongside once rebuilt.
-        static void SpShore(float dock)
+        // The pier, out from the beach into deep water at the side away from the cliff (1.10.94's jetty was two
+        // floor pieces on the sand): a walk of planks on posts, a ship moored at its end once rebuilt (a still one:
+        // no sail filled, no wake, no sound of sailing). By its foot on the beach, what a fishing village has:
+        // barrels and a chest, fish drying over a fire, a fish rack; a wreck in the ruin. A few planks and
+        // stumps in the ruin, the walk weathered once cleared. Gives back where its path comes down to it.
+        static Vector2 Pier(float deg)
         {
-            parent = stageGroups[0];
-            PlaceWreck(dock + 40f);
-            float s = ShoreAt(dock + 14f);
-            Vector2 u = Polar(dock + 14f, 1f);
-            Vector2 ship = u * (s + 6f);
-            parent = stageGroups[2];
-            GameObject boat = SpProp(new[] { "VikingShip", "Karve" }, new Vector3(ship.x, -1.3f, ship.y), 180f - (dock + 14f), false);
-            if (boat == null) Plugin.Debug("Brim village: no ship to moor");
+            Vector2 u = Polar(deg, 1f), side = new Vector2(-u.y, u.x);
+            float yawAlong = Mathf.Atan2(u.x, u.y) * Mathf.Rad2Deg;
+            const float deck = 1.1f;
+            // from where the ground comes down to the deck's height to deep water
+            float start = PlateauAt(deg), end = start;
+            for (float r = PlateauAt(deg); r < PlateauAt(deg) + 80f; r += 0.5f)
+            {
+                float h = Height(u.x * r, u.y * r);
+                if (h > deck - 0.2f) start = r;
+                if (h < -2.5f) { end = r + 8f; break; }
+                end = r;
+            }
+            start += 1f;
+            Vector2 foot = u * (start - 2f);
+            Plugin.Debug("Brim village: the pier from " + start.ToString("F1") + " to " + end.ToString("F1") + " m out, at " + deg.ToString("F0") + " degrees");
+            for (int stage = 0; stage < 3; stage++)
+            {
+                parent = stageGroups[stage];
+                int wear = stage == 0 ? 2 : stage == 1 ? 1 : 0;
+                int i = 0;
+                for (float r = start + 1f; r < end; r += 2f, i++)
+                {
+                    bool plank = stage > 0 || (i < 3 && villageRandom.NextDouble() < 0.6);
+                    Vector2 p = u * r;
+                    if (plank) SpProp(new[] { "wood_floor" }, new Vector3(p.x, deck, p.y), yawAlong, true, wear);
+                    if (i % 2 == 0)
+                        foreach (float s in new[] { -1f, 1f })
+                        {
+                            Vector2 q = p + side * s * 1.05f;
+                            float ground = Height(q.x, q.y);
+                            float top = stage == 0 && !plank ? Mathf.Min(deck, ground + 1.2f) : deck + 0.6f;
+                            Pole(new Vector3(q.x, ground - 0.3f, q.y), top - ground + 0.3f, wear);
+                        }
+                }
+                // its end: two torches, and the ship along its side
+                Vector2 tip = u * (end - 1f);
+                if (stage == 2)
+                {
+                    foreach (float s in new[] { -1f, 1f })
+                    {
+                        Vector2 q = tip + side * s * 0.8f;
+                        SpProp(new[] { "piece_groundtorch_wood" }, new Vector3(q.x, deck, q.y), 0f, false, -1, true);
+                    }
+                    Vector2 ship = u * (end - 5f) + side * 4.2f;
+                    SpProp(new[] { "VikingShip", "Karve" }, new Vector3(ship.x, -1.3f, ship.y), yawAlong, false, -1, false, false, Becalmed);
+                }
+                // the beach by its foot
+                Vector2 b1 = u * (start - 3f) + side * 3.5f, b2 = u * (start - 3f) - side * 3.5f;
+                if (stage == 0)
+                {
+                    PlaceWreck(deg + 40f);
+                    SpProp(new[] { "barrell" }, new Vector3(b1.x, Height(b1.x, b1.y), b1.y), 70f, false);
+                    continue;
+                }
+                SpProp(new[] { "barrell" }, new Vector3(b1.x, Height(b1.x, b1.y), b1.y), 10f, false);
+                Vector2 b3 = b1 + u * 1.2f;
+                SpProp(new[] { "barrell" }, new Vector3(b3.x, Height(b3.x, b3.y), b3.y), 50f, false);
+                Vector2 b4 = b1 - u * 1.4f;
+                SpProp(new[] { "piece_chest_wood" }, new Vector3(b4.x, Height(b4.x, b4.y), b4.y), yawAlong, false);
+                if (stage < 2) continue;
+                // fish drying over a low fire, and fish hung on a rack
+                GameObject pit = SpProp(new[] { "fire_pit" }, new Vector3(b2.x, Height(b2.x, b2.y), b2.y), 0f, false, -1, true);
+                SpSpit(pit, 3, FishNames);
+                Vector2 rack = b2 - u * 3f;
+                SpProp(new[] { "piece_cookingstation" }, new Vector3(rack.x, Height(rack.x, rack.y), rack.y), yawAlong + 90f, false, -1, false, false, go => MeatOn(go, FishNames, 1));
+            }
+            Taken(foot, 4f);
+            Taken(u * (start - 3f), 6f);
+            return foot;
+        }
+
+        static readonly string[] FishNames = { "FishCooked", "Fish1", "Fish2", "FishCooked" };
+
+        // A ship as it lies moored: its sail furled away, no wake or spray, no sound.
+        static void Becalmed(GameObject ship)
+        {
+            foreach (Cloth sail in ship.GetComponentsInChildren<Cloth>(true)) sail.gameObject.SetActive(false);
+            foreach (ParticleSystem p in ship.GetComponentsInChildren<ParticleSystem>(true)) p.gameObject.SetActive(false);
+            foreach (AudioSource a in ship.GetComponentsInChildren<AudioSource>(true)) Object.DestroyImmediate(a);
+        }
+
+        // Things on a spit's places, each the item's own look for cooking (as Valhalla's meat): the first of
+        // these the game has with such a look, in turn.
+        static void MeatOn(GameObject station, string[] items, int k)
+        {
+            CookingStation cooking = station.GetComponent<CookingStation>();
+            if (cooking == null || cooking.m_slots == null) return;
+            for (int i = 0; i < cooking.m_slots.Length; i++)
+            {
+                Transform slot = cooking.m_slots[i];
+                if (slot == null) continue;
+                for (int n = 0; n < items.Length; n++)
+                {
+                    GameObject item = PrefabManager.Instance.GetPrefab(items[(k + i + n) % items.Length]);
+                    if (item == null) continue;
+                    Transform look = item.transform.Find("attach_cook");
+                    if (look == null) look = item.transform.Find("attach");
+                    if (look == null) continue;
+                    GameObject meat = Object.Instantiate(look.gameObject, slot, false);
+                    meat.transform.localPosition = Vector3.zero;
+                    meat.transform.localRotation = Quaternion.identity;
+                    meat.SetActive(true);
+                    break;
+                }
+            }
         }
 
         // Trees round the village, on its slopes, never on the plateau where the houses stand.
@@ -1121,30 +1281,57 @@ namespace IslandsOfValheim
             new[] { "piece_groundtorch_wood" }, new[] { "CastleKit_groundtorch", "piece_groundtorch_wood" }, new[] { "piece_groundtorch", "piece_groundtorch_wood" },
         };
 
-        // A path out from the square's edge: the axis paved and straight (to the hall, to the fisher's house);
-        // the rest worn dirt, a gentle bend in each, laid close so its edges run smooth (1.10.93's were rows of
-        // blots); a light halfway along once rebuilt.
-        static void Path(Vector2 from, Vector2 to, float skip, int k)
+        // A path out from the square's edge (the user: no two alike; the hall's of stone, the rest of earth, some
+        // fenced): straight, laid close so its edges run clean; the hall's paved and wide, the others worn earth,
+        // a barely-there bend in the longer ones; a fence along both sides where asked (a few broken posts in the
+        // ruin, weathered once cleared, new once rebuilt), gapped at both ends; a light along it once rebuilt.
+        static void Path(Vector2 from, Vector2 to, float skip, int k, bool stone, bool fence)
         {
             Vector2 d = to - from;
             float length = d.magnitude;
             if (length < skip + 1f) return;
             Vector2 dir = d / length, across = new Vector2(-dir.y, dir.x);
             Vector2 a = from + dir * skip, b = to;
-            bool axis = Mathf.Abs(to.x) < 1f;
-            Vector2 bend = (a + b) * 0.5f + across * (axis ? 0f : (k % 2 == 0 ? 1f : -1f) * (b - a).magnitude * 0.12f);
             float span = (b - a).magnitude;
-            for (float t = 0f; t <= 1.001f; t += 0.9f / Mathf.Max(1f, span))
+            Vector2 bend = (a + b) * 0.5f + across * (stone || fence ? 0f : (k % 2 == 0 ? 1f : -1f) * span * 0.04f);
+            float width = stone ? 1.6f : 1.05f;
+            for (float t = 0f; t <= 1.001f; t += 0.7f / Mathf.Max(1f, span))
             {
                 Vector2 q = Bezier(a, bend, b, t);
-                SpPaint(q.x, q.y, axis ? 1.5f : 1.1f, axis ? TerrainModifier.PaintType.Paved : TerrainModifier.PaintType.Dirt);
+                SpPaint(q.x, q.y, width, stone ? TerrainModifier.PaintType.Paved : TerrainModifier.PaintType.Dirt);
                 pathPoints.Add(q);
             }
-            if (span < 8f) return;
             Transform keep = parent;
-            parent = stageGroups[2];
-            Vector2 m = Bezier(a, bend, b, 0.5f) + across * (axis ? 2.4f : 2f);
-            SpProp(PathLights[k % PathLights.Length], new Vector3(m.x, Height(m.x, m.y), m.y), 0f, false, -1, true);
+            if (fence && span > 6f)
+                for (int stage = 0; stage < 3; stage++)
+                {
+                    parent = stageGroups[stage];
+                    int wear = stage == 0 ? 2 : stage == 1 ? 1 : 0;
+                    foreach (float side in new[] { -1f, 1f })
+                    {
+                        Vector2 prev = Vector2.zero;
+                        bool have = false;
+                        for (float s = 2f; s <= span - 1.5f; s += 2.5f)
+                        {
+                            Vector2 post = a + dir * s + across * side * (width + 0.6f);
+                            bool stands = stage > 0 || villageRandom.NextDouble() < 0.35;
+                            if (stands) Pole(new Vector3(post.x, Height(post.x, post.y) - 0.1f, post.y), 1.2f, wear);
+                            if (stands && have && stage > 0)
+                            {
+                                float y = Mathf.Max(Height(prev.x, prev.y), Height(post.x, post.y)) + 0.85f;
+                                Beam(new Vector3(prev.x, y, prev.y), new Vector3(post.x, y, post.y), wear);
+                            }
+                            prev = post;
+                            have = stands;
+                        }
+                    }
+                }
+            if (span >= 8f)
+            {
+                parent = stageGroups[2];
+                Vector2 m = Bezier(a, bend, b, 0.5f) + across * (width + (fence ? 1.4f : 1f));
+                SpProp(PathLights[k % PathLights.Length], new Vector3(m.x, Height(m.x, m.y), m.y), 0f, false, -1, true);
+            }
             parent = keep;
         }
 

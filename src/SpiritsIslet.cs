@@ -23,6 +23,30 @@ namespace IslandsOfValheim
         // into the game: a wooden door stood in for it).
         const string DoorKey = "IoV_T4Door", DoorScaleKey = "IoV_T4DoorScale";
 
+        // The game's dark wooden gate as the game places it (a networked piece with a door on it): found among
+        // the game's own networked prefabs, not by a guessed name (1.10.94 took "darkwood_gate", a model of that
+        // name the game doesn't place, and a wooden door stood in for it again). Every door the game has is
+        // logged once, to know them by.
+        internal static GameObject DarkGate()
+        {
+            if (darkGate != null || ZNetScene.instance == null) return darkGate;
+            List<string> doors = new List<string>();
+            foreach (GameObject prefab in ZNetScene.instance.m_prefabs)
+            {
+                if (prefab == null || prefab.GetComponent<Door>() == null) continue;
+                Piece piece = prefab.GetComponent<Piece>();
+                string token = piece != null ? piece.m_name : "";
+                doors.Add(prefab.name + " (" + token + ")");
+                string n = prefab.name.ToLowerInvariant(), t = token.ToLowerInvariant();
+                bool dark = n.Contains("dark") || t.Contains("dark"), gate = n.Contains("gate") || t.Contains("gate");
+                if (dark && gate && darkGate == null) darkGate = prefab;
+            }
+            Plugin.Debug("Brim village: the game's doors: " + string.Join(", ", doors.ToArray()) + "; the hall's gate: " + (darkGate != null ? darkGate.name : "none found"));
+            return darkGate;
+        }
+
+        static GameObject darkGate;
+
         [HarmonyPatch(typeof(Door), "Awake")]
         static class VillageDoorPatch
         {
@@ -120,7 +144,8 @@ namespace IslandsOfValheim
             {
                 GameObject prefab = null;
                 foreach (string name in h.Prefab)
-                    if ((prefab = ZNetScene.instance.GetPrefab(name)) != null) break;
+                    if ((prefab = name == "@darkgate" ? DarkGate() : ZNetScene.instance.GetPrefab(name)) != null) break;
+                if (prefab != null && h.Prefab.Length > 1 && prefab.name != h.Prefab[0]) Plugin.Log.LogWarning("Brim village: " + h.Prefab[0] + " not found, " + prefab.name + " in its place");
                 if (prefab == null) { Plugin.Log.LogWarning("Brim village: none of " + string.Join(", ", h.Prefab) + " for the player's house"); continue; }
                 Vector3 at = middle + turn * h.At;
                 Quaternion rotation = turn * Quaternion.Euler(0f, h.Yaw, 0f);
