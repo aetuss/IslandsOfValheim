@@ -104,7 +104,8 @@ namespace IslandsOfValheim
             }
             CharacterDrop drops = go.GetComponent<CharacterDrop>();
             if (drops != null) drops.m_drops.Clear(); // (what it leaves comes later, with the arc's rewards)
-            BossKit.Tint(go, BossKit.Cast(new Color(0.05f, 0.12f, 0.16f), 0.75f, 0.75f), 0.4f, "Hafgufa");
+            try { HafgufaLooks.Colour(go); }
+            catch (System.Exception e) { Plugin.Log.LogWarning("Hafgufa's colours: " + e); }
             Eyes(go);
             try { HafgufaLooks.Dress(go); }
             catch (System.Exception e) { Plugin.Log.LogWarning("Hafgufa's looks: " + e); }

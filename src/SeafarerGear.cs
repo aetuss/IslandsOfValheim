@@ -640,7 +640,7 @@ namespace IslandsOfValheim
         }
 
         // A readable copy of part of a texture (rect in pixels).
-        static Texture2D Copy(Texture source, Rect rect, bool mipmaps)
+        internal static Texture2D Copy(Texture source, Rect rect, bool mipmaps)
         {
             int w = Mathf.Max(1, Mathf.RoundToInt(rect.width)), h = Mathf.Max(1, Mathf.RoundToInt(rect.height));
             RenderTexture target = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
