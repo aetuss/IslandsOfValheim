@@ -17,6 +17,8 @@ namespace IslandsOfValheim
     static class SpiritsIslet
     {
         internal const string AltarName = "IoV_SpiritAltar";
+        internal const string DoorName = "IoV_SpiritDoor";
+        internal const string DoorsKey = "IoV_T4Doors";    // on the altar: the houses' doors are in
         internal const string Map = "IoV_StoryMapBrim";
         internal const string Stage1Key = "iovt4stage1", Stage2Key = "iovt4stage2";
         const string PlacedKey = "iovt4placed";
@@ -66,6 +68,7 @@ namespace IslandsOfValheim
             go.AddComponent<SpiritAltar>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Debug("Brim village: the altar made from " + source);
+            RegisterDoor();
         }
 
         internal static string[][] Cost(int stage) { return stage == 0 ? Clearing : Rebuilding; }
@@ -80,10 +83,24 @@ namespace IslandsOfValheim
         // middle from where it stands itself), marked as the house's.
         internal static void BuildHome(Transform altar)
         {
+            int made = Spawn(altar, IsletBuilder.HomePieces, HomeKey);
+            Plugin.Debug("Brim village: the player's house furnished, " + made + " pieces");
+        }
+
+        // The doors of the village's houses (real, opening and shutting; never broken or taken apart: the
+        // door prefab has nothing to break), put in by the altar once; hidden while the village lies in ruins.
+        internal static void BuildDoors(Transform altar)
+        {
+            int made = Spawn(altar, IsletBuilder.DoorPieces, null);
+            Plugin.Debug("Brim village: " + made + " doors put in");
+        }
+
+        static int Spawn(Transform altar, List<IsletBuilder.HomePiece> pieces, string mark)
+        {
             Quaternion turn = altar.rotation;
             Vector3 middle = altar.position - turn * IsletBuilder.SpiritAltarAt;
             int made = 0;
-            foreach (IsletBuilder.HomePiece h in IsletBuilder.HomePieces)
+            foreach (IsletBuilder.HomePiece h in pieces)
             {
                 GameObject prefab = null;
                 foreach (string name in h.Prefab)
@@ -112,11 +129,29 @@ namespace IslandsOfValheim
                     go.transform.position += shift;
                 }
                 ZNetView view = go.GetComponent<ZNetView>();
-                if (view != null && view.IsValid()) view.GetZDO().Set(HomeKey, true);
-                Keep(go);
+                if (view != null && view.IsValid())
+                {
+                    // where it ends up is where it comes back (a piece has nothing that keeps its place in step)
+                    view.GetZDO().SetPosition(go.transform.position);
+                    view.GetZDO().SetRotation(go.transform.rotation);
+                    if (mark != null) view.GetZDO().Set(mark, true);
+                }
+                if (mark != null) Keep(go);
                 made++;
             }
-            Plugin.Debug("Brim village: the player's house furnished, " + made + " pieces");
+            return made;
+        }
+
+        // The door: the game's wooden door with nothing on it that can be broken or taken apart.
+        static void RegisterDoor()
+        {
+            if (PrefabManager.Instance.GetPrefab("wood_door") == null) { Plugin.Log.LogWarning("Brim village: no wooden door; its houses have none."); return; }
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(DoorName, "wood_door");
+            foreach (WearNTear wear in go.GetComponentsInChildren<WearNTear>(true)) Object.DestroyImmediate(wear);
+            foreach (Piece piece in go.GetComponentsInChildren<Piece>(true)) Object.DestroyImmediate(piece);
+            go.GetComponent<ZNetView>().m_persistent = true;
+            go.AddComponent<SpiritDoor>();
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
 
         // A prefab's size in its own space, from its meshes.
@@ -321,7 +356,8 @@ namespace IslandsOfValheim
                     {
                         if (view == null || !view.IsValid()) continue;
                         if (view.GetZDO().GetBool(HomeKey)) { view.ClaimOwnership(); view.Destroy(); }
-                        else if (view.GetComponent<SpiritAltar>() != null) { view.ClaimOwnership(); HomeBuilt(view, false); }
+                        else if (view.GetComponent<SpiritDoor>() != null) { view.ClaimOwnership(); view.Destroy(); }
+                        else if (view.GetComponent<SpiritAltar>() != null) { view.ClaimOwnership(); HomeBuilt(view, false); view.GetZDO().Set(DoorsKey, false); }
                     }
                     break;
                 case "place":
@@ -373,7 +409,13 @@ namespace IslandsOfValheim
                 foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = show;
                 foreach (Light l in GetComponentsInChildren<Light>(true)) l.enabled = show;
             }
-            if (view == null || !view.IsValid() || !view.IsOwner() || SpiritsIslet.Stage < 2 || SpiritsIslet.IsHomeBuilt(view)) return;
+            if (view == null || !view.IsValid() || !view.IsOwner()) return;
+            if (!view.GetZDO().GetBool(SpiritsIslet.DoorsKey))
+            {
+                view.GetZDO().Set(SpiritsIslet.DoorsKey, true);
+                SpiritsIslet.BuildDoors(transform);
+            }
+            if (SpiritsIslet.Stage < 2 || SpiritsIslet.IsHomeBuilt(view)) return;
             SpiritsIslet.HomeBuilt(view, true);
             SpiritsIslet.BuildHome(transform);
         }
@@ -472,6 +514,24 @@ namespace IslandsOfValheim
                 view.GetZDO().SetRotation(root.rotation);
                 Plugin.Debug("Brim village: the altar moved to where the plan has it, " + want.ToString("F1"));
             }
+        }
+    }
+
+    // A door of the Brim village: not there while the village lies in ruins (its walls broken round it), there
+    // once it's cleared.
+    class SpiritDoor : MonoBehaviour
+    {
+        bool? shown;
+
+        void Start() { InvokeRepeating("Check", 0.2f, 2f); }
+
+        void Check()
+        {
+            bool show = SpiritsIslet.Stage > 0;
+            if (shown == show) return;
+            shown = show;
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = show;
+            foreach (Collider c in GetComponentsInChildren<Collider>(true)) c.enabled = show;
         }
     }
 
