@@ -868,14 +868,23 @@ namespace IslandsOfValheim
             renderer.receiveShadows = false;
         }
 
-        // A mist over the graveyard while the net holds (this client's weather; only ever undoes its own).
+        // A mist over the graveyard while the net holds (this client's weather; only ever undoes its own: lifting it
+        // when the second stage's storm has already come cleared the storm too, the moment it came).
         void Mist(bool want)
         {
             EnvMan env = EnvMan.instance;
             if (env == null || want == mist) return;
             mist = want;
-            env.SetForceEnvironment(want ? "Misty" : "");
-            Plugin.Debug("T3: mist " + (want ? "over the graveyard" : "lifts"));
+            if (want) env.SetForceEnvironment("Misty");
+            else if (Forced(env) == "Misty") env.SetForceEnvironment("");
+            Plugin.Debug("T3: mist " + (want ? "over the graveyard" : "lifts") + " (weather now: " + Forced(env) + ")");
+        }
+
+        static readonly System.Reflection.FieldInfo forceEnv = HarmonyLib.AccessTools.Field(typeof(EnvMan), "m_forceEnv");
+
+        static string Forced(EnvMan env)
+        {
+            return forceEnv != null ? (forceEnv.GetValue(env) as string ?? "") : "";
         }
 
         // ---- the net round your ship (on the client that steers it) ----
