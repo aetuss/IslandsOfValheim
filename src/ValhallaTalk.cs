@@ -88,7 +88,7 @@ namespace IslandsOfValheim
                 player.AddKnownText("$iov_t5_page", "$iov_t5_page_text");
                 Say("$iov_t5_challenge");
                 ValhallaDuel.Current.BeginHafdis();
-                if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true);
+                if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true, 5f); // (her words read first)
                 return true;
             }
             if (who == Guard || who == HighSeatGuard)

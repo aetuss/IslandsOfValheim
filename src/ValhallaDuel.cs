@@ -106,6 +106,9 @@ namespace IslandsOfValheim
             nview.m_persistent = false; // a bout's, not the world's
             VisEquipment vis = go.GetComponent<VisEquipment>();
             if (vis != null) vis.m_isPlayer = false;
+            // (Hafdís always a woman: a creature's body is otherwise picked at random, man or woman; 1.10.104's
+            // came as a bald man)
+            if (vis != null && name == HafdisPrefab) vis.m_randomModelIndex = false;
             go.AddComponent<EinherjarFighter>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Log.LogInfo("Duel: " + name + " made from the player's body");
@@ -128,6 +131,44 @@ namespace IslandsOfValheim
         {
             Animator animator = GetComponentInChildren<Animator>();
             if (animator != null) animator.SetBool("wakeup", false);
+            Looks();
+            Invoke("Looks", 0.5f); // (and again, after the game's own setting up of a creature's looks)
+        }
+
+        // The body and hair asked for, set on it as the game sets a player's (a creature's are otherwise its
+        // own pick: a random body, hair by chance).
+        internal int modelWanted = -1;
+        internal string hairWanted = "", beardWanted = "";
+
+        void Looks()
+        {
+            VisEquipment vis = GetComponent<VisEquipment>();
+            ZNetView nview = GetComponent<ZNetView>();
+            if (vis == null || modelWanted < 0 || nview == null || !nview.IsOwner()) return;
+            vis.SetModel(modelWanted);
+            vis.SetHairItem(hairWanted.Length > 0 ? hairWanted.GetStableHashCode() : 0);
+            vis.SetBeardItem(beardWanted.Length > 0 ? beardWanted.GetStableHashCode() : 0);
+        }
+
+        // Hafdís (T5) waiting in the ring for you: still, facing you; then the bout.
+        internal bool waiting;
+
+        void Wait()
+        {
+            if (ai != null) ai.enabled = false;
+            body.SetMoveDir(Vector3.zero);
+            Player player = Player.m_localPlayer;
+            if (player == null) return;
+            Vector3 face = player.transform.position - transform.position;
+            face.y = 0f;
+            if (face.sqrMagnitude > 0.01f) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), Time.deltaTime * 3f);
+        }
+
+        internal void Fight()
+        {
+            waiting = false;
+            if (ai != null) ai.enabled = true;
+            nextEcho = Time.time + 4f;
         }
 
         // Beaten (its health run out): it doesn't die, it kneels, says so, and before long is gone.
@@ -165,7 +206,7 @@ namespace IslandsOfValheim
 
         internal bool hafdis;
         internal float echoPierce = 30f;
-        const float EchoEvery = 14f, EchoWarning = 1.4f, EchoHeight = 8f, EchoSpread = 1.4f;
+        const float EchoEvery = 14f, EchoWarning = 1.6f, EchoHold = 0.45f, EchoHeight = 8f, EchoSpread = 0.6f;
         const int EchoFeathers = 4;
         float nextEcho = -1f;
         bool echoed;
@@ -197,13 +238,31 @@ namespace IslandsOfValheim
             echoGlow.range = 6f;
             echoGlow.intensity = 3f;
             echoGlow.shadows = LightShadows.None;
-            Vector3 where = player.transform.position + player.GetVelocity() * 0.6f;
-            where.y = player.transform.position.y;
-            Vector3 at = BossKit.Ground(where) ?? where;
-            BossKit.Effect(HafdisBoss.Mark, at + Vector3.up * 0.4f);
-            BossKit.Effect("vfx_prespawn", at);
+            // (the user: on you, not where you were) a gold light on the ground that follows you while she
+            // calls them, then holds still a breath before they come down, there, close together
             BossKit.Effect("sfx_fallenvalkyrie_attack_spit_charge", transform.position);
-            yield return new WaitForSeconds(EchoWarning);
+            GameObject mark = new GameObject("IoV_HafdisEchoMark");
+            Light shine = mark.AddComponent<Light>();
+            shine.type = LightType.Point;
+            shine.color = HafdisBoss.Glow;
+            shine.range = 3.5f;
+            shine.intensity = 4f;
+            shine.shadows = LightShadows.None;
+            Vector3 at = player.transform.position;
+            for (float t = 0f; t < EchoWarning; t += Time.deltaTime)
+            {
+                if (player == null || yielded) break;
+                if (t < EchoWarning - EchoHold)
+                {
+                    Vector3 p = player.transform.position;
+                    at = BossKit.Ground(p) ?? p;
+                }
+                mark.transform.position = at + Vector3.up * 0.4f;
+                shine.intensity = 2f + 4f * t / EchoWarning;
+                yield return null;
+            }
+            BossKit.Effect("vfx_prespawn", at);
+            Destroy(mark);
             if (echoGlow != null) Destroy(echoGlow.gameObject);
             GameObject feather = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab("fallenvalkyrie_feather_projectile") : null;
             if (yielded || nview == null || !nview.IsValid() || !nview.IsOwner() || feather == null) yield break;
@@ -349,6 +408,7 @@ namespace IslandsOfValheim
         void Update()
         {
             if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
+            if (!yielded && body != null && waiting) { Wait(); return; }
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
@@ -494,6 +554,8 @@ namespace IslandsOfValheim
 
         bool hafdisBout;      // T5: this bout is Hafdís's
         bool waitingForYou;   // her bout is set, and waits for you to come into the ring
+        bool calledIn;        // the ring's master has called you to it
+        internal static readonly Vector3 HafdisHair = new Vector3(1f, 0.9f, 0.62f);
 
         // T5: Hafdís, asked at the rock's edge, will meet you in the ring: the bout begins once you're in it.
         internal void BeginHafdis()
@@ -502,7 +564,9 @@ namespace IslandsOfValheim
             if (ValhallaPeople.Current != null) ValhallaPeople.Current.RingCleared(true);
             hafdisBout = true;
             waitingForYou = true;
+            calledIn = false;
             round = 1;
+            boutAt = Time.time + 6f; // (she leaves the rock's edge first)
             lastHealth = -1f;
             Message("$iov_t5_wait");
             Plugin.Debug("T5: Hafdís waits in the ring");
@@ -611,13 +675,34 @@ namespace IslandsOfValheim
                 return;
             }
             Vector3 centre = RingCentre;
-            // (Hafdís's: waiting for you to come to the ring, from wherever you asked her)
+            // Hafdís's: she comes into the ring a little after you've asked her (once she has had her say and
+            // gone in the light), and waits there for you, still; the ring's master calls you in as you come
+            // near; the bout begins as you step in between its columns. (1.10.104 waited for you to come within
+            // 9 m of its middle before she came at all: standing at its edge, she never did.)
             if (waitingForYou)
             {
-                if (Utils.DistanceXZ(player.transform.position, centre) > RingRadius - 1f) return;
+                if (pending.Count > 0)
+                {
+                    if (Time.time >= pendingAt) { foreach (System.Action make in pending) make(); pending.Clear(); }
+                    return;
+                }
+                if (fighters.Count == 0 && Time.time >= boutAt) { Spawn(player, centre); return; }
+                float off = Utils.DistanceXZ(player.transform.position, centre);
+                if (!calledIn && fighters.Count > 0 && off < 32f)
+                {
+                    calledIn = true;
+                    ValhallaSpeaker.Shout(ValhallaSpeaker.RingMaster, "$iov_t5_ringmaster");
+                }
+                if (off > RingRadius + 2f || fighters.Count == 0) return;
                 waitingForYou = false;
-                boutAt = Time.time + 3f;
+                foreach (Character c in fighters)
+                {
+                    EinherjarFighter f = c != null ? c.GetComponent<EinherjarFighter>() : null;
+                    if (f != null) f.Fight();
+                    EyesOn(c, player);
+                }
                 Message("$iov_t5_bout");
+                Plugin.Debug("T5: Hafdís's bout begins");
                 return;
             }
             // out of the ring for a moment: you've left it
@@ -756,9 +841,9 @@ namespace IslandsOfValheim
                     Character her = Fighter(EinherjarFighter.HafdisPrefab, at, player, tier, Health[tier] * 2.2f, 1, Pick(Spears, tier), Pick(RoundShields, tier), "Hair20", "", "CapeFeather",
                         new[] { "", "ArmorCarapaceChest", "ArmorCarapaceLegs" });
                     EinherjarFighter f = her != null ? her.GetComponent<EinherjarFighter>() : null;
-                    if (f != null) { f.hafdis = true; f.echoPierce = 25f + 12f * tier; }
+                    if (f != null) { f.hafdis = true; f.echoPierce = 25f + 12f * tier; f.waiting = waitingForYou; }
                     VisEquipment vis = her != null ? her.GetComponent<VisEquipment>() : null;
-                    if (vis != null) vis.SetHairColor(new Vector3(0.92f, 0.84f, 0.62f));
+                    if (vis != null) vis.SetHairColor(HafdisHair);
                 });
             }
             else if (round == 1)
@@ -843,6 +928,8 @@ namespace IslandsOfValheim
             Character body = go.GetComponent<Character>();
             body.SetMaxHealth(health);
             body.SetHealth(health);
+            EinherjarFighter me = go.GetComponent<EinherjarFighter>();
+            if (me != null) { me.modelWanted = model; me.hairWanted = hair ?? ""; me.beardWanted = beard ?? ""; }
             VisEquipment vis = go.GetComponent<VisEquipment>();
             if (vis != null)
             {

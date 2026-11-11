@@ -345,38 +345,37 @@ namespace IslandsOfValheim
         // seat, looking out over the clouds (until she has yielded in the ring): a shield-maiden, her hair loose,
         // in the sea-dark chitin of the deep and a cape of feathers, spear and shield in hand.
         SpiritHuman edgeHafdis;
-        const float HafdisBearing = 120f; // degrees from the rock's east, round to the north
 
         void HafdisAtTheEdge()
         {
             if (Story.Key(ValhallaDuel.HafdisWonKey)) return;
-            float a = HafdisBearing * Mathf.Deg2Rad;
-            Vector2 out_ = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-            float r = IsletBuilder.RockEdgeAt(out_.x, out_.y) - 5f;
-            Vector3 at = new Vector3(out_.x * r, 0f, out_.y * r);
+            Vector2 spot = IsletBuilder.HafdisEdge;
+            Vector3 at = new Vector3(spot.x, 0f, spot.y);
             SpiritHuman.Look look = new SpiritHuman.Look
             {
-                Model = 1, Hair = "Hair20", HairColor = new Vector3(0.92f, 0.84f, 0.62f),
+                Model = 1, Hair = "Hair20", HairColor = ValhallaDuel.HafdisHair,
                 Chest = "ArmorCarapaceChest", Legs = "ArmorCarapaceLegs", Shoulder = "CapeFeather",
             };
-            edgeHafdis = Stand(look, at, new Vector3(out_.x, 0f, out_.y), 4f, "SpearElderbark", "ShieldSerpentscale");
+            edgeHafdis = Stand(look, at, new Vector3(spot.x, 0f, spot.y), 4f, "SpearElderbark", "ShieldSerpentscale");
             Speaks(edgeHafdis, ValhallaSpeaker.Hafdis, 2.2f);
-            Plugin.Debug("Valhalla: Hafdís at the rock's edge, " + r.ToString("F1") + " m out at " + HafdisBearing + " degrees");
+            Plugin.Debug("Valhalla: Hafdís at the rock's edge, at " + spot.ToString("F1"));
         }
 
-        // Gone to the ring (away), in a column of light; back at the edge if the bout wasn't hers to lose.
-        internal void HafdisAway(bool away)
+        // Gone to the ring (away), in a column of light, once she has had her say (after: the time it's read
+        // in; 1.10.104 took her at once, and her words went with her); back at the edge if the bout wasn't won.
+        internal void HafdisAway(bool away, float after = 0f)
         {
             if (edgeHafdis == null) return;
-            if (away == !edgeHafdis.gameObject.activeSelf) return;
-            LightBeam.Over(edgeHafdis.transform.position, 3f, 1.8f, 0.9f, 2f, true);
-            StartCoroutine(Shown(edgeHafdis.gameObject, !away, 1f));
+            StartCoroutine(Going(edgeHafdis.gameObject, away, after));
         }
 
-        static IEnumerator Shown(GameObject go, bool on, float after)
+        static IEnumerator Going(GameObject go, bool away, float after)
         {
-            yield return new WaitForSeconds(after);
-            if (go != null) go.SetActive(on);
+            if (after > 0f) yield return new WaitForSeconds(after);
+            if (go == null || away == !go.activeSelf) yield break;
+            LightBeam.Over(go.transform.position, 3f, 1.8f, 0.9f, 2f, true);
+            yield return new WaitForSeconds(1f);
+            if (go != null) go.SetActive(!away);
         }
 
         // ---- the tale's captains at the Brim Folk's table (T2: TaleCaptains) ----

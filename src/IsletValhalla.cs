@@ -286,6 +286,10 @@ namespace IslandsOfValheim
             if (wayTo > wayFrom) paved = Mathf.Max(paved, Soft(Box(x, z, 0f, (wayFrom + wayTo) * 0.5f, 1.6f, (wayTo - wayFrom) * 0.5f)));
             float earth = Soft(new Vector2(x - DuelRing.x, z - DuelRing.y).magnitude - (DuelRadius - 0.5f)) * 0.9f;
             earth = Mathf.Max(earth, Soft(new Vector2(x - Feast.x, z - Feast.y).magnitude - 9f) * 0.7f);
+            // where Hafdís has stood alone so long, the ground worn bare (no grass up to her shoulders: 1.10.104
+            // stood her in the rim's tall reeds)
+            Vector2 edge = HafdisEdge;
+            earth = Mathf.Max(earth, Soft(new Vector2(x - edge.x, z - edge.y).magnitude - 3.5f) * 0.8f);
             float near = float.MaxValue;
             foreach (Vector2 p in memorialPoints) near = Mathf.Min(near, (new Vector2(x, z) - p).sqrMagnitude);
             earth = Mathf.Max(earth, Soft(Mathf.Sqrt(near) - 1.4f) * 0.75f);
@@ -293,6 +297,18 @@ namespace IslandsOfValheim
         }
 
         static List<Vector2> memorialPoints;
+
+        // T5: where Hafdís stands, alone at the rock's north-western edge (120 degrees round from its east), a
+        // few metres in from its lip.
+        internal static Vector2 HafdisEdge
+        {
+            get
+            {
+                float a = 120f * Mathf.Deg2Rad;
+                Vector2 dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                return dir * (RockEdge(a) - 5f);
+            }
+        }
 
         // The height of the rock's ground at (x, z), as its mesh has it: the meadow, and the lip rounding down
         // at the rim.
