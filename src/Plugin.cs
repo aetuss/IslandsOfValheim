@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.10.87";
+        public const string Version = "1.10.88";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -67,6 +67,7 @@ namespace IslandsOfValheim
         void Update()
         {
             ExistingWorlds.Tick();
+            SpiritsIslet.Tick();
         }
 
         // Spawners and chests are networked objects, so they need prefabs of their own in ZNetScene.
@@ -84,6 +85,7 @@ namespace IslandsOfValheim
             SpiritHuman.Register(); // the Brim Folk's spirits in human form (Valhalla arc, work in progress)
             EinherjarFighter.Register(); // the einherjar of the ring's duels (Valhalla arc, work in progress)
             RanNet.Register(); // Hafgufa, Rán's knots, the drowned and the graveyard's marker (Valhalla arc, T3)
+            SpiritsIslet.Register(); // the Brim village's altar (Valhalla arc, T4)
         }
 
         void OnVanillaLocations()
@@ -98,6 +100,7 @@ namespace IslandsOfValheim
             {
                 IsletBuilder.RegisterHarbour(SeaTraderIslets.Value);
                 IsletBuilder.RegisterStoryIslets(); // the tale is his to tell
+                IsletBuilder.RegisterSpiritsIslet(); // the Brim village, near his harbour (Valhalla arc, T4)
             }
             IsletBuilder.RegisterLargeIslets();
 #if IOV_DEV

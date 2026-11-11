@@ -79,6 +79,10 @@ namespace IslandsOfValheim
                 "[start|reset|done|map|boat] - IslandsOfValheim (development): Rán's net: bring Hafgufa now (start, at the graveyard), undo it all (reset), tear the net (done), get Sævar's chart (map), or a longship in front of you (boat)",
                 args => RanNet.Dev(args.Length > 1 ? args[1].ToLowerInvariant() : "", args.Context), true);
 
+            new Terminal.ConsoleCommand("iov_t4",
+                "[stage 0-2|reset|place|map] - IslandsOfValheim (development): the Brim village: show it ruined, cleared or rebuilt (stage), undo it all and take away the house's pieces (reset), place it by the harbour now (place), or get Sævar's chart (map)",
+                args => SpiritsIslet.Dev(args.Length > 1 ? args[1].ToLowerInvariant() : "", args.Length > 2 ? args[2] : "", args.Context), true);
+
             new Terminal.ConsoleCommand("iov_duel",
                 "[start|stop|round 1-3|reset] - IslandsOfValheim (development): the einherjar's duels in Valhalla's ring: start (or from a given round), stop, or reset (as if never won)",
                 args =>
@@ -336,6 +340,7 @@ namespace IslandsOfValheim
                     names.Add("trader");
                     for (int i = 1; i <= Story.Islets.Length; i++) names.Add("story" + i);
                     names.Add("graveyard");
+                    names.Add("village");
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add(LargeArg(kind));
 #if IOV_DEV
                     foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds) names.Add("draft_" + LargeArg(kind).Substring(6));
@@ -360,6 +365,7 @@ namespace IslandsOfValheim
             for (int i = 1; i <= Story.Islets.Length; i++)
                 if (string.Equals(arg, "story" + i, System.StringComparison.OrdinalIgnoreCase)) return Story.Islets[i - 1];
             if (string.Equals(arg, "graveyard", System.StringComparison.OrdinalIgnoreCase)) return RanNet.Graveyard;
+            if (string.Equals(arg, "village", System.StringComparison.OrdinalIgnoreCase)) return IsletBuilder.SpiritsName;
             foreach (IsletBuilder.LargeKind kind in IsletBuilder.LargeKinds)
                 if (string.Equals(arg, LargeArg(kind), System.StringComparison.OrdinalIgnoreCase)) return kind.LandName;
             return null;
@@ -396,6 +402,9 @@ namespace IslandsOfValheim
             if (best.m_location != null && best.m_location.m_prefabName == Story.Arena)
                 target.y = ZoneSystem.instance.m_waterLevel + IsletBuilder.ArenaTop + 3f;
             // The sunken fleet is open water: you come down outside it, in the sea (iov_t3 boat for a ship).
+            // The Brim village's square, by its altar.
+            if (location == IsletBuilder.SpiritsName)
+                target.y = ZoneSystem.instance.m_waterLevel + IsletBuilder.SpiritsHeight + 3f;
             if (location == RanNet.Graveyard)
                 target = new Vector3(best.m_position.x + RanNet.Area * 0.6f, ZoneSystem.instance.m_waterLevel + 2f, best.m_position.z);
             Player.m_localPlayer.TeleportTo(target, Player.m_localPlayer.transform.rotation, true);

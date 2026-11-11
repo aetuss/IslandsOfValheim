@@ -1,0 +1,420 @@
+using System.Collections.Generic;
+using HarmonyLib;
+using Jotunn.Entities;
+using Jotunn.Managers;
+using UnityEngine;
+
+namespace IslandsOfValheim
+{
+    // T4 of the Valhalla arc: the Brim village (its layout: SpiritsVillage). Once Rán's net is torn, Sævar asks
+    // the player to make the people a home again: the ruined village in sight of his harbour. Its altar takes
+    // two rounds of donations, and the village stands again in stages; the second gives the player a house
+    // of their own beside the hall (its bed, chests and fires real and working, but never damaged or taken
+    // apart), and a yard where they may build (the rest of the village is the people's).
+    // The islet is placed by the server near the harbour once the harbour itself is placed (a world picks
+    // one of the harbour's candidate spots only when someone first comes near it), in a new world or one that
+    // already has its harbour.
+    static class SpiritsIslet
+    {
+        internal const string AltarName = "IoV_SpiritAltar";
+        internal const string Map = "IoV_StoryMapBrim";
+        internal const string Stage1Key = "iovt4stage1", Stage2Key = "iovt4stage2";
+        const string PlacedKey = "iovt4placed";
+        const string ToldKey = "iovt4told";              // (the player has heard Sævar ask: per player)
+        internal const string HomeKey = "IoV_T4Home";     // on the house's real pieces
+        const string HomeBuiltKey = "IoV_T4HomeBuilt";    // on the altar: the house's pieces are in
+
+        // The village as the world has it: 0 ruined, 1 cleared, 2 rebuilt.
+        internal static int Stage { get { return Story.Key(Stage2Key) ? 2 : Story.Key(Stage1Key) ? 1 : 0; } }
+
+        // What each round asks (the first that clears it: plentiful things; the second that builds it again:
+        // what a seasoned yolgezer brings back from the Mistlands and the swamps).
+        static readonly string[][] Clearing = { new[] { "Wood", "50" }, new[] { "Stone", "50" }, new[] { "Resin", "20" } };
+        static readonly string[][] Rebuilding = { new[] { "YggdrasilWood", "30" }, new[] { "BlackMarble", "30" }, new[] { "IronNails", "50" } };
+
+        // ---- the altar ----
+
+        internal static void Register()
+        {
+            string source = null;
+            foreach (string name in new[] { "piece_offerbowl", "fire_pit_iron", "fire_pit" })
+                if (PrefabManager.Instance.GetPrefab(name) != null) { source = name; break; }
+            if (source == null) { Plugin.Log.LogWarning("Brim village: no altar to make; its donations are left out."); return; }
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(AltarName, source);
+            Fireplace fire = go.GetComponent<Fireplace>();
+            if (fire != null)
+            {
+                foreach (GameObject state in new[] { fire.m_enabledObject, fire.m_enabledObjectLow, fire.m_enabledObjectHigh, fire.m_halfObject })
+                    if (state != null && state != fire.m_emptyObject) state.SetActive(false);
+                if (fire.m_playerBaseObject != null) Object.DestroyImmediate(fire.m_playerBaseObject);
+            }
+            for (int pass = 0; pass < 4; pass++)
+                foreach (MonoBehaviour script in go.GetComponentsInChildren<MonoBehaviour>(true))
+                    if (!(script is ZNetView)) Object.DestroyImmediate(script);
+            foreach (Rigidbody body in go.GetComponentsInChildren<Rigidbody>(true)) Object.DestroyImmediate(body);
+            go.GetComponent<ZNetView>().m_persistent = true;
+            // a cold, pale light over it, the souls' own colour
+            GameObject glow = new GameObject("IoV_AltarGlow");
+            glow.transform.SetParent(go.transform, false);
+            glow.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = RanNet.SoulColour;
+            light.range = 6f;
+            light.intensity = 1.2f;
+            light.shadows = LightShadows.None;
+            go.AddComponent<SpiritAltar>();
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
+            Plugin.Debug("Brim village: the altar made from " + source);
+        }
+
+        internal static string[][] Cost(int stage) { return stage == 0 ? Clearing : Rebuilding; }
+
+        internal static string ItemName(string prefab)
+        {
+            GameObject item = ObjectDB.instance != null ? ObjectDB.instance.GetItemPrefab(prefab) : null;
+            return item != null ? item.GetComponent<ItemDrop>().m_itemData.m_shared.m_name : null;
+        }
+
+        // The real pieces of the player's house, where the village's plan puts them (the altar knows the islet's
+        // middle from where it stands itself), marked as the house's.
+        internal static void BuildHome(Transform altar)
+        {
+            Quaternion turn = altar.rotation;
+            Vector3 middle = altar.position - turn * IsletBuilder.SpiritAltarAt;
+            int made = 0;
+            foreach (IsletBuilder.HomePiece h in IsletBuilder.HomePieces)
+            {
+                GameObject prefab = null;
+                foreach (string name in h.Prefab)
+                    if ((prefab = ZNetScene.instance.GetPrefab(name)) != null) break;
+                if (prefab == null) { Plugin.Log.LogWarning("Brim village: none of " + string.Join(", ", h.Prefab) + " for the player's house"); continue; }
+                GameObject go = Object.Instantiate(prefab, middle + turn * h.At, turn * Quaternion.Euler(0f, h.Yaw, 0f));
+                ZNetView view = go.GetComponent<ZNetView>();
+                if (view != null && view.IsValid()) view.GetZDO().Set(HomeKey, true);
+                Keep(go);
+                made++;
+            }
+            Plugin.Debug("Brim village: the player's house furnished, " + made + " pieces");
+        }
+
+        // A piece of the player's house: never worn by weather or want of support, never taken apart, its fire
+        // never out.
+        static void Keep(GameObject go)
+        {
+            WearNTear wear = go.GetComponent<WearNTear>();
+            if (wear != null) { wear.m_noRoofWear = false; wear.m_noSupportWear = false; }
+            Piece piece = go.GetComponent<Piece>();
+            if (piece != null) piece.m_canBeRemoved = false;
+            Fireplace fire = go.GetComponent<Fireplace>();
+            if (fire != null) fire.m_infiniteFuel = true;
+        }
+
+        static bool Home(Component c)
+        {
+            ZNetView view = c.GetComponent<ZNetView>();
+            return view != null && view.IsValid() && view.GetZDO().GetBool(HomeKey);
+        }
+
+        internal static void HomeBuilt(ZNetView altar, bool built) { if (altar != null && altar.IsValid()) altar.GetZDO().Set(HomeBuiltKey, built); }
+        internal static bool IsHomeBuilt(ZNetView altar) { return altar != null && altar.IsValid() && altar.GetZDO().GetBool(HomeBuiltKey); }
+
+        [HarmonyPatch(typeof(WearNTear), "Awake")]
+        static class HomeWearPatch { static void Postfix(WearNTear __instance) { if (Home(__instance)) Keep(__instance.gameObject); } }
+
+        [HarmonyPatch(typeof(Fireplace), "Awake")]
+        static class HomeFirePatch { static void Postfix(Fireplace __instance) { if (Home(__instance)) Keep(__instance.gameObject); } }
+
+        [HarmonyPatch(typeof(WearNTear), "ApplyDamage")]
+        static class HomeDamagePatch { static void Prefix(WearNTear __instance, ref float damage) { if (damage > 0f && Home(__instance)) damage = 0f; } }
+
+        [HarmonyPatch(typeof(Piece), "CanBeRemoved")]
+        static class HomeRemovePatch { static void Postfix(Piece __instance, ref bool __result) { if (__result && Home(__instance)) __result = false; } }
+
+        // The village is the people's (no building), but for the player's yard.
+        [HarmonyPatch(typeof(Location), "IsInsideNoBuildLocation")]
+        static class YardPatch
+        {
+            static void Postfix(Vector3 point, ref bool __result)
+            {
+                if (__result && SpiritYard.Covers(point)) __result = false;
+            }
+        }
+
+        // ---- the islet near the harbour (on the server) ----
+
+        static float wait = 10f;
+
+        internal static void Tick()
+        {
+            if (ZNet.instance == null || !ZNet.instance.IsServer() || ZoneSystem.instance == null) return;
+            wait -= Time.deltaTime;
+            if (wait > 0f) return;
+            wait = 5f;
+            if (ZoneSystem.instance.GetGlobalKey(PlacedKey)) return;
+            Place(null);
+        }
+
+        static readonly System.Reflection.MethodInfo registerLocation = AccessTools.Method(typeof(ZoneSystem), "RegisterLocation");
+        static readonly System.Reflection.MethodInfo spawnLocation = AccessTools.Method(typeof(ZoneSystem), "SpawnLocation");
+        static readonly System.Reflection.FieldInfo generatedZones = AccessTools.Field(typeof(ZoneSystem), "m_generatedZones");
+
+        // Within sight of the placed harbour, in open sea round all its shores; built at once where the sea has
+        // been sailed, else when someone comes near. False while there's no harbour yet.
+        internal static bool Place(Terminal context)
+        {
+            ZoneSystem zones = ZoneSystem.instance;
+            ZoneSystem.ZoneLocation location = null;
+            foreach (ZoneSystem.ZoneLocation l in zones.m_locations)
+                if (l.m_prefabName == IsletBuilder.SpiritsName) { location = l; break; }
+            if (location == null) { if (context != null) context.AddString("The Brim village isn't registered (no sea trader islets?)."); return false; }
+            Vector3 harbour = Vector3.zero;
+            bool found = false;
+            List<ZoneSystem.LocationInstance> others = new List<ZoneSystem.LocationInstance>();
+            foreach (ZoneSystem.LocationInstance i in zones.GetLocationList())
+            {
+                if (i.m_location == null) continue;
+                if (i.m_location.m_prefabName == IsletBuilder.SpiritsName)
+                {
+                    zones.SetGlobalKey(PlacedKey);
+                    if (context != null) context.AddString("The Brim village is already at " + i.m_position.ToString("F0"));
+                    return true;
+                }
+                if (i.m_location.m_prefabName == IsletBuilder.HarbourName && i.m_placed) { harbour = i.m_position; found = true; }
+                others.Add(i);
+            }
+            if (!found) { if (context != null) context.AddString("Sævar's harbour isn't placed yet (sail near it first)."); return false; }
+
+            float turn0 = (WorldGenerator.instance.GetSeed() & 0xff) * 1.4f;
+            foreach (float distance in new[] { 340f, 300f, 380f, 420f, 460f, 520f })
+                for (int k = 0; k < 24; k++)
+                {
+                    float a = (turn0 + k * 15f) * Mathf.Deg2Rad;
+                    Vector3 p = harbour + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * distance;
+                    if (!Suits(p, others)) continue;
+                    p.y = zones.m_waterLevel;
+                    Vector2s zone = ZoneSystem.GetZone(p);
+                    HashSet<Vector2s> generated = generatedZones != null ? generatedZones.GetValue(zones) as HashSet<Vector2s> : null;
+                    bool now = generated != null && generated.Contains(zone);
+                    registerLocation.Invoke(zones, new object[] { location, p, now });
+                    if (now)
+                    {
+                        // its back to the harbour, so its square and houses face it
+                        Vector3 away = p - harbour;
+                        Quaternion rotation = Quaternion.Euler(0f, Mathf.Atan2(away.x, away.z) * Mathf.Rad2Deg, 0f);
+                        spawnLocation.Invoke(zones, new object[] { location, WorldGenerator.instance.GetSeed() ^ 0x5b1, p, rotation, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+                    }
+                    zones.SetGlobalKey(PlacedKey);
+                    string said = "Brim village placed " + distance.ToString("F0") + " m from Sævar's harbour, at " + p.ToString("F0") + (now ? " (built now: that sea had been sailed)" : "");
+                    Plugin.Log.LogInfo(said);
+                    if (context != null) context.AddString(said);
+                    return true;
+                }
+            Plugin.Log.LogWarning("Brim village: no open sea round Sævar's harbour within 520 m; tried again later.");
+            if (context != null) context.AddString("No open sea round the harbour within 520 m.");
+            wait = 120f;
+            return false;
+        }
+
+        // Deep open sea, sea all round as far as the islet reaches, and clear of every other place.
+        static bool Suits(Vector3 p, List<ZoneSystem.LocationInstance> others)
+        {
+            WorldGenerator world = WorldGenerator.instance;
+            float water = ZoneSystem.instance.m_waterLevel;
+            if (world.GetBiome(p) != Heightmap.Biome.Ocean || world.GetHeight(p.x, p.z) > water - 6f) return false;
+            foreach (float ring in new[] { 45f, 95f })
+                for (int i = 0; i < 12; i++)
+                {
+                    float rad = i * Mathf.PI / 6f;
+                    Vector3 q = p + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * ring;
+                    if (world.GetBiome(q) != Heightmap.Biome.Ocean || world.GetHeight(q.x, q.z) > water - 2f) return false;
+                }
+            foreach (ZoneSystem.LocationInstance o in others)
+            {
+                float keep = Mathf.Max(o.m_location.m_exteriorRadius, o.m_location.m_interiorRadius) + 100f;
+                if (o.m_location.m_prefabName.StartsWith(IsletBuilder.LargePrefix)) keep = Mathf.Max(keep, 250f);
+                if (new Vector2(o.m_position.x - p.x, o.m_position.z - p.z).sqrMagnitude < keep * keep) return false;
+            }
+            return true;
+        }
+
+        // ---- Sævar ----
+
+        // Once the net is torn: the village (a page and the chart) the first time; then a reminder (the chart
+        // again if it's been lost); once it stands again, his thanks.
+        internal static string SaevarLine(Player player)
+        {
+            if (Stage >= 2) return "$iov_valsaevar_t4done";
+            if (!player.HaveSeenTutorial(ToldKey))
+            {
+                player.SetSeenTutorial(ToldKey);
+                Story.Tell(player, "$iov_t4_page", "$iov_t4_page_text");
+                Story.Give(player, Map);
+                return "$iov_valsaevar_t4";
+            }
+            player.AddKnownText("$iov_t4_page", "$iov_t4_page_text");
+            if (!Story.Has(player, Map)) Story.Give(player, Map);
+            return "$iov_valsaevar_t4remind";
+        }
+
+        // ---- development ----
+
+        internal static void Dev(string what, string arg, Terminal context)
+        {
+            Player player = Player.m_localPlayer;
+            ZoneSystem zones = ZoneSystem.instance;
+            if (zones == null) return;
+            switch (what)
+            {
+                case "stage":
+                    int stage;
+                    if (!int.TryParse(arg, out stage) || stage < 0 || stage > 2) { context.AddString("iov_t4 stage 0|1|2"); return; }
+                    if (stage >= 1) Story.Set(Stage1Key); else zones.RemoveGlobalKey(Stage1Key);
+                    if (stage >= 2) Story.Set(Stage2Key); else zones.RemoveGlobalKey(Stage2Key);
+                    break;
+                case "reset":
+                    zones.RemoveGlobalKey(Stage1Key);
+                    zones.RemoveGlobalKey(Stage2Key);
+                    if (player != null) RemoveSeen(player, ToldKey);
+                    // the house's pieces and the altar's memory of them, where they're loaded
+                    foreach (ZNetView view in Object.FindObjectsByType<ZNetView>(FindObjectsSortMode.None))
+                    {
+                        if (view == null || !view.IsValid()) continue;
+                        if (view.GetZDO().GetBool(HomeKey)) { view.ClaimOwnership(); view.Destroy(); }
+                        else if (view.GetComponent<SpiritAltar>() != null) { view.ClaimOwnership(); HomeBuilt(view, false); }
+                    }
+                    break;
+                case "place":
+                    Place(context);
+                    return;
+                case "map":
+                    if (player != null) Story.Give(player, Map);
+                    break;
+                default:
+                    context.AddString("iov_t4 stage 0|1|2 | reset | place | map");
+                    return;
+            }
+            context.AddString("T4 " + what + ": the village is " + (Stage == 2 ? "rebuilt" : Stage == 1 ? "cleared" : "ruined") + (RanNet.Done ? "" : " (the net isn't torn yet: its altar is silent)"));
+        }
+
+        static void RemoveSeen(Player player, string key)
+        {
+            System.Reflection.FieldInfo field = AccessTools.Field(typeof(Player), "m_shownTutorials");
+            HashSet<string> seen = field != null ? field.GetValue(player) as HashSet<string> : null;
+            if (seen != null) seen.Remove(key);
+        }
+    }
+
+    // The Brim village's altar: what the village needs next, taken from whoever brings it.
+    class SpiritAltar : MonoBehaviour, Hoverable, Interactable
+    {
+        ZNetView view;
+
+        void Awake()
+        {
+            view = GetComponent<ZNetView>();
+            InvokeRepeating("Furnish", 3f, 3f);
+        }
+
+        // The house's real pieces, once the village is rebuilt (its owner puts them in, once).
+        void Furnish()
+        {
+            if (view == null || !view.IsValid() || !view.IsOwner() || SpiritsIslet.Stage < 2 || SpiritsIslet.IsHomeBuilt(view)) return;
+            SpiritsIslet.HomeBuilt(view, true);
+            SpiritsIslet.BuildHome(transform);
+        }
+
+        public string GetHoverName() { return Localization.instance.Localize("$iov_t4_altar"); }
+
+        public float GetHoverOffset() { return 0f; }
+
+        public string GetHoverText()
+        {
+            string text = "$iov_t4_altar";
+            int stage = SpiritsIslet.Stage;
+            if (!RanNet.Done) text += "\n$iov_t4_altar_silent";
+            else if (stage >= 2) text += "\n$iov_t4_altar_done";
+            else
+            {
+                text += "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_t4_altar_give\n" + (stage == 0 ? "$iov_t4_altar_clear" : "$iov_t4_altar_build");
+                Inventory inventory = Player.m_localPlayer != null ? Player.m_localPlayer.GetInventory() : null;
+                foreach (string[] need in SpiritsIslet.Cost(stage))
+                {
+                    string name = SpiritsIslet.ItemName(need[0]);
+                    if (name == null) continue;
+                    int want = int.Parse(need[1]);
+                    int have = inventory != null ? inventory.CountItems(name, -1, true) : 0;
+                    text += "\n" + (have >= want ? "" : "<color=#ff9a8a>") + Mathf.Min(have, want) + "/" + want + " " + name + (have >= want ? "" : "</color>");
+                }
+            }
+            return Localization.instance.Localize(text);
+        }
+
+        public bool Interact(Humanoid user, bool hold, bool alt)
+        {
+            if (hold || !RanNet.Done) return false;
+            int stage = SpiritsIslet.Stage;
+            if (stage >= 2) return false;
+            Inventory inventory = user.GetInventory();
+            foreach (string[] need in SpiritsIslet.Cost(stage))
+            {
+                string name = SpiritsIslet.ItemName(need[0]);
+                if (name != null && inventory.CountItems(name, -1, true) < int.Parse(need[1]))
+                {
+                    user.Message(MessageHud.MessageType.Center, "$iov_t4_short");
+                    return true;
+                }
+            }
+            foreach (string[] need in SpiritsIslet.Cost(stage))
+            {
+                string name = SpiritsIslet.ItemName(need[0]);
+                if (name != null) inventory.RemoveItem(name, int.Parse(need[1]), -1, true);
+            }
+            Story.Set(stage == 0 ? SpiritsIslet.Stage1Key : SpiritsIslet.Stage2Key);
+            user.Message(MessageHud.MessageType.Center, stage == 0 ? "$iov_t4_stage1" : "$iov_t4_stage2");
+            return true;
+        }
+
+        public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
+    }
+
+    // Shows the village as its stage is (each client from the world's keys).
+    class SpiritStages : MonoBehaviour
+    {
+        internal static string GroupName(int stage) { return "IoV_SpiritStage" + stage; }
+
+        readonly Transform[] groups = new Transform[3];
+        int shown = -1;
+
+        void Start()
+        {
+            for (int s = 0; s < 3; s++) groups[s] = transform.parent.Find(GroupName(s));
+            InvokeRepeating("Check", 0.1f, 2f);
+        }
+
+        void Check()
+        {
+            int stage = SpiritsIslet.Stage;
+            if (stage == shown) return;
+            shown = stage;
+            for (int s = 0; s < 3; s++)
+                if (groups[s] != null) groups[s].gameObject.SetActive(s == stage);
+        }
+    }
+
+    // The player's yard in the Brim village: building allowed within it.
+    class SpiritYard : MonoBehaviour
+    {
+        static readonly List<SpiritYard> all = new List<SpiritYard>();
+
+        void OnEnable() { all.Add(this); }
+        void OnDisable() { all.Remove(this); }
+
+        internal static bool Covers(Vector3 p)
+        {
+            foreach (SpiritYard y in all)
+                if (y != null && Utils.DistanceXZ(p, y.transform.position) < IsletBuilder.SpiritYardRadius) return true;
+            return false;
+        }
+    }
+}

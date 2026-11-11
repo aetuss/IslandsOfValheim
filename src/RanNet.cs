@@ -256,7 +256,7 @@ namespace IslandsOfValheim
         // reminder (and the chart again if it's been lost); once the net is torn, his thanks.
         internal static string SaevarLine(Player player)
         {
-            if (Done) return "$iov_valsaevar_t3done";
+            if (Done) return SpiritsIslet.SaevarLine(player); // (then the village: T4)
             if (!player.HaveSeenTutorial(ToldKey))
             {
                 player.SetSeenTutorial(ToldKey);

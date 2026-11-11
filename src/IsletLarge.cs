@@ -50,6 +50,10 @@ namespace IslandsOfValheim
             // islet and on the land one).
             internal float Plateau, Shore;
             internal Vector3 KeeperOffset, LandKeeperOffset;
+            // An islet of the tale with its own contents (the Brim village): built by this instead of Inhabit or
+            // a draft, and no-build within NoBuildRadius of its middle (0: players may build anywhere).
+            internal System.Action<LargeKind> Custom;
+            internal float NoBuildRadius;
 
             // The islet on our ground mesh, up to 1.9: kept for the ones already built in a world (players may
             // have settled there), but no longer placed anew. Design 1 only.
@@ -285,7 +289,8 @@ namespace IslandsOfValheim
             DungeonInterior interior = source != null ? AddDungeon(source, dungeonAt, dungeonTurn, locationName, kind.Shaped) : null;
             // The old mesh islet keeps its old layout (it's built anew each time from here, over what players
             // left on it); a land one has its design's draft, or the old layout while it has none.
-            if (!bare && !(terrain && BuildDraft(kind))) Inhabit(kind, interior);
+            if (!bare && kind.Custom != null) kind.Custom(kind);
+            else if (!bare && !(terrain && BuildDraft(kind))) Inhabit(kind, interior);
 
             if (terrain)
             {
@@ -349,6 +354,11 @@ namespace IslandsOfValheim
             location.m_exteriorRadius = 60f;
             if (interior != null) interior.CopyTo(location);
             location.m_noBuild = false; // players may settle here
+            if (kind.NoBuildRadius > 0f)
+            {
+                location.m_noBuild = true;
+                location.m_noBuildRadiusOverride = kind.NoBuildRadius;
+            }
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;

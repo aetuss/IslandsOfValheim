@@ -117,6 +117,7 @@ namespace IslandsOfValheim
             new[] { Map6, AshIslet, "$iov_storypin6", "iov_storymap6" },
             new[] { Map7, Arena, "$iov_storypin7", "iov_storymap7" }, // or the old hidden islet (OnRequest)
             new[] { RanNet.Map, RanNet.Graveyard, "$iov_t3_pin", "iov_t3_map" }, // the Valhalla arc: Rán's net (T3)
+            new[] { SpiritsIslet.Map, IsletBuilder.SpiritsName, "$iov_t4_pin", "iov_t4_map" }, // the Brim village (T4)
         };
 
         // Lore stones on the story islets: prefab, label, text.
