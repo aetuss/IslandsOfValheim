@@ -89,13 +89,53 @@ namespace IslandsOfValheim
                 foreach (string name in h.Prefab)
                     if ((prefab = ZNetScene.instance.GetPrefab(name)) != null) break;
                 if (prefab == null) { Plugin.Log.LogWarning("Brim village: none of " + string.Join(", ", h.Prefab) + " for the player's house"); continue; }
-                GameObject go = Object.Instantiate(prefab, middle + turn * h.At, turn * Quaternion.Euler(0f, h.Yaw, 0f));
+                Vector3 at = middle + turn * h.At;
+                Quaternion rotation = turn * Quaternion.Euler(0f, h.Yaw, 0f);
+                // a bed lies along the house (its long side front to back)
+                if (h.AlongZ)
+                {
+                    Vector3 size = OwnSize(prefab);
+                    if (size.x > size.z) rotation *= Quaternion.Euler(0f, 90f, 0f);
+                }
+                GameObject go = Object.Instantiate(prefab, at, rotation);
+                // its foot on the floor, wherever its own middle is (1.10.88's braziers sank into it)
+                Bounds drawn = new Bounds();
+                bool any = false;
+                foreach (Renderer r in go.GetComponentsInChildren<Renderer>())
+                {
+                    if (r is ParticleSystemRenderer || !r.enabled) continue;
+                    if (!any) { drawn = r.bounds; any = true; } else drawn.Encapsulate(r.bounds);
+                }
+                if (any)
+                {
+                    Vector3 shift = new Vector3(at.x - drawn.center.x, at.y - drawn.min.y, at.z - drawn.center.z);
+                    go.transform.position += shift;
+                }
                 ZNetView view = go.GetComponent<ZNetView>();
                 if (view != null && view.IsValid()) view.GetZDO().Set(HomeKey, true);
                 Keep(go);
                 made++;
             }
             Plugin.Debug("Brim village: the player's house furnished, " + made + " pieces");
+        }
+
+        // A prefab's size in its own space, from its meshes.
+        static Vector3 OwnSize(GameObject prefab)
+        {
+            bool any = false;
+            Bounds result = new Bounds();
+            foreach (MeshFilter f in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (f.sharedMesh == null) continue;
+                Bounds mb = f.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = prefab.transform.InverseTransformPoint(f.transform.TransformPoint(corner));
+                    if (!any) { result = new Bounds(p, Vector3.zero); any = true; } else result.Encapsulate(p);
+                }
+            }
+            return result.size;
         }
 
         // A piece of the player's house: never worn by weather or want of support, never taken apart, its fire
@@ -222,7 +262,7 @@ namespace IslandsOfValheim
             WorldGenerator world = WorldGenerator.instance;
             float water = ZoneSystem.instance.m_waterLevel;
             if (world.GetBiome(p) != Heightmap.Biome.Ocean || world.GetHeight(p.x, p.z) > water - 6f) return false;
-            foreach (float ring in new[] { 45f, 95f })
+            foreach (float ring in new[] { 45f, 95f, 112f })
                 for (int i = 0; i < 12; i++)
                 {
                     float rad = i * Mathf.PI / 6f;
@@ -309,12 +349,16 @@ namespace IslandsOfValheim
     class SpiritAltar : MonoBehaviour, Hoverable, Interactable
     {
         ZNetView view;
+        internal static readonly List<SpiritAltar> All = new List<SpiritAltar>();
 
         void Awake()
         {
             view = GetComponent<ZNetView>();
             InvokeRepeating("Furnish", 3f, 3f);
         }
+
+        void OnEnable() { All.Add(this); }
+        void OnDisable() { All.Remove(this); }
 
         // The house's real pieces, once the village is rebuilt (its owner puts them in, once).
         void Furnish()
@@ -394,11 +438,30 @@ namespace IslandsOfValheim
 
         void Check()
         {
+            KeepAltar();
             int stage = SpiritsIslet.Stage;
             if (stage == shown) return;
             shown = stage;
             for (int s = 0; s < 3; s++)
                 if (groups[s] != null) groups[s].gameObject.SetActive(s == stage);
+        }
+
+        // The altar where the plan has it now (an altar already in the world stays where an older plan put it;
+        // its owner moves it).
+        void KeepAltar()
+        {
+            Transform root = transform.parent;
+            Vector3 want = root.TransformPoint(IsletBuilder.SpiritAltarAt);
+            foreach (SpiritAltar altar in SpiritAltar.All)
+            {
+                if (altar == null || Utils.DistanceXZ(altar.transform.position, root.position) > 80f) continue;
+                ZNetView view = altar.GetComponent<ZNetView>();
+                if (view == null || !view.IsValid() || !view.IsOwner() || Vector3.Distance(altar.transform.position, want) < 0.3f) continue;
+                altar.transform.SetPositionAndRotation(want, root.rotation);
+                view.GetZDO().SetPosition(want);
+                view.GetZDO().SetRotation(root.rotation);
+                Plugin.Debug("Brim village: the altar moved to where the plan has it, " + want.ToString("F1"));
+            }
         }
     }
 
