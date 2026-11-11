@@ -43,7 +43,7 @@ foreach ($key in $english.Keys) { if ([string]::IsNullOrWhiteSpace($english[$key
 $used = @()
 foreach ($file in Get-ChildItem (Join-Path $root "src") -Filter *.cs) {
     $code = [IO.File]::ReadAllText($file.FullName)
-    $used += [regex]::Matches($code, '"\$?(iov_[a-z0-9_]+)"') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notin @("iov_info", "iov_goto", "iov_light", "iov_placeislets", "iov_spirits", "iov_tree", "iov_sky", "iov_people", "iov_gate", "iov_call", "iov_music", "iov_sfx", "iov_duel", "iov_t2", "iov_t3", "iov_t4") -and -not $_.EndsWith("_") }
+    $used += [regex]::Matches($code, '"\$?(iov_[a-z0-9_]+)"') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notin @("iov_info", "iov_goto", "iov_light", "iov_placeislets", "iov_spirits", "iov_tree", "iov_sky", "iov_people", "iov_gate", "iov_call", "iov_music", "iov_sfx", "iov_duel", "iov_t2", "iov_t3", "iov_t4", "iov_t5") -and -not $_.EndsWith("_") }
     # Items and effects add _desc / _tooltip to their token; the trader's lines are numbered.
     $used += [regex]::Matches($code, '\(\w+, new\[\] \{[^}]*\}, "(iov_[a-z0-9_]+)"') | ForEach-Object { $_.Groups[1].Value + "_desc" }
     $used += [regex]::Matches($code, 'Effect\("[^"]+", "(iov_[a-z0-9_]+)"') | ForEach-Object { $_.Groups[1].Value + "_tooltip" }

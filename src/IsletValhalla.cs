@@ -1233,7 +1233,7 @@ namespace IslandsOfValheim
             {
                 savedFade = fade.GetValue<float>();
                 fade.SetValue(Mathf.Max(savedFade, Fade));
-                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, SeatMusic, new[] { "morning", "evening" }, ValhallaDuel.BoutMusic, ValhallaDuel.ChampionMusic })
+                foreach (string[] list in new[] { DayMusic, DuskMusic, NightMusic, HallMusic, FeastMusic, SeatMusic, new[] { "morning", "evening" }, ValhallaDuel.BoutMusic, ValhallaDuel.ChampionMusic, ValhallaDuel.HafdisMusic })
                     foreach (string name in list)
                     {
                         MusicMan.NamedMusic piece = Piece(name);

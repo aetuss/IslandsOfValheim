@@ -98,6 +98,34 @@ namespace IslandsOfValheim
                     args.Context.AddString("iov_duel start | stop | round 1-3 | reset");
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_t5",
+                "[duel|reset] - IslandsOfValheim (development): Hafdís: her bout in the ring now (duel, as if asked at the rock's edge), or undo it all (reset: not yet yielded, not yet met)",
+                args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    if (what == "reset")
+                    {
+                        if (ZoneSystem.instance != null) ZoneSystem.instance.RemoveGlobalKey(ValhallaDuel.HafdisWonKey);
+                        Player me = Player.m_localPlayer;
+                        System.Reflection.FieldInfo field = HarmonyLib.AccessTools.Field(typeof(Player), "m_shownTutorials");
+                        System.Collections.Generic.HashSet<string> seen = me != null && field != null ? field.GetValue(me) as System.Collections.Generic.HashSet<string> : null;
+                        if (seen != null) seen.Remove(ValhallaSpeaker.HafdisMetKey);
+                        if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
+                        if (ValhallaPeople.Current != null) ValhallaPeople.Current.Remake();
+                        args.Context.AddString("Hafdís: not yet met, not yet yielded.");
+                        return;
+                    }
+                    if (what == "duel")
+                    {
+                        if (ValhallaDuel.Current == null) { args.Context.AddString("Not in Valhalla."); return; }
+                        ValhallaDuel.Current.BeginHafdis();
+                        if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true);
+                        args.Context.AddString("Hafdís waits in the ring.");
+                        return;
+                    }
+                    args.Context.AddString("iov_t5 duel | reset");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_call",
                 "[now|reset] - IslandsOfValheim (development): now: Odin's call comes at once (the gate wakes, Hugin comes, the light stands over the harbour), tale or not; reset: as if Sævar's tale had just ended",
                 args =>

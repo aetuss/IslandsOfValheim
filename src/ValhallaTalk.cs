@@ -11,7 +11,8 @@ namespace IslandsOfValheim
     class ValhallaSpeaker : MonoBehaviour, Hoverable, Interactable
     {
         internal const string WelcomedKey = "iovvalhallawelcomed";
-        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5, Captain = 6;
+        internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5, Captain = 6, Hafdis = 7;
+        internal const string HafdisMetKey = "iovt5met"; // (the player's own: Hafdís has told them who she is)
         internal string captain = ""; // which of the tale's captains (TaleCaptains), for Captain
 
         // Hliðskjálf's seat (world), and when its guards last spoke up about it
@@ -33,6 +34,7 @@ namespace IslandsOfValheim
             get
             {
                 if (who == Captain) return TaleCaptains.Of(captain).Name;
+                if (who == Hafdis) return "$iov_hafdis";
                 return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
             }
         }
@@ -69,6 +71,24 @@ namespace IslandsOfValheim
                 if (!Welcomed) { Say("$iov_ringmaster_wait"); return true; }
                 Say(Story.Key(ValhallaDuel.WonKey) ? "$iov_ringmaster_again" : "$iov_ringmaster_start");
                 ValhallaDuel.Current.Begin();
+                return true;
+            }
+            if (who == Hafdis)
+            {
+                // T5: alone until the village stands again; then who she is (a page), and then the ring
+                if (ValhallaDuel.Active || ValhallaDuel.Current == null) return false;
+                if (SpiritsIslet.Stage < 2) { Say("$iov_t5_alone"); return true; }
+                if (!player.HaveSeenTutorial(HafdisMetKey))
+                {
+                    player.SetSeenTutorial(HafdisMetKey);
+                    Story.Tell(player, "$iov_t5_page", "$iov_t5_page_text");
+                    Say("$iov_t5_meet");
+                    return true;
+                }
+                player.AddKnownText("$iov_t5_page", "$iov_t5_page_text");
+                Say("$iov_t5_challenge");
+                ValhallaDuel.Current.BeginHafdis();
+                if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true);
                 return true;
             }
             if (who == Guard || who == HighSeatGuard)

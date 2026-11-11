@@ -67,6 +67,7 @@ namespace IslandsOfValheim
             voices.Clear();
             captains.Clear();
             captainSeats.Clear();
+            edgeHafdis = null;
             ringPair = null;
             ringCleared = false;
             ringHomeKnown[0] = ringHomeKnown[1] = false;
@@ -105,6 +106,7 @@ namespace IslandsOfValheim
             // at its head, between the two rows, looking out towards the way you come by.
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
             CaptainsAtTable();
+            HafdisAtTheEdge();
             yield return null;
 
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
@@ -335,6 +337,46 @@ namespace IslandsOfValheim
                 at += axis * along;
             }
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, ghost, transform, at, piece.rotation * turn, right));
+        }
+
+        // ---- Hafdís (T5) ----
+
+        // Alone at the rock's north-western edge, away from the hall, the Brim Folk's table and the Allfather's
+        // seat, looking out over the clouds (until she has yielded in the ring): a shield-maiden, her hair loose,
+        // in the sea-dark chitin of the deep and a cape of feathers, spear and shield in hand.
+        SpiritHuman edgeHafdis;
+        const float HafdisBearing = 120f; // degrees from the rock's east, round to the north
+
+        void HafdisAtTheEdge()
+        {
+            if (Story.Key(ValhallaDuel.HafdisWonKey)) return;
+            float a = HafdisBearing * Mathf.Deg2Rad;
+            Vector2 out_ = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+            float r = IsletBuilder.RockEdgeAt(out_.x, out_.y) - 5f;
+            Vector3 at = new Vector3(out_.x * r, 0f, out_.y * r);
+            SpiritHuman.Look look = new SpiritHuman.Look
+            {
+                Model = 1, Hair = "Hair20", HairColor = new Vector3(0.92f, 0.84f, 0.62f),
+                Chest = "ArmorCarapaceChest", Legs = "ArmorCarapaceLegs", Shoulder = "CapeFeather",
+            };
+            edgeHafdis = Stand(look, at, new Vector3(out_.x, 0f, out_.y), 4f, "SpearElderbark", "ShieldSerpentscale");
+            Speaks(edgeHafdis, ValhallaSpeaker.Hafdis, 2.2f);
+            Plugin.Debug("Valhalla: Hafdís at the rock's edge, " + r.ToString("F1") + " m out at " + HafdisBearing + " degrees");
+        }
+
+        // Gone to the ring (away), in a column of light; back at the edge if the bout wasn't hers to lose.
+        internal void HafdisAway(bool away)
+        {
+            if (edgeHafdis == null) return;
+            if (away == !edgeHafdis.gameObject.activeSelf) return;
+            LightBeam.Over(edgeHafdis.transform.position, 3f, 1.8f, 0.9f, 2f, true);
+            StartCoroutine(Shown(edgeHafdis.gameObject, !away, 1f));
+        }
+
+        static IEnumerator Shown(GameObject go, bool on, float after)
+        {
+            yield return new WaitForSeconds(after);
+            if (go != null) go.SetActive(on);
         }
 
         // ---- the tale's captains at the Brim Folk's table (T2: TaleCaptains) ----

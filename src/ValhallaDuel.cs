@@ -16,14 +16,16 @@ namespace IslandsOfValheim
     class EinherjarFighter : MonoBehaviour
     {
         internal const string PrefabName = "IoV_Einherjar", ChampionPrefab = "IoV_EinherjarChampion";
+        internal const string HafdisPrefab = "IoV_HafdisDuelist"; // T5: Hafdís as she was, a shield-maiden
 
         internal static void Register()
         {
-            Make(PrefabName, false);
-            Make(ChampionPrefab, true);
+            Make(PrefabName, false, "$iov_einherjar");
+            Make(ChampionPrefab, true, "$iov_starkadr");
+            Make(HafdisPrefab, true, "$iov_hafdis");
         }
 
-        static void Make(string name, bool champion)
+        static void Make(string name, bool champion, string display)
         {
             GameObject source = PrefabManager.Instance.GetPrefab("Player");
             if (source == null) { Plugin.Log.LogWarning("Duel: no Player prefab"); return; }
@@ -50,7 +52,7 @@ namespace IslandsOfValheim
                 }
                 if (!any) break;
             }
-            body.m_name = champion ? "$iov_starkadr" : "$iov_einherjar";
+            body.m_name = display;
             body.m_faction = Character.Faction.Boss;
             body.m_boss = champion; // the champion's bar across the top of the view, as a boss's
             body.m_health = 200f;
@@ -145,11 +147,85 @@ namespace IslandsOfValheim
                 Traverse.Create(ai).Field("m_targetCreature").SetValue(null);
                 Traverse.Create(ai).Method("SetAlerted", new[] { typeof(bool) }).GetValue(false);
             }
+            if (echoGlow != null) Destroy(echoGlow.gameObject);
             if (kneel)
             {
                 Emote("emote_kneel");
-                if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, 4f, "", "$iov_duel_yield", false);
+                // (Hafdís lowers her spear: out of her hand)
+                Humanoid me = body as Humanoid;
+                ItemDrop.ItemData spear = hafdis && me != null ? me.GetCurrentWeapon() : null;
+                if (spear != null && spear.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield) me.UnequipItem(spear, false);
+                if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : "$iov_duel_yield", false);
             }
+        }
+
+        // ---- Hafdís (T5): she yields at a fifth of her health; from half, now and then, the echo of what she was
+        // in the tale: a gold light at her back, a mark where you stand, and a few of her old feathers coming
+        // down on it (fewer and lighter than the Fallen Valkyrie's) ----
+
+        internal bool hafdis;
+        internal float echoPierce = 30f;
+        const float EchoEvery = 14f, EchoWarning = 1.4f, EchoHeight = 8f, EchoSpread = 1.4f;
+        const int EchoFeathers = 4;
+        float nextEcho = -1f;
+        bool echoed;
+        Light echoGlow;
+        static readonly int wet = "Wet".GetStableHashCode();
+
+        void Hafdis()
+        {
+            Player player = Player.m_localPlayer;
+            ZNetView nview = GetComponent<ZNetView>();
+            if (player == null || nview == null || !nview.IsOwner()) return;
+            if (body.GetHealth() < body.GetMaxHealth() * 0.2f) { Yield(true); return; }
+            if (body.GetHealth() > body.GetMaxHealth() * 0.5f || Time.time < nextEcho) return;
+            if (Vector3.Distance(player.transform.position, transform.position) > 25f) return;
+            nextEcho = Time.time + EchoEvery;
+            if (!echoed && Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 30f, 4f, "", "$iov_t5_echo", false);
+            echoed = true;
+            StartCoroutine(Echo(player, nview));
+        }
+
+        System.Collections.IEnumerator Echo(Player player, ZNetView nview)
+        {
+            GameObject light = new GameObject("IoV_HafdisEcho");
+            light.transform.SetParent(transform, false);
+            light.transform.localPosition = new Vector3(0f, 1.5f, -0.5f);
+            echoGlow = light.AddComponent<Light>();
+            echoGlow.type = LightType.Point;
+            echoGlow.color = HafdisBoss.Glow;
+            echoGlow.range = 6f;
+            echoGlow.intensity = 3f;
+            echoGlow.shadows = LightShadows.None;
+            Vector3 where = player.transform.position + player.GetVelocity() * 0.6f;
+            where.y = player.transform.position.y;
+            Vector3 at = BossKit.Ground(where) ?? where;
+            BossKit.Effect(HafdisBoss.Mark, at + Vector3.up * 0.4f);
+            BossKit.Effect("vfx_prespawn", at);
+            BossKit.Effect("sfx_fallenvalkyrie_attack_spit_charge", transform.position);
+            yield return new WaitForSeconds(EchoWarning);
+            if (echoGlow != null) Destroy(echoGlow.gameObject);
+            GameObject feather = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab("fallenvalkyrie_feather_projectile") : null;
+            if (yielded || nview == null || !nview.IsValid() || !nview.IsOwner() || feather == null) yield break;
+            for (int i = 0; i < EchoFeathers; i++)
+            {
+                Vector2 off = Random.insideUnitCircle * EchoSpread;
+                Vector3 from = at + new Vector3(off.x, EchoHeight, off.y);
+                Vector3 velocity = new Vector3(Random.Range(-0.5f, 0.5f), -28f, Random.Range(-0.5f, 0.5f));
+                GameObject go = Instantiate(feather, from, Quaternion.LookRotation(velocity));
+                IProjectile projectile = go.GetComponent<IProjectile>();
+                if (projectile != null)
+                {
+                    HitData hit = new HitData();
+                    hit.m_damage.m_pierce = echoPierce;
+                    hit.m_pushForce = 10f;
+                    hit.m_statusEffectHash = wet;
+                    hit.SetAttacker(body);
+                    projectile.Setup(body, velocity, -1f, hit, null, null);
+                }
+                yield return new WaitForSeconds(0.14f);
+            }
+            Plugin.Debug("T5: Hafdís's feathers (" + EchoFeathers + ", " + echoPierce.ToString("F0") + " pierce)");
         }
 
         bool goingHome;
@@ -273,15 +349,18 @@ namespace IslandsOfValheim
         void Update()
         {
             if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
+            if (!yielded && body != null && hafdis) { Hafdis(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
-            if (!goingHome && Time.time > yieldedAt + 3.5f)
+            // (Hafdís kneels longer: her words first)
+            float stays = hafdis ? 9f : 3.5f;
+            if (!goingHome && Time.time > yieldedAt + stays)
             {
                 goingHome = true;
                 LightBeam.Over(transform.position, 3f, 1.8f, 0.9f, 2f, true);
             }
             ZNetView nview = GetComponent<ZNetView>();
-            if (Time.time > yieldedAt + 4.5f && nview != null && nview.IsOwner()) ZNetScene.instance.Destroy(gameObject);
+            if (Time.time > yieldedAt + stays + 1f && nview != null && nview.IsOwner()) ZNetScene.instance.Destroy(gameObject);
         }
 
         void Emote(string name)
@@ -403,12 +482,31 @@ namespace IslandsOfValheim
     class ValhallaDuel : MonoBehaviour
     {
         internal const string WonKey = "iovvalhalladuelwon"; // the world's key: the einherjar have accepted you
+        internal const string HafdisWonKey = "iovt5duelwon";  // T5: Hafdís has yielded in the ring
         internal static ValhallaDuel Current;
         internal static bool Active { get { return Current != null && Current.round > 0; } }
+        internal static bool HafdisBout { get { return Active && Current.hafdisBout; } }
 
-        // What's playing while a bout is on (ValhallaSky.Music): the first two, then the champion's.
-        internal static readonly string[] BoutMusic = { "boss_eikthyr" }, ChampionMusic = { "boss_frozenking" };
-        internal static string[] Music { get { return !Active ? null : Current.round >= 3 ? ChampionMusic : BoutMusic; } }
+        // What's playing while a bout is on (ValhallaSky.Music): the first two, then the champion's; Hafdís's
+        // a sorrowful one of its own (the dragon queen's, high in the mountains).
+        internal static readonly string[] BoutMusic = { "boss_eikthyr" }, ChampionMusic = { "boss_frozenking" }, HafdisMusic = { "boss_moder", "boss_bonemass" };
+        internal static string[] Music { get { return !Active || Current.waitingForYou ? null : Current.hafdisBout ? HafdisMusic : Current.round >= 3 ? ChampionMusic : BoutMusic; } }
+
+        bool hafdisBout;      // T5: this bout is Hafdís's
+        bool waitingForYou;   // her bout is set, and waits for you to come into the ring
+
+        // T5: Hafdís, asked at the rock's edge, will meet you in the ring: the bout begins once you're in it.
+        internal void BeginHafdis()
+        {
+            if (Active) return;
+            if (ValhallaPeople.Current != null) ValhallaPeople.Current.RingCleared(true);
+            hafdisBout = true;
+            waitingForYou = true;
+            round = 1;
+            lastHealth = -1f;
+            Message("$iov_t5_wait");
+            Plugin.Debug("T5: Hafdís waits in the ring");
+        }
 
         static readonly Vector2 Ring = new Vector2(40f, 6f);
         const float RingRadius = 10f;
@@ -479,9 +577,20 @@ namespace IslandsOfValheim
             fighters.Clear();
             pending.Clear();
             if (round > 0 && ValhallaPeople.Current != null) ValhallaPeople.Current.RingCleared(false);
+            // (her bout not won: back at the rock's edge, to be asked again)
+            if (hafdisBout && ValhallaPeople.Current != null && !Story.Key(HafdisWonKey)) ValhallaPeople.Current.HafdisAway(false);
+            hafdisBout = waitingForYou = false;
             round = 0;
             endAt = -1f;
             outsideSince = -1f;
+        }
+
+        void HafdisWon()
+        {
+            Message("$iov_t5_won");
+            Story.Set(HafdisWonKey);
+            endAt = Time.time + 11f; // (she kneels, says her last, and the light takes her)
+            Plugin.Debug("T5: Hafdís yielded");
         }
 
         static void Message(string text)
@@ -501,8 +610,17 @@ namespace IslandsOfValheim
                 if (Time.time >= endAt) Stop();
                 return;
             }
-            // out of the ring for a moment: you've left it
             Vector3 centre = RingCentre;
+            // (Hafdís's: waiting for you to come to the ring, from wherever you asked her)
+            if (waitingForYou)
+            {
+                if (Utils.DistanceXZ(player.transform.position, centre) > RingRadius - 1f) return;
+                waitingForYou = false;
+                boutAt = Time.time + 3f;
+                Message("$iov_t5_bout");
+                return;
+            }
+            // out of the ring for a moment: you've left it
             bool outside = Utils.DistanceXZ(player.transform.position, centre) > RingRadius + 2.5f;
             if (!outside) outsideSince = -1f;
             else if (outsideSince < 0f) outsideSince = Time.time;
@@ -548,6 +666,7 @@ namespace IslandsOfValheim
             if (standing) return;
             // every one of them yielded: the next bout (a breath first, some health back), or the end
             fighters.Clear();
+            if (hafdisBout) { HafdisWon(); return; }
             if (round >= 3) { Win(); return; }
             player.Heal(player.GetMaxHealth() * 0.35f, true);
             Next(round + 1);
@@ -604,6 +723,17 @@ namespace IslandsOfValheim
             new[] { "BattleaxeCrystal", "Battleaxe" }, new[] { "THSwordKrom", "BattleaxeCrystal" }, new[] { "THSwordSlayer", "THSwordKrom", "BattleaxeCrystal" },
         };
         static readonly float[] Health = { 120f, 180f, 260f, 400f, 600f, 850f, 1200f, 1700f };
+        // Hafdís's: spears, and round shields (the sea serpent's scales once the world has them)
+        static readonly string[][] Spears =
+        {
+            new[] { "SpearFlint" }, new[] { "SpearBronze", "SpearFlint" }, new[] { "SpearBronze" }, new[] { "SpearElderbark", "SpearBronze" },
+            new[] { "SpearWolfFang", "SpearElderbark" }, new[] { "SpearWolfFang" }, new[] { "SpearCarapace", "SpearWolfFang" }, new[] { "SpearSplitner", "SpearCarapace", "SpearWolfFang" },
+        };
+        static readonly string[][] RoundShields =
+        {
+            new[] { "ShieldWood" }, new[] { "ShieldBronzeBuckler", "ShieldWood" }, new[] { "ShieldBronzeBuckler" }, new[] { "ShieldBanded" },
+            new[] { "ShieldSerpentscale", "ShieldSilver" }, new[] { "ShieldSerpentscale" }, new[] { "ShieldSerpentscale" }, new[] { "ShieldSerpentscale", "ShieldFlametal" },
+        };
 
         void Spawn(Player player, Vector3 centre)
         {
@@ -615,7 +745,23 @@ namespace IslandsOfValheim
             away.y = 0f;
             away.Normalize();
             if (Utils.DistanceXZ(player.transform.position, centre + away * In) < 2.5f) away = -away;
-            if (round == 1)
+            if (hafdisBout)
+            {
+                // Hafdís as she was before the curse: a shield-maiden, her hair loose (no helmet), in the
+                // sea-dark chitin of the deep with a cape of feathers, a spear and a round shield; as strong as
+                // the champion
+                Vector3 at = centre + away * In;
+                Later(at, () =>
+                {
+                    Character her = Fighter(EinherjarFighter.HafdisPrefab, at, player, tier, Health[tier] * 2.2f, 1, Pick(Spears, tier), Pick(RoundShields, tier), "Hair20", "", "CapeFeather",
+                        new[] { "", "ArmorCarapaceChest", "ArmorCarapaceLegs" });
+                    EinherjarFighter f = her != null ? her.GetComponent<EinherjarFighter>() : null;
+                    if (f != null) { f.hafdis = true; f.echoPierce = 25f + 12f * tier; }
+                    VisEquipment vis = her != null ? her.GetComponent<VisEquipment>() : null;
+                    if (vis != null) vis.SetHairColor(new Vector3(0.92f, 0.84f, 0.62f));
+                });
+            }
+            else if (round == 1)
             {
                 Vector3 at = centre + away * In;
                 Later(at, () => Fighter(PrefabName(false), at, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]));
@@ -675,13 +821,13 @@ namespace IslandsOfValheim
 
         // One fighter: dressed (its gear given as a creature's default items, set on the prefab just before it's
         // made, which is when the game reads them), its health, and its eyes on you.
-        Character Fighter(string prefabName, Vector3 at, Player player, int armourTier, float health, int model, string right, string left, string hair, string beard, string cape)
+        Character Fighter(string prefabName, Vector3 at, Player player, int armourTier, float health, int model, string right, string left, string hair, string beard, string cape, string[] armour = null)
         {
             GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(prefabName) : null;
             Humanoid template = prefab != null ? prefab.GetComponent<Humanoid>() : null;
             if (template == null) { Plugin.Log.LogWarning("Duel: no " + prefabName); return null; }
             List<GameObject> items = new List<GameObject>();
-            string[] armour = Armour[Mathf.Clamp(armourTier, 0, Armour.Length - 1)];
+            if (armour == null) armour = Armour[Mathf.Clamp(armourTier, 0, Armour.Length - 1)];
             foreach (string name in new[] { right, left, armour[0], armour[1], armour[2], cape })
             {
                 GameObject item = string.IsNullOrEmpty(name) || ObjectDB.instance == null ? null : ObjectDB.instance.GetItemPrefab(name);
