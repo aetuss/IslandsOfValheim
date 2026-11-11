@@ -527,20 +527,28 @@ namespace IslandsOfValheim
                 // as Valhalla's are, in the village's own way; 1.10.101 hung Valhalla's very banners and hunting
                 // trophies here): on the game's item stands, between the sconces, the catches the village was
                 // proud of, a different fish on each, the folk's own plain shields above them; by the door its
-                // rod and its harpoon; by the high seat the sea serpent's head and the great angler.
+                // rod and its harpoon; by the high seat the great angler and the pufferfish; and over the high
+                // seat, high on the back wall (where the user pointed: 1.10.102 had it by the seat, too big for
+                // there), the sea serpent's head, a banner either side of it a good way off.
                 float inner = side - 0.15f;
                 int n = 0;
                 foreach (float z in new[] { -back + 4.6f, -back + 8f, -back + 11.4f, -back + 14.8f })
                     foreach (float s in new[] { -1f, 1f })
                     {
-                        SpOnStand(HallCatches[n % HallCatches.Length], s * inner, s, 2.1f, z);
-                        SpOnStand(HallShields[n % HallShields.Length], s * inner, s, Mathf.Min(3.5f, wallsTop - 1.4f), z);
+                        SpOnStand(HallCatches[n % HallCatches.Length], new Vector3(s, 0f, 0f), inner, 2.1f, z);
+                        SpOnStand(HallShields[n % HallShields.Length], new Vector3(s, 0f, 0f), inner, Mathf.Min(3.5f, wallsTop - 1.4f), z);
                         n++;
                     }
-                SpOnStand(new[] { "FishingRod" }, -inner, -1f, 2.1f, -back + 1.4f);
-                SpOnStand(new[] { "SpearChitin", "FishingRod" }, inner, 1f, 2.1f, -back + 1.4f);
-                SpOnStand(new[] { "TrophySerpent", "Fish9" }, -inner, -1f, 2.1f, back - 2.8f);
-                SpOnStand(new[] { "Fish9", "TrophySerpent" }, inner, 1f, 2.1f, back - 2.8f);
+                SpOnStand(new[] { "FishingRod" }, Vector3.left, inner, 2.1f, -back + 1.4f);
+                SpOnStand(new[] { "SpearChitin", "FishingRod" }, Vector3.right, inner, 2.1f, -back + 1.4f);
+                SpOnStand(new[] { "Fish12", "Fish11", "Fish4_cave" }, Vector3.left, inner, 2.1f, back - 2.8f);
+                SpOnStand(new[] { "Fish9", "Fish12" }, Vector3.right, inner, 2.1f, back - 2.8f);
+                GameObject serpent = SpOnStand(new[] { "TrophySerpent" }, Vector3.forward, back - 0.15f, wallsTop + 0.3f, 0f);
+                Bounds sh = serpent != null ? LocalBounds(serpent) : new Bounds();
+                float reach = sh.size.x > 0.5f ? sh.extents.x : 1.6f, high = sh.size.y > 0.5f ? sh.max.y : wallsTop + 2.3f;
+                foreach (float s in new[] { -1f, 1f })
+                    SpBannerOn("piece_banner02", Vector3.forward, back - 0.15f, high, s * (reach + 1.6f));
+                Plugin.Debug("Brim village: the serpent's head over the high seat reaches " + reach.ToString("F1") + " m either side, up to " + high.ToString("F1") + " m");
                 SpProp(new[] { "rug_fur", "rug_wolf", "rug_deer" }, new Vector3(0f, 0.02f, daisZ - 2.8f), 0f, false);
                 SpProp(new[] { "rug_wolf", "rug_fur" }, new Vector3(0f, 0.02f, -back + 3f), 90f, false);
                 return;
@@ -922,12 +930,13 @@ namespace IslandsOfValheim
             new[] { "FishCooked", "CookedChickenMeat", "SerpentMeatCooked", "CookedHareMeat" },
         };
 
-        // The dishes beside a feast (the first of each the game has).
+        // The dishes beside a feast, each one of the game's served on a plate or in a bowl (the user asked for
+        // the food on plates; 1.10.101-102 laid bread and meat on the bare board): the first of each it has.
         static readonly string[][] TableFood =
         {
-            new[] { "MeatPlatter", "CookedMeat" }, new[] { "HoneyGlazedChicken", "CookedChickenMeat" }, new[] { "Bread", "CookedMeat" },
-            new[] { "Sausages", "CookedMeat" }, new[] { "FishAndBread", "FishCooked" }, new[] { "CookedLoxMeat", "CookedMeat" },
-            new[] { "QueensJam", "Bread" }, new[] { "CookedDeerMeat", "CookedMeat" },
+            new[] { "MeatPlatter", "SerpentStew" }, new[] { "BlackSoup", "CarrotSoup" }, new[] { "SerpentStew", "TurnipStew" },
+            new[] { "CarrotSoup", "TurnipStew" }, new[] { "Salad", "MeatPlatter" }, new[] { "TurnipStew", "CarrotSoup" },
+            new[] { "LoxPie", "MeatPlatter" }, new[] { "MinceMeatSauce", "TurnipStew" },
         };
 
         // A hall table laid for a feast (the user: food and drink on every table, so it shows it's a feast):
@@ -1010,11 +1019,12 @@ namespace IslandsOfValheim
             new[] { "ShieldWood" }, new[] { "ShieldBanded", "ShieldWood" }, new[] { "ShieldBronzeBuckler", "ShieldWood" }, new[] { "ShieldWoodTower", "ShieldBanded" },
         };
 
-        // An item on the game's wall item stand on a wall's inner face (at x = inner, side its sign), the stand
-        // flat on the wall, its face into the hall, the item shown on it as the game itself shows one (its
-        // "attach" part, or that part's "attachobj", on the stand's attach point, at the part's own place, turn
-        // and size: ItemStand.SetVisualItem). The first of the names the game can show so.
-        static void SpOnStand(string[] names, float inner, float side, float y, float z)
+        // An item on the game's wall item stand on a wall's inner face (the wall out along n, one of the frame's
+        // axes, `inner` from the middle; `along` it; its foot y up), the stand flat on the wall, its face into
+        // the hall, the item shown on it as the game itself shows one (its "attach" part, or that part's
+        // "attachobj", on the stand's attach point, at the part's own place, turn and size:
+        // ItemStand.SetVisualItem). The first of the names the game can show so. Gives back the item shown.
+        static GameObject SpOnStand(string[] names, Vector3 n, float inner, float y, float along)
         {
             Transform look = null;
             string shown = null;
@@ -1024,30 +1034,33 @@ namespace IslandsOfValheim
                 look = item != null ? item.transform.Find("attach") : null;
                 if (look != null) { shown = name; break; }
             }
-            if (look == null) { Plugin.Debug("Brim village: none of " + string.Join(", ", names) + " can be shown on a stand"); return; }
+            if (look == null) { Plugin.Debug("Brim village: none of " + string.Join(", ", names) + " can be shown on a stand"); return null; }
+            Vector3 t = Mathf.Abs(n.x) > 0.5f ? Vector3.forward : Vector3.right; // along the wall
             Transform attach = null;
-            Vector3 at = new Vector3(inner - side * 0.06f, y, z);
+            Vector3 at = n * (inner - 0.06f) + t * along + Vector3.up * y;
             GameObject stand = SpProp(new[] { "itemstand" }, at, 0f, false, -1, false, false, go =>
             {
                 ItemStand s = go.GetComponent<ItemStand>();
                 if (s != null) attach = s.m_attachOther;
             });
-            if (stand == null) return;
-            if (LocalBounds(stand).size.z < LocalBounds(stand).size.x)
+            if (stand == null) return null;
+            // thin out from the wall
+            if (Vector3.Dot(LocalBounds(stand).size, Abs(n)) > Vector3.Dot(LocalBounds(stand).size, t))
             {
                 stand.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * stand.transform.localRotation;
                 stand.transform.localPosition = Vector3.zero;
                 Move(stand, LocalBounds(stand), at, false);
             }
             // its attach point into the hall, away from the wall
-            if (attach != null && (root.transform.InverseTransformPoint(attach.position).x - LocalBounds(stand).center.x) * -side < 0f)
+            if (attach != null && Vector3.Dot(root.transform.InverseTransformPoint(attach.position) - LocalBounds(stand).center, n) > 0f)
             {
                 stand.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * stand.transform.localRotation;
                 stand.transform.localPosition = Vector3.zero;
                 Move(stand, LocalBounds(stand), at, false);
             }
             Bounds sb = LocalBounds(stand);
-            stand.transform.localPosition += new Vector3(inner - (side > 0f ? sb.max.x : sb.min.x), 0f, 0f);
+            stand.transform.localPosition += n * (inner - (Vector3.Dot(sb.center, n) + Vector3.Dot(sb.extents, Abs(n))));
+            string wall = n.x > 0.5f ? "right" : n.x < -0.5f ? "left" : n.z > 0.5f ? "back" : "front";
             Transform holder = attach != null ? attach : stand.transform;
             Transform obj = look.Find("attachobj");
             GameObject thing = Object.Instantiate(obj != null ? obj.gameObject : look.gameObject, holder, false);
@@ -1059,7 +1072,29 @@ namespace IslandsOfValheim
             SpQuiet(thing);
             thing.name = "IoV_OnStand:" + shown;
             built++;
-            Plugin.Debug("Brim village: " + shown + " on a stand by the hall's " + (side > 0f ? "right" : "left") + " wall, " + z.ToString("F1") + " m along");
+            Plugin.Debug("Brim village: " + shown + " on a stand by the hall's " + wall + " wall, " + along.ToString("F1") + " m along");
+            return thing;
+        }
+
+        static Vector3 Abs(Vector3 v) { return new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z)); }
+
+        // A banner of the game's hanging on a wall's inner face (out along n, `inner` from the middle; `along`
+        // it), its top at `top`, flat against it.
+        static GameObject SpBannerOn(string name, Vector3 n, float inner, float top, float along)
+        {
+            Vector3 t = Mathf.Abs(n.x) > 0.5f ? Vector3.forward : Vector3.right;
+            Vector3 at = n * (inner - 0.1f) + t * along + Vector3.up * top;
+            GameObject banner = SpProp(new[] { name, "piece_banner01" }, at, 0f, true);
+            if (banner == null) return null;
+            if (Vector3.Dot(LocalBounds(banner).size, Abs(n)) > Vector3.Dot(LocalBounds(banner).size, t))
+            {
+                banner.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * banner.transform.localRotation;
+                banner.transform.localPosition = Vector3.zero;
+                Move(banner, LocalBounds(banner), at, true);
+            }
+            Bounds b = LocalBounds(banner);
+            banner.transform.localPosition += n * (inner - (Vector3.Dot(b.center, n) + Vector3.Dot(b.extents, Abs(n))));
+            return banner;
         }
 
         // Meat roasting over a fire (a fire burning with nothing on it looked purposeless to the user): the
@@ -1092,12 +1127,20 @@ namespace IslandsOfValheim
             }
         }
 
-        // An item laid out as a thing to look at: not solid, no glint.
+        // An item laid out as a thing to look at: not solid, no glint. Its effects stopped and unseen, nothing
+        // of it turned off (1.10.89-102 turned off each effect's object: where that held the item's own look,
+        // as the tankard's does, the whole tankard was gone, and the tables had no drink on them).
         static void SpQuiet(GameObject go)
         {
             if (go == null) return;
             foreach (Collider c in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
-            foreach (ParticleSystem p in go.GetComponentsInChildren<ParticleSystem>(true)) p.gameObject.SetActive(false);
+            foreach (ParticleSystem p in go.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                ParticleSystem.EmissionModule emission = p.emission;
+                emission.enabled = false;
+                ParticleSystemRenderer shown = p.GetComponent<ParticleSystemRenderer>();
+                if (shown != null) shown.enabled = false;
+            }
         }
 
         // ---- the square, the lighthouse, the yard, the field, the memorial, the commons, the shore ----
@@ -1334,8 +1377,11 @@ namespace IslandsOfValheim
             parent = groupAll;
             // the stones stand on the paving's edge, all round (1.10.92-100 painted it 4.5 m out and set them at
             // 3.4 m: they stood in the middle of it, the user said)
+            // (1.10.101-102 painted exactly as far as the ring: the game's paint falls on its own 1 m grid, and one
+            // stone came out on the grass; now the paving runs a little past the ring, and is laid under each
+            // stone too)
             const float ring = 3.9f;
-            SpPaint(at.x, at.y, ring, TerrainModifier.PaintType.Paved);
+            SpPaint(at.x, at.y, ring + 0.4f, TerrainModifier.PaintType.Paved);
             // a gap between two of them where its path comes in
             float gap = Mathf.Atan2(from.x - at.x, from.y - at.y) * Mathf.Rad2Deg;
             for (int i = 0; i < 7; i++)
@@ -1343,6 +1389,7 @@ namespace IslandsOfValheim
                 float a = gap + (i + 0.5f) * (360f / 7f);
                 Vector3 q = new Vector3(at.x, 0f, at.y) + Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, ring);
                 q.y = Height(q.x, q.z) - 0.2f;
+                SpPaint(q.x, q.z, 1.1f, TerrainModifier.PaintType.Paved);
                 GameObject stone = SpProp(new[] { "stone_pillar", "stone_wall_1x1" }, q, a, false);
                 if (stone == null) continue;
                 Bounds b = LocalBounds(stone);
@@ -1571,7 +1618,15 @@ namespace IslandsOfValheim
                     SpProp(new[] { "piece_groundtorch_wood" }, new Vector3(q.x, deck, q.y), 0f, false, -1, true);
                 }
                 Vector2 ship = u * shipAt + side * off;
-                SpProp(ShipNames, new Vector3(ship.x, -1.3f, ship.y), yawAlong + (longOnX ? 90f : 0f), false, -1, false, false, Becalmed);
+                GameObject boat = SpProp(ShipNames, new Vector3(ship.x, -1.3f, ship.y), yawAlong + (longOnX ? 90f : 0f), false, -1, false, false, Becalmed);
+                if (boat != null)
+                {
+                    // its hull (its solid part) sunk 0.9 m into the water (1.10.98-102 set its lowest mesh at
+                    // 1.3 m down: that was its oars, hanging below the hull, and the hull rode in the air)
+                    float mesh = LocalBounds(boat).min.y, hull = SolidBounds(boat).min.y;
+                    boat.transform.localPosition += Vector3.up * (-0.9f - hull);
+                    Plugin.Debug("Brim village: the ship's lowest mesh at " + mesh.ToString("F2") + ", its hull at " + hull.ToString("F2") + "; the hull put at -0.90");
+                }
             }
             Taken(foot, 4f);
             for (float r = start - 3f; r < end; r += 3f) Taken(u * r, 3.2f);
