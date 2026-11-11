@@ -24,6 +24,7 @@ namespace IslandsOfValheim
         internal const string Hafgufa = "IoV_Hafgufa";
         internal const string Buoy = "IoV_RanBuoy";
         internal const string Drowned = "IoV_DrownedSoul";
+        internal const string SoulBeam = "IoV_SoulBeam";
 
         // The world's keys (lower case; none starts with iov_, which the build reads as a text's key).
         internal const string DoneKey = "iovt3done";
@@ -41,6 +42,7 @@ namespace IslandsOfValheim
             RegisterHafgufa();
             RegisterBuoy();
             RegisterDrowned();
+            BossKit.RegisterBeam(SoulBeam, 2.5f, 0.7f, 1.2f); // a drowned soul comes up out of the sea in it
             GameObject stand = PrefabManager.Instance.CreateEmptyPrefab(Stand, true);
             Object.DestroyImmediate(stand.GetComponent<MeshRenderer>());
             Object.DestroyImmediate(stand.GetComponent<MeshFilter>());
@@ -69,7 +71,8 @@ namespace IslandsOfValheim
                 body.m_bossEvent = "";
                 body.m_health = 3000f;
                 body.m_swimSpeed *= 1.3f;
-                BossKit.Steady(body, "Hafgufa");
+                // never staggered: arrows from a ship stopped it for 2-3 s each time
+                body.m_staggerDamageFactor = 0f;
             }
             Humanoid humanoid = go.GetComponent<Humanoid>();
             if (humanoid != null && humanoid.m_defaultItems != null)
@@ -79,10 +82,16 @@ namespace IslandsOfValheim
                 humanoid.m_defaultItems = items;
             }
             BaseAI ai = go.GetComponent<BaseAI>();
-            if (ai != null) { ai.m_spawnMessage = ""; ai.m_deathMessage = ""; }
+            if (ai != null)
+            {
+                ai.m_spawnMessage = "";
+                ai.m_deathMessage = "";
+                Field(ai, "m_viewRange", 90f); // (it lay off at the graveyard's edge, never seeing you come)
+            }
             MonsterAI monster = go.GetComponent<MonsterAI>();
             if (monster != null)
             {
+                Field(monster, "m_alertRange", 90f);
                 Field(monster, "m_fleeIfHurtWhenTargetCantBeReached", false);
                 Field(monster, "m_fleeIfNotAlerted", false);
                 Field(monster, "m_fleeIfLowHealth", 0f);
@@ -98,10 +107,14 @@ namespace IslandsOfValheim
             Plugin.Debug("Hafgufa made from Serpent");
         }
 
-        // One of the serpent's attacks, cloned, reaching as far as Hafgufa is big.
+        // One of the serpent's bites, cloned, reaching as far as Hafgufa is big; it starts one from a little nearer
+        // than that (from as far as it reaches, it bit at the air). Its roar (a long reach of its own) stays as it is.
+        const float StartBite = 2f;
+
         static GameObject LongerBite(GameObject item)
         {
             if (item == null || item.GetComponent<ItemDrop>() == null) return item;
+            if (item.GetComponent<ItemDrop>().m_itemData.m_shared.m_aiAttackRange > 10f) return item;
             string name = "IoV_Hafgufa_" + item.name;
             GameObject clone = PrefabManager.Instance.GetPrefab(name);
             if (clone == null)
@@ -109,8 +122,8 @@ namespace IslandsOfValheim
                 clone = PrefabManager.Instance.CreateClonedPrefab(name, item);
                 ItemDrop.ItemData.SharedData shared = clone.GetComponent<ItemDrop>().m_itemData.m_shared;
                 string before = shared.m_aiAttackRange.ToString("F1") + "/" + (shared.m_attack != null ? shared.m_attack.m_attackRange.ToString("F1") : "-");
-                shared.m_aiAttackRange *= Size;
-                shared.m_aiAttackRangeMin *= Size;
+                shared.m_aiAttackRange *= StartBite;
+                shared.m_aiAttackRangeMin *= StartBite;
                 if (shared.m_attack != null)
                 {
                     shared.m_attack.m_attackRange *= Size;
@@ -124,7 +137,7 @@ namespace IslandsOfValheim
             return clone;
         }
 
-        static void Field(object on, string name, object value)
+        internal static void Field(object on, string name, object value)
         {
             System.Reflection.FieldInfo f = AccessTools.Field(on.GetType(), name);
             if (f == null) { Plugin.Debug("Hafgufa: no " + name); return; }
@@ -200,7 +213,11 @@ namespace IslandsOfValheim
             if (PrefabManager.Instance.GetPrefab("Wraith") == null) { Plugin.Log.LogWarning("No Wraith: the drowned are left out."); return; }
             GameObject go = PrefabManager.Instance.CreateClonedPrefab(Drowned, "Wraith");
             Character body = go.GetComponent<Character>();
-            if (body != null) body.m_name = "$iov_drowned";
+            if (body != null)
+            {
+                body.m_name = "$iov_drowned";
+                body.m_faction = Character.Faction.SeaMonsters; // Rán's, as Hafgufa is (as the dead, they fought it)
+            }
             CharacterDrop drops = go.GetComponent<CharacterDrop>();
             if (drops != null) drops.m_drops.Clear();
             MonsterAI ai = go.GetComponent<MonsterAI>();
@@ -247,6 +264,22 @@ namespace IslandsOfValheim
                     damage = most;
                     Plugin.Debug("T3: the ship kept afloat at " + Mathf.RoundToInt(Mathf.Max(health - most, 0f)) + " of " + Mathf.RoundToInt(__instance.m_health));
                 }
+            }
+        }
+
+        // ---- a knot breaks in three or four blows, whatever they are ----
+
+        // (By the barrel's own health and resistances an arrow did too little; now each blow takes a share of it.)
+        [HarmonyPatch(typeof(Destructible), "Damage")]
+        static class KnotPatch
+        {
+            static void Prefix(Destructible __instance, HitData hit)
+            {
+                if (__instance == null || hit == null || __instance.GetComponent<RanKnot>() == null) return;
+                float share = Random.Range(0.26f, 0.36f) * __instance.m_health;
+                hit.m_damage = new HitData.DamageTypes();
+                hit.m_damage.m_damage = share;
+                hit.m_toolTier = (short)100;
             }
         }
 
@@ -510,12 +543,14 @@ namespace IslandsOfValheim
                     }
                 return;
             }
-            // the second stage: the drowned come up round whoever is near, a few at a time
+            // the second stage: the drowned come up round whoever is near, two at a time, never more than three
+            // about at once (counted over the whole graveyard: those off fighting elsewhere count too)
             if (stage >= 1 && Time.time >= nextDrowned)
             {
-                nextDrowned = Time.time + 22f;
+                nextDrowned = Time.time + 25f;
                 Player near = Player.GetClosestPlayer(beast.transform.position, 120f);
-                if (near != null && CountDrowned(near.transform.position, 60f) < 4) StartCoroutine(DrownedRise(near.transform.position));
+                int about = CountDrowned(Middle, Search);
+                if (near != null && about < 3) StartCoroutine(DrownedRise(near.transform.position, Mathf.Min(2, 3 - about)));
             }
         }
 
@@ -570,9 +605,13 @@ namespace IslandsOfValheim
         {
             int n = 0;
             foreach (Character c in Character.GetAllCharacters())
-                if (c != null && !c.IsDead() && Utils.GetPrefabName(c.gameObject) == RanNet.Drowned && Vector3.Distance(c.transform.position, at) < range) n++;
+                if (c != null && !c.IsDead() && Utils.GetPrefabName(c.gameObject) == RanNet.Drowned && Utils.DistanceXZ(c.transform.position, at) < range) n++;
             return n;
         }
+
+        // How many of the drowned have come up in this fight: the first is the strongest (two stars), the second has
+        // one, the rest none (the user's wish).
+        int soulsCome;
 
         // The knots come up first (if they aren't there already), then the beast, from the deep, at the far side
         // of the graveyard from whoever came. (force: development, even before the captains are free.)
@@ -587,6 +626,7 @@ namespace IslandsOfValheim
         System.Collections.IEnumerator Rising()
         {
             rising = true;
+            soulsCome = 0;
             Vector3 middle = Middle;
             Player near = Player.GetClosestPlayer(middle, RanNet.Area);
             foreach (Player p in Player.GetAllPlayers())
@@ -610,9 +650,14 @@ namespace IslandsOfValheim
             GameObject prefab = ZNetScene.instance.GetPrefab(RanNet.Hafgufa);
             if (prefab != null && Find() == null)
             {
-                Vector3 from = near != null ? near.transform.position - middle : Vector3.forward;
-                from.y = 0f;
-                Vector3 at = middle - (from.sqrMagnitude > 0.01f ? from.normalized : Vector3.forward) * 35f;
+                // in front of whoever came, between them and the middle (from the far side it lay off out of sight)
+                Vector3 at = middle;
+                if (near != null)
+                {
+                    Vector3 toward = middle - near.transform.position;
+                    toward.y = 0f;
+                    at = near.transform.position + (toward.sqrMagnitude > 0.01f ? toward.normalized : Vector3.forward) * Mathf.Min(30f, toward.magnitude + 10f);
+                }
                 at.y = middle.y - 3f;
                 BossKit.Effect("vfx_spawn_large", at + Vector3.up * 3f);
                 Vector3 look = (near != null ? near.transform.position : middle) - at;
@@ -622,6 +667,8 @@ namespace IslandsOfValheim
                 if (c != null) c.SetLevel(2);
                 BaseAI ai = go.GetComponent<BaseAI>();
                 if (ai != null) ai.Alert();
+                MonsterAI mind = go.GetComponent<MonsterAI>();
+                if (mind != null && near != null) RanNet.Field(mind, "m_targetCreature", near); // it comes for whoever came
                 ZNetView view = go.GetComponent<ZNetView>();
                 if (view != null && view.GetZDO() != null && nview.IsValid()) nview.GetZDO().Set(BeastHere, view.GetZDO().m_uid);
                 Plugin.Debug("T3: Hafgufa rises (the world's key: " + RanNet.Done + ", the captains free: " + RanNet.Begun + ")");
@@ -630,22 +677,27 @@ namespace IslandsOfValheim
             sawKnots = true;
         }
 
-        System.Collections.IEnumerator DrownedRise(Vector3 around)
+        // Each comes up out of the sea in a pale light (seen by everyone), a moment before it's there.
+        System.Collections.IEnumerator DrownedRise(Vector3 around, int count)
         {
             GameObject prefab = ZNetScene.instance.GetPrefab(RanNet.Drowned);
             if (prefab == null) yield break;
             float water = Middle.y;
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < count; i++)
             {
                 float a = Random.Range(0f, Mathf.PI * 2f);
                 Vector3 at = around + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(10f, 16f);
-                at.y = water + 0.5f;
-                BossKit.Effect("vfx_ghost_spawn", at);
+                at.y = water;
+                GameObject beam = ZNetScene.instance.GetPrefab(RanNet.SoulBeam);
+                if (beam != null) Instantiate(beam, at, Quaternion.identity);
                 BossKit.Effect("vfx_WaterImpact_Karve", at);
-                yield return new WaitForSeconds(1.2f);
-                GameObject go = Instantiate(prefab, at + Vector3.up * 2f, Quaternion.identity);
+                yield return new WaitForSeconds(1.4f);
+                BossKit.Effect("vfx_ghost_spawn", at + Vector3.up);
+                GameObject go = Instantiate(prefab, at + Vector3.up * 1.2f, Quaternion.identity);
                 Character c = go.GetComponent<Character>();
-                if (c != null) c.SetLevel(3);
+                if (c != null) c.SetLevel(soulsCome == 0 ? 3 : soulsCome == 1 ? 2 : 1);
+                soulsCome++;
+                yield return new WaitForSeconds(1.5f);
                 BaseAI ai = go.GetComponent<BaseAI>();
                 if (ai != null) ai.Alert();
             }
@@ -659,17 +711,18 @@ namespace IslandsOfValheim
             Player local = Player.m_localPlayer;
             if (local != null) local.Message(MessageHud.MessageType.Center, "$iov_ran_torn", 0, null, false);
             Vector3 middle = Middle;
+            // (Rán's last words come while the souls are still going up, not later when you may have sailed off)
             for (int i = 0; i < 7; i++)
             {
                 float a = Random.Range(0f, Mathf.PI * 2f);
                 Vector3 at = middle + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(8f, 50f);
                 LightBeam.Over(at, 9f);
                 yield return new WaitForSeconds(1.1f);
+                local = Player.m_localPlayer;
+                if (i == 3 && local != null) local.Message(MessageHud.MessageType.Center, "$iov_ran_free", 0, null, false);
             }
             yield return new WaitForSeconds(4f);
             if (souls != null) souls.SetActive(false);
-            local = Player.m_localPlayer;
-            if (local != null) local.Message(MessageHud.MessageType.Center, "$iov_ran_free", 0, null, false);
             rising = false;
         }
 
