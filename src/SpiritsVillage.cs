@@ -598,6 +598,10 @@ namespace IslandsOfValheim
                     foreach (float s in new[] { -1f, 1f })
                         Sconce('F', doorAt + s * (doorWide * 0.5f + 0.7f), 1.6f, side, back);
                     Sconce('B', 0f, 1.6f, side, back);
+                    // the game's bed asks for a fire's warmth where it stands (Bed.CheckFire: a heat area), which
+                    // the braziers gave and a sconce may not: the house's warmth round each of its beds
+                    foreach (HomePiece h in homeLocal)
+                        if (h.Prefab[0] == "bed") Warmth(h.At + Vector3.up * 0.6f, 2.2f);
                     SpProp(new[] { "rug_deer", "rug_fur" }, new Vector3(0.6f, 0.02f, 1f), 0f, false);
                     break;
             }
@@ -637,6 +641,20 @@ namespace IslandsOfValheim
                 return SpAgainst(SpProp(new[] { "piece_groundtorch_wood" }, at, 0f, false, -1, true), -inward, plane - 0.1f);
             at.y = y;
             return SpAgainst(SpProp(SconceNames, at, YawFor(lean, inward), false, -1, true), -inward, plane);
+        }
+
+        // A fire's warmth with no fire to see: the game's own heat area (a trigger sphere on the layer its
+        // areas are looked for on), as a fire's.
+        static void Warmth(Vector3 at, float radius)
+        {
+            GameObject go = new GameObject("IoV_SpiritWarmth");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = at;
+            go.layer = LayerMask.NameToLayer("character_trigger");
+            SphereCollider sphere = go.AddComponent<SphereCollider>();
+            sphere.isTrigger = true;
+            sphere.radius = radius;
+            go.AddComponent<EffectArea>().m_type = EffectArea.Type.Heat;
         }
 
         static readonly string[] SconceNames = { "piece_walltorch" };
