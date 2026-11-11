@@ -17,8 +17,24 @@ namespace IslandsOfValheim
     static class SpiritsIslet
     {
         internal const string AltarName = "IoV_SpiritAltar";
-        internal const string DoorName = "IoV_SpiritDoor";
-        internal const string GateName = "IoV_SpiritGate"; // the hall's great dark gate (the user's choice)
+        // The houses' doors are the game's own (wood_door, a quarter taller; the hall's darkwood_gate): marked as
+        // the village's, they're kept like the house's pieces (HomeKey), hidden while the village lies in ruins
+        // and made as tall again when they come back (1.10.91-93 used copies, and the gate's copy never made it
+        // into the game: a wooden door stood in for it).
+        const string DoorKey = "IoV_T4Door", DoorScaleKey = "IoV_T4DoorScale";
+
+        [HarmonyPatch(typeof(Door), "Awake")]
+        static class VillageDoorPatch
+        {
+            static void Postfix(Door __instance)
+            {
+                ZNetView view = __instance.GetComponent<ZNetView>();
+                if (view == null || !view.IsValid() || !view.GetZDO().GetBool(DoorKey)) return;
+                float scale = view.GetZDO().GetFloat(DoorScaleKey, 1f);
+                if (scale > 0.1f) __instance.transform.localScale = Vector3.one * scale;
+                if (__instance.GetComponent<SpiritDoor>() == null) __instance.gameObject.AddComponent<SpiritDoor>();
+            }
+        }
         internal const string DoorsKey = "IoV_T4Doors";    // on the altar: the houses' doors are in
         internal const string Map = "IoV_StoryMapBrim";
         internal const string Stage1Key = "iovt4stage1", Stage2Key = "iovt4stage2";
@@ -69,8 +85,6 @@ namespace IslandsOfValheim
             go.AddComponent<SpiritAltar>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Debug("Brim village: the altar made from " + source);
-            RegisterDoor(DoorName, "wood_door");
-            RegisterDoor(GateName, "darkwood_gate");
         }
 
         internal static string[][] Cost(int stage) { return stage == 0 ? Clearing : Rebuilding; }
@@ -93,11 +107,11 @@ namespace IslandsOfValheim
         // door prefab has nothing to break), put in by the altar once; hidden while the village lies in ruins.
         internal static void BuildDoors(Transform altar)
         {
-            int made = Spawn(altar, IsletBuilder.DoorPieces, null);
+            int made = Spawn(altar, IsletBuilder.DoorPieces, HomeKey, true);
             Plugin.Debug("Brim village: " + made + " doors put in");
         }
 
-        static int Spawn(Transform altar, List<IsletBuilder.HomePiece> pieces, string mark)
+        static int Spawn(Transform altar, List<IsletBuilder.HomePiece> pieces, string mark, bool doors = false)
         {
             Quaternion turn = altar.rotation;
             Vector3 middle = altar.position - turn * IsletBuilder.SpiritAltarAt;
@@ -138,9 +152,14 @@ namespace IslandsOfValheim
                     // where it ends up is where it comes back (a piece has nothing that keeps its place in step)
                     view.GetZDO().SetPosition(go.transform.position);
                     view.GetZDO().SetRotation(go.transform.rotation);
-                    if (view.m_syncInitialScale) view.GetZDO().Set(ZDOVars.s_scaleHash, go.transform.localScale);
                     if (mark != null) view.GetZDO().Set(mark, true);
+                    if (doors)
+                    {
+                        view.GetZDO().Set(DoorKey, true);
+                        view.GetZDO().Set(DoorScaleKey, go.transform.localScale.x);
+                    }
                 }
+                if (doors && go.GetComponent<SpiritDoor>() == null) go.AddComponent<SpiritDoor>();
                 if (mark != null) Keep(go);
                 made++;
             }
