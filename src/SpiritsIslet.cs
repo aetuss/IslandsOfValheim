@@ -120,7 +120,7 @@ namespace IslandsOfValheim
         }
 
         // A prefab's size in its own space, from its meshes.
-        static Vector3 OwnSize(GameObject prefab)
+        internal static Vector3 OwnSize(GameObject prefab)
         {
             bool any = false;
             Bounds result = new Bounds();
@@ -349,6 +349,7 @@ namespace IslandsOfValheim
     class SpiritAltar : MonoBehaviour, Hoverable, Interactable
     {
         ZNetView view;
+        bool shown = true;
         internal static readonly List<SpiritAltar> All = new List<SpiritAltar>();
 
         void Awake()
@@ -363,6 +364,15 @@ namespace IslandsOfValheim
         // The house's real pieces, once the village is rebuilt (its owner puts them in, once).
         void Furnish()
         {
+            // once the village stands again the altar is the square's great fire (the village's, round it):
+            // its own stone and light hidden, still there to look at
+            bool show = SpiritsIslet.Stage < 2;
+            if (show != shown)
+            {
+                shown = show;
+                foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = show;
+                foreach (Light l in GetComponentsInChildren<Light>(true)) l.enabled = show;
+            }
             if (view == null || !view.IsValid() || !view.IsOwner() || SpiritsIslet.Stage < 2 || SpiritsIslet.IsHomeBuilt(view)) return;
             SpiritsIslet.HomeBuilt(view, true);
             SpiritsIslet.BuildHome(transform);
