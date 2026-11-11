@@ -30,30 +30,32 @@ namespace IslandsOfValheim
                 if (bones.TryGetValue(n, out b)) Plugin.Debug("  bone " + n + " at " + root.InverseTransformPoint(b.position).ToString("F2"));
             }
 
-            // rocks on its back, shells between
-            Part("Rock_3", "Main", 0f, 1f, 0f, 1.1f, 20f);
-            Part("Rock_3", "Tail2", 0.25f, 1f, 0f, 0.9f, 140f);
-            Part("Rock_3", "Tail4", -0.2f, 1f, 0f, 0.8f, 260f);
-            Part("Rock_3", "Tail7", 0.15f, 1f, 0f, 0.55f, 80f);
-            Part("Chitin", "Tail1", -0.45f, 0.9f, 0f, 0.6f, 10f);
-            Part("Chitin", "Tail1", 0.5f, 0.85f, 0f, 0.5f, 200f);
-            Part("Chitin", "Tail3", 0.4f, 0.9f, 0f, 0.55f, 120f);
-            Part("Chitin", "Tail5", -0.4f, 0.9f, 0f, 0.5f, 300f);
-            Part("Chitin", "Tail8", 0f, 1f, 0f, 0.4f, 45f);
-            // weed trailing from its sides
+            // (1.10.79's photos: the rocks came out big and snow-white, the chitin as dark spikes with glowing tips
+            // sticking out sideways, the weed floating off its flanks, the ropes as black sticks, and the eyes floating
+            // over it: EyePos is the game's eye height over its middle, not on its head. Now: fewer, smaller, darker
+            // things, sunk into its skin; the shells gone; ropes hanging along its flanks; eyes on its head.)
+            // rocks grown on its back, in the deep's colours, and little ones like barnacles between
+            Part("Rock_3", "Main", 0f, 0.8f, 0f, 0.6f, 20f, Dark);
+            Part("Rock_3", "Tail2", 0.2f, 0.8f, 0f, 0.5f, 140f, Dark);
+            Part("Rock_3", "Tail4", -0.2f, 0.8f, 0f, 0.45f, 260f, Dark);
+            Part("Rock_3", "Tail7", 0.1f, 0.8f, 0f, 0.35f, 80f, Dark);
+            Part("Rock_3", "Tail1", -0.55f, 0.75f, 0f, 0.22f, 10f, Dark);
+            Part("Rock_3", "Tail3", 0.55f, 0.75f, 0f, 0.2f, 200f, Dark);
+            Part("Rock_3", "Tail5", -0.5f, 0.75f, 0f, 0.2f, 120f, Dark);
+            // weed hanging from its flanks, dark
             foreach (string n in new[] { "Main", "Tail2", "Tail4", "Tail6" })
             {
-                Part("FreshSeaweed", n, 0.95f, 0.15f, 0f, 1.1f, 90f);
-                Part("FreshSeaweed", n, -0.95f, 0.15f, 0f, 1.1f, 270f);
+                Part("FreshSeaweed", n, 0.9f, 0.25f, 0f, 0.6f, 90f, Weed);
+                Part("FreshSeaweed", n, -0.9f, 0.25f, 0f, 0.6f, 270f, Weed);
             }
-            // the net's torn ropes, over its back
+            // the net's torn ropes, hanging in loops along its flanks
             Material rope = RopeMaterial();
             if (rope != null)
             {
-                Rope(rope, "Main", -0.6f, "Tail2", 0.6f, 0.5f);
-                Rope(rope, "Tail1", 0.7f, "Tail3", -0.5f, 0.45f);
-                Rope(rope, "Tail3", -0.7f, "Tail6", 0.6f, 0.6f);
-                Rope(rope, "Tail6", 0.5f, "Tail9", -0.4f, 0.4f);
+                Rope(rope, "Main", 0.85f, "Tail3", 0.85f, 0.5f);
+                Rope(rope, "Tail1", -0.85f, "Tail4", -0.85f, 0.55f);
+                Rope(rope, "Tail4", 0.8f, "Tail7", 0.8f, 0.5f);
+                Rope(rope, "Tail6", -0.75f, "Tail9", -0.75f, 0.45f);
             }
             Eyes(go);
             // the drowned caught in it
@@ -69,8 +71,14 @@ namespace IslandsOfValheim
                 int i;
                 if (int.TryParse(bone.Substring(4), out i)) k = Mathf.Lerp(1f, 0.3f, i / 13f);
             }
-            return body.size.y * 0.42f * k;
+            return BodyRadius * k;
         }
+
+        // (its body is about 2.9 across at rest; its height counts the fins on its back)
+        const float BodyRadius = 1.25f;
+
+        static readonly Recolor.Shift Dark = BossKit.Cast(new Color(0.08f, 0.14f, 0.16f), 0.65f, 0.6f);
+        static readonly Recolor.Shift Weed = BossKit.Cast(new Color(0.12f, 0.2f, 0.1f), 0.6f, 0.7f);
 
         // A point on its skin at a bone: side (-1 left .. 1 right) and up (0 its side .. 1 its back), in its own
         // space, then the world's.
@@ -85,7 +93,7 @@ namespace IslandsOfValheim
         }
 
         // A copy of a model of the game's (its mesh and materials only), this big, on its skin at a bone.
-        static void Part(string prefab, string boneName, float side, float up, float along, float size, float yaw)
+        static void Part(string prefab, string boneName, float side, float up, float along, float size, float yaw, Recolor.Shift colour)
         {
             Transform bone;
             if (!bones.TryGetValue(boneName, out bone)) { Plugin.Debug("Hafgufa: no bone " + boneName); return; }
@@ -115,6 +123,33 @@ namespace IslandsOfValheim
             part.transform.rotation = root.rotation * Quaternion.Euler(Random.Range(-15f, 15f), yaw, Random.Range(-15f, 15f));
             // (its pivot at its middle: sunk a little into the skin, not standing on it)
             part.transform.position -= part.transform.rotation * Vector3.Scale(filter.sharedMesh.bounds.center, Vector3.one * world) * 0.5f;
+            if (colour != null) BossKit.Tint(part, colour, 0f, "Hafgufa's " + prefab);
+            NoSnow(renderer, prefab);
+        }
+
+        // A rock's shader can lay snow on whatever faces up (the first rocks came out snow-white): none on it.
+        static readonly HashSet<string> snowLogged = new HashSet<string>();
+
+        static void NoSnow(Renderer renderer, string what)
+        {
+            foreach (Material m in renderer.sharedMaterials)
+            {
+                if (m == null || m.shader == null) continue;
+                Shader s = m.shader;
+                List<string> found = new List<string>();
+                for (int i = 0; i < s.GetPropertyCount(); i++)
+                {
+                    string name = s.GetPropertyName(i);
+                    if (name.IndexOf("snow", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    UnityEngine.Rendering.ShaderPropertyType type = s.GetPropertyType(i);
+                    if (type == UnityEngine.Rendering.ShaderPropertyType.Float || type == UnityEngine.Rendering.ShaderPropertyType.Range)
+                    {
+                        m.SetFloat(name, 0f);
+                        found.Add(name);
+                    }
+                }
+                if (snowLogged.Add(what)) Plugin.Debug("Hafgufa's " + what + ": " + s.name + (found.Count > 0 ? ", snow off (" + string.Join(", ", found.ToArray()) + ")" : ", no snow settings"));
+            }
         }
 
         // (sizes above are for the game's serpent; Hafgufa is RanNet.Size times bigger)
@@ -125,7 +160,7 @@ namespace IslandsOfValheim
             Shader shader = ValhallaClouds.Find("Sprites/Default");
             if (shader == null) { Plugin.Debug("Hafgufa: no shader for its ropes"); return null; }
             Material m = new Material(shader);
-            m.color = new Color(0.22f, 0.18f, 0.13f, 1f);
+            m.color = new Color(0.45f, 0.39f, 0.3f, 1f); // (old hemp; darker came out as black sticks in the mist)
             return m;
         }
 
@@ -139,20 +174,23 @@ namespace IslandsOfValheim
             line.sharedMaterial = material;
             line.useWorldSpace = true;
             line.positionCount = 9;
-            line.widthMultiplier = 0.09f * RanNetSize();
+            line.widthMultiplier = 0.05f * RanNetSize();
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             HafgufaRope r = go.AddComponent<HafgufaRope>();
             r.a = a; r.b = b;
-            r.offA = a.InverseTransformPoint(Skin(a, fromSide, 0.75f));
-            r.offB = b.InverseTransformPoint(Skin(b, toSide, 0.75f));
+            r.offA = a.InverseTransformPoint(Skin(a, fromSide, 0.3f));
+            r.offB = b.InverseTransformPoint(Skin(b, toSide, 0.3f));
             r.sag = sag * RanNetSize();
         }
 
-        // Two cold eyes either side of its head, where the game says it looks from.
+        // Two cold eyes either side of its head, a little behind its snout. (At rest, in its own space: its snout
+        // ends about 1.6 ahead of its middle, the head bone 1.5 behind; its body about 2.9 across.)
+        static readonly Vector3 EyeAt = new Vector3(0.72f, 0.5f, 0.55f);
+
         static void Eyes(GameObject go)
         {
-            Transform head, eye;
-            if (!bones.TryGetValue("Head", out head) || !bones.TryGetValue("EyePos", out eye)) { Plugin.Debug("Hafgufa: no head or eye place"); return; }
+            Transform head;
+            if (!bones.TryGetValue("Head", out head)) { Plugin.Debug("Hafgufa: no head"); return; }
             Shader shader = ValhallaClouds.Find("Sprites/Default");
             if (shader == null) return;
             Material glow = new Material(shader);
@@ -165,11 +203,11 @@ namespace IslandsOfValheim
                 ball.GetComponent<MeshRenderer>().sharedMaterial = glow;
                 ball.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 ball.transform.SetParent(head, true);
-                ball.transform.position = eye.position + root.right * (s * 0.22f * RanNetSize());
-                float world = 0.13f * RanNetSize();
+                ball.transform.position = root.TransformPoint(new Vector3(s * EyeAt.x, EyeAt.y, EyeAt.z));
+                float world = 0.16f * RanNetSize();
                 ball.transform.localScale = Vector3.one * (world / Mathf.Max(0.0001f, head.lossyScale.x));
             }
-            Plugin.Debug("Hafgufa's eyes at " + root.InverseTransformPoint(eye.position).ToString("F2") + " (head " + root.InverseTransformPoint(head.position).ToString("F2") + ")");
+            Plugin.Debug("Hafgufa's eyes at " + EyeAt.ToString("F2") + " (head " + root.InverseTransformPoint(head.position).ToString("F2") + ")");
         }
 
         static void SoulLight(string boneName)

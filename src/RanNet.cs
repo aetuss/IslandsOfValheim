@@ -45,7 +45,7 @@ namespace IslandsOfValheim
             RegisterBuoy();
             RegisterDrowned();
             BossKit.RegisterBeam(SoulBeam, 2.5f, 0.7f, 1.2f); // a drowned soul comes up out of the sea in it
-            BossKit.RegisterBeam(EndBeam, 8f, 3.5f, 3f);      // where Hafgufa falls
+            BossKit.RegisterBeam(EndBeam, 4f, 3.5f, 1.8f);    // where Hafgufa falls (8 s was too long)
             BossKit.RegisterLight(LastLight, SoulColour, 30f, 5f, 8f);
             GameObject stand = PrefabManager.Instance.CreateEmptyPrefab(Stand, true);
             Object.DestroyImmediate(stand.GetComponent<MeshRenderer>());
@@ -462,6 +462,9 @@ namespace IslandsOfValheim
                 BossKit.Effect("vfx_WaterImpact_VikingShip", surface + transform.forward * (i * 6f - 6f));
             GameObject beam = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(RanNet.EndBeam) : null;
             if (beam != null) Instantiate(beam, surface, Quaternion.identity);
+            // and heard: the souls let go (the frost king's spirits' release), a deep note under it
+            BossKit.Effect("sfx_frozenking_spirit_death", surface);
+            BossKit.Effect("sfx_deepnorth_gate_activate", surface);
             Plugin.Debug("T3: Hafgufa falls; the net is torn");
         }
     }
@@ -780,7 +783,7 @@ namespace IslandsOfValheim
             {
                 float a = Random.Range(0f, Mathf.PI * 2f);
                 Vector3 at = middle + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(8f, 50f);
-                LightBeam.Over(at, 9f);
+                LightBeam.Over(at, 5f);
                 yield return new WaitForSeconds(1.1f);
                 local = Player.m_localPlayer;
                 if (i == 4 && local != null)
