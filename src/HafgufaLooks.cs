@@ -10,7 +10,9 @@ namespace IslandsOfValheim
     // - rocks grown on its back, in the deep's colours, small ones like barnacles between;
     // - dark weed on its flanks;
     // - torn ropes of Rán's net hanging in loops along its flanks (drawn as lines each frame);
-    // - two cold eyes on its head, and a few drowned souls' lights caught in its body.
+    // - a few drowned souls' lights caught in its body. (Its eyes are the game's own: two white balls put on its
+    //   head in 1.10.84 floated by its snout, so 1.10.85 dropped them.)
+    // Its fins and back spikes are not its body: things go on its body proper (see Trunk), not on their tips.
     // Put on its real skin: a moment after it comes into the world, its body as drawn right then is read once
     // (the skinned mesh baked), and each thing goes on the skin by its bone, then rides on that bone. (1.10.79/80
     // placed them from its bones at rest on the prefab: the bones there don't sit where the body is drawn, and
@@ -91,7 +93,6 @@ namespace IslandsOfValheim
             foreach (Thing t in Things) Put(t);
             Material rope = RopeMaterial();
             if (rope != null) foreach (Line l in Ropes) Rope(rope, l);
-            Eyes();
         }
 
         // Its body as drawn right now (the biggest of its skinned meshes), in the world.
@@ -183,29 +184,51 @@ namespace IslandsOfValheim
             }
             if (Mathf.Sqrt(nearest) > 15f) return false;
             Vector3 axis = transform.forward;
-            Vector3 sum = Vector3.zero;
-            int count = 0;
+            List<Vector3> slice = new List<Vector3>();
             foreach (Vector3 v in skin)
             {
                 Vector3 d = v - p0;
                 if (d.sqrMagnitude > 4f * Girth * Girth || Mathf.Abs(Vector3.Dot(d, axis)) > Girth * 0.6f) continue;
-                sum += v;
-                count++;
+                slice.Add(v);
             }
-            if (count == 0) return false;
-            Vector3 middle = sum / count;
+            List<Vector3> trunk;
+            Vector3 middle;
+            if (!Trunk(slice, out trunk, out middle)) return false;
             Vector3 dir = transform.right * side + transform.up * up;
             if (dir.sqrMagnitude < 0.0001f) dir = transform.up;
             dir.Normalize();
             float best = float.MinValue;
-            foreach (Vector3 v in skin)
+            foreach (Vector3 v in trunk)
             {
-                Vector3 d = v - p0;
-                if (d.sqrMagnitude > 4f * Girth * Girth || Mathf.Abs(Vector3.Dot(d, axis)) > Girth * 0.6f) continue;
                 float s = Vector3.Dot(v - middle, dir);
                 if (s > best) { best = s; at = v; }
             }
             outward = (at - middle).sqrMagnitude > 0.0001f ? (at - middle).normalized : dir;
+            return true;
+        }
+
+        // Its body proper in a slice, without its fins and spikes (1.10.84 set rocks on the tips of its back
+        // spikes, as they stick out farthest): the skin no farther from the slice's middle than most of it is.
+        // The middle taken twice, the second time from the body alone (the fins pull the first one off).
+        static bool Trunk(List<Vector3> slice, out List<Vector3> trunk, out Vector3 middle)
+        {
+            trunk = slice;
+            middle = Vector3.zero;
+            if (slice.Count < 8) return false;
+            for (int round = 0; round < 2; round++)
+            {
+                Vector3 sum = Vector3.zero;
+                foreach (Vector3 v in trunk) sum += v;
+                middle = sum / trunk.Count;
+                List<float> far = new List<float>();
+                foreach (Vector3 v in slice) far.Add((v - middle).magnitude);
+                far.Sort();
+                float body = far[(int)(far.Count * 0.4f)] * 1.15f;
+                List<Vector3> kept = new List<Vector3>();
+                foreach (Vector3 v in slice) if ((v - middle).magnitude <= body) kept.Add(v);
+                if (kept.Count < 4) return false;
+                trunk = kept;
+            }
             return true;
         }
         static readonly Dictionary<string, Material[]> tinted = new Dictionary<string, Material[]>();
@@ -278,7 +301,7 @@ namespace IslandsOfValheim
             }
         }
 
-        static Material ropeMaterial, eyeMaterial;
+        static Material ropeMaterial;
 
         static Material RopeMaterial()
         {
@@ -311,76 +334,6 @@ namespace IslandsOfValheim
             r.sag = l.Sag;
         }
 
-        // Two cold eyes either side of its head, a little behind the tip of its snout, on its skin (found round the
-        // skin nearest its head bone, as the rest).
-        void Eyes()
-        {
-            Transform head, main;
-            if (skin == null || skin.Length == 0 || !bones.TryGetValue("Head", out head) || !bones.TryGetValue("Main", out main)) return;
-            Vector3 forward = head.position - main.position;
-            if (forward.sqrMagnitude < 0.01f) forward = transform.forward;
-            forward.Normalize();
-            Vector3 right = Vector3.Cross(transform.up, forward).normalized;
-            float nearest = float.MaxValue;
-            Vector3 p0 = head.position;
-            foreach (Vector3 v in skin)
-            {
-                float d = (v - head.position).sqrMagnitude;
-                if (d < nearest) { nearest = d; p0 = v; }
-            }
-            if (Mathf.Sqrt(nearest) > 15f) { Plugin.Debug("Hafgufa: no skin near its head for its eyes"); return; }
-            // its head: the skin round there, ahead of the head bone's point; the tip of its snout the farthest
-            float snout = 0f;
-            foreach (Vector3 v in skin)
-            {
-                Vector3 d = v - p0;
-                if (Vector3.ProjectOnPlane(d, forward).magnitude > 2f * Girth) continue;
-                snout = Mathf.Max(snout, Vector3.Dot(d, forward));
-            }
-            if (snout <= 0.2f) { Plugin.Debug("Hafgufa: no snout found for its eyes"); return; }
-            float at = snout * 0.62f;
-            Vector3 sum = Vector3.zero;
-            int count = 0;
-            foreach (Vector3 v in skin)
-            {
-                Vector3 d = v - p0;
-                if (Mathf.Abs(Vector3.Dot(d, forward) - at) > 0.8f || Vector3.ProjectOnPlane(d, forward).magnitude > 2f * Girth) continue;
-                sum += v;
-                count++;
-            }
-            if (count == 0) return;
-            Vector3 middle = sum / count;
-            if (eyeMaterial == null)
-            {
-                Shader shader = ValhallaClouds.Find("Sprites/Default");
-                if (shader == null) return;
-                eyeMaterial = new Material(shader);
-                eyeMaterial.color = new Color(0.75f, 1f, 1f, 1f);
-            }
-            for (int s = -1; s <= 1; s += 2)
-            {
-                Vector3 want = (right * s + transform.up * 0.7f).normalized;
-                float best = float.MinValue;
-                Vector3 eye = middle;
-                foreach (Vector3 v in skin)
-                {
-                    Vector3 d = v - p0;
-                    if (Mathf.Abs(Vector3.Dot(d, forward) - at) > 0.8f || Vector3.ProjectOnPlane(d, forward).magnitude > 2f * Girth) continue;
-                    float score = Vector3.Dot(v - middle, want);
-                    if (score > best) { best = score; eye = v; }
-                }
-                GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                Destroy(ball.GetComponent<Collider>());
-                ball.name = "IoV_HafgufaEye";
-                MeshRenderer r = ball.GetComponent<MeshRenderer>();
-                r.sharedMaterial = eyeMaterial;
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                ball.transform.localScale = Vector3.one * 0.7f;
-                ball.transform.position = eye;
-                ball.transform.SetParent(head, true);
-            }
-            Plugin.Debug("Hafgufa's eyes " + at.ToString("F1") + " m along its snout (" + snout.ToString("F1") + " m from the skin by its head bone)");
-        }
     }
     // A rope of Rán's net between two of Hafgufa's bones, sagging, redrawn as it moves.
     // (Its fields public, so a copy keeps them.)
