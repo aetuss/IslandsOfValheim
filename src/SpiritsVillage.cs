@@ -265,8 +265,8 @@ namespace IslandsOfValheim
             }
             if (style.Trade == Trade.Home) homePose = new FramePose { At = pose, Yaw = yaw };
             // its door(s), in the islet's space (the altar puts the real ones in: SpiritsIslet.BuildDoors)
-            if (gate != null)
-                DoorPieces.Add(new HomePiece { Prefab = new[] { gate.name, "wood_door" }, At = pose + turn * new Vector3(0f, 0f, -length * 0.5f), Yaw = yaw, Scale = 1f });
+            if (style.Trade == Trade.Hall) // (found again when it's put in, if the game's prefabs weren't there yet)
+                DoorPieces.Add(new HomePiece { Prefab = new[] { gate != null ? gate.name : "@darkgate", "wood_door" }, At = pose + turn * new Vector3(0f, 0f, -length * 0.5f), Yaw = yaw, Scale = 1f });
             else
                 DoorPieces.Add(new HomePiece { Prefab = new[] { "wood_door" }, At = pose + turn * new Vector3(doorAt, 0f, -length * 0.5f), Yaw = yaw, Scale = DoorScale });
         }
