@@ -108,13 +108,13 @@ namespace IslandsOfValheim
         }
 
         // One of the serpent's bites, cloned, reaching as far as Hafgufa is big; it starts one from a little nearer
-        // than that (from as far as it reaches, it bit at the air). Its roar (a long reach of its own) stays as it is.
+        // than that (from as far as it reaches, it bit at the air). Its roar (a long reach of its own) keeps its reach.
         const float StartBite = 2f;
 
         static GameObject LongerBite(GameObject item)
         {
             if (item == null || item.GetComponent<ItemDrop>() == null) return item;
-            if (item.GetComponent<ItemDrop>().m_itemData.m_shared.m_aiAttackRange > 10f) return item;
+            if (item.GetComponent<ItemDrop>().m_itemData.m_shared.m_aiAttackRange > 10f) return SlowerTaunt(item);
             string name = "IoV_Hafgufa_" + item.name;
             GameObject clone = PrefabManager.Instance.GetPrefab(name);
             if (clone == null)
@@ -134,6 +134,23 @@ namespace IslandsOfValheim
                 ItemManager.Instance.AddItem(new CustomItem(clone, false));
                 Plugin.Debug("Hafgufa's " + item.name + ": reach " + before + " -> " + shared.m_aiAttackRange.ToString("F1") + "/" + (shared.m_attack != null ? shared.m_attack.m_attackRange.ToString("F1") : "-"));
             }
+            return clone;
+        }
+
+        // Its roar (the serpent's taunt, used from far off): it stops still for it, which looked like a stagger each
+        // time an arrow hit (it roared back at whoever shot it from out of its bite's reach). Now and then only.
+        static GameObject SlowerTaunt(GameObject item)
+        {
+            string name = "IoV_Hafgufa_" + item.name;
+            GameObject clone = PrefabManager.Instance.GetPrefab(name);
+            if (clone != null) return clone;
+            clone = PrefabManager.Instance.CreateClonedPrefab(name, item);
+            ItemDrop.ItemData.SharedData shared = clone.GetComponent<ItemDrop>().m_itemData.m_shared;
+            float before = shared.m_aiAttackInterval;
+            shared.m_aiAttackInterval = Mathf.Max(shared.m_aiAttackInterval, 35f);
+            shared.m_aiPrioritized = false;
+            ItemManager.Instance.AddItem(new CustomItem(clone, false));
+            Plugin.Debug("Hafgufa's " + item.name + ": once every " + before.ToString("F0") + " s -> " + shared.m_aiAttackInterval.ToString("F0") + " s at most");
             return clone;
         }
 
@@ -399,6 +416,14 @@ namespace IslandsOfValheim
         }
 
         internal override float HurtScale(HitData hit) { return 1.8f; }
+
+        // (logged, to see what makes it stop: its roar, or something else)
+        internal override void AttackStarted()
+        {
+            Humanoid h = body as Humanoid;
+            ItemDrop.ItemData weapon = h != null ? h.GetCurrentWeapon() : null;
+            Plugin.Debug("T3: Hafgufa attacks with " + (weapon != null && weapon.m_dropPrefab != null ? weapon.m_dropPrefab.name : weapon != null ? weapon.m_shared.m_name : "?"));
+        }
 
         // Its death (on the client that ran it): the net is torn, for the world.
         internal override void Fallen()
