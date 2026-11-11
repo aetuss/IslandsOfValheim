@@ -538,10 +538,20 @@ namespace IslandsOfValheim
             InvokeRepeating("Check", 0.1f, 2f);
         }
 
+        void OnDisable() { if (near) { near = false; VillageMusic.Want(-1); } }
+
+        bool near;
+
         void Check()
         {
             KeepAltar();
             int stage = SpiritsIslet.Stage;
+            // its music while the player is in it
+            Player player = Player.m_localPlayer;
+            bool inside = player != null && Utils.DistanceXZ(player.transform.position, transform.parent.position) < VillageMusic.Reach;
+            if (inside) VillageMusic.Want(stage);
+            else if (near) VillageMusic.Want(-1);
+            near = inside;
             if (stage == shown) return;
             shown = stage;
             for (int s = 0; s < 3; s++)
@@ -582,6 +592,68 @@ namespace IslandsOfValheim
             shown = show;
             foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) r.enabled = show;
             foreach (Collider c in GetComponentsInChildren<Collider>(true)) c.enabled = show;
+        }
+    }
+
+    // The Brim village's music, its own for each stage, from mourning to joy as it's restored (the user: more
+    // cheerful and peaceful the nearer it is to done), the game's own pieces (all 46 listed with iov_music):
+    //   0 ruined:   Deep North - Memorial Site (a lament for the drowned);
+    //   1 cleared:  Deep North - Timberhall Village (a village again, warmer, hopeful);
+    //   2 rebuilt:  End Credits - Mead and Merriment! (the game's most joyful), looped while here.
+    // Each the first of its list the game has. Played the way a raid's music is (above a place's, the sea's and
+    // the weather's), while the player is in the village; the game's own when they leave. Each player's own.
+    static class VillageMusic
+    {
+        static readonly string[][] ByStage =
+        {
+            new[] { "location_deepnorth_memorialsite", "location_ashlands_ruins", "evening" },
+            new[] { "location_deepnorth_timberhallvillage", "home", "morning" },
+            new[] { "credits", "home", "meadows" },
+        };
+        internal const float Reach = 65f;
+
+        static int wanted = -1;
+        static string playing;
+        static MusicMan.NamedMusic looped; // a piece made to loop here, and whether it did before
+        static bool loopedBefore;
+
+        internal static void Want(int stage)
+        {
+            if (stage == wanted) return;
+            wanted = stage;
+            Unloop();
+            playing = stage >= 0 && stage < ByStage.Length ? First(ByStage[stage]) : null;
+            Plugin.Debug("Brim village: music " + (playing ?? "the game's own"));
+        }
+
+        static string First(string[] list)
+        {
+            MusicMan music = MusicMan.instance;
+            if (music == null || music.m_music == null) return list[0];
+            foreach (string name in list)
+                foreach (MusicMan.NamedMusic m in music.m_music)
+                    if (m != null && m.m_name == name && m.m_clips != null && m.m_clips.Length > 0)
+                    {
+                        // (a piece that plays once, as the credits do, loops while it's the village's)
+                        if (!m.m_loop) { looped = m; loopedBefore = m.m_loop; m.m_loop = true; }
+                        return name;
+                    }
+            return null;
+        }
+
+        static void Unloop()
+        {
+            if (looped != null) looped.m_loop = loopedBefore;
+            looped = null;
+        }
+
+        [HarmonyPatch(typeof(RandEventSystem), "GetMusicOverride")]
+        static class OverridePatch
+        {
+            static void Postfix(ref string __result)
+            {
+                if (string.IsNullOrEmpty(__result) && playing != null) __result = playing;
+            }
         }
     }
 
