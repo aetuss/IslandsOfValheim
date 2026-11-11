@@ -221,7 +221,23 @@ namespace IslandsOfValheim
             parent = Frame(groupAll, pose, yaw);
             Floor(length, width, style.Floor);
             Corners(length, width, wallTop);
-            doorAt = DoorX(width, Size(rows[0]).x);
+            // the doorway: a wooden door's (2 m, where a wall piece would be), or the hall's great gate's (its own
+            // size, in the middle)
+            GameObject gate = style.Trade == Trade.Hall ? Find(new[] { "darkwood_gate" }) : null;
+            if (gate != null)
+            {
+                Vector3 g = SpiritsIslet.OwnSize(gate);
+                doorAt = 0f;
+                doorWide = Mathf.Max(g.x, g.z) + 0.1f;
+                doorHigh = Mathf.Min(g.y + 0.05f, wallTop - 0.3f);
+                Plugin.Debug("Brim village: the hall's gate is " + g.ToString("F2"));
+            }
+            else
+            {
+                doorAt = DoorX(width, Size(rows[0]).x);
+                doorWide = Size(rows[0]).x;
+                doorHigh = 2f;
+            }
             if (style.Trade == Trade.Home) HomePlan(length, width);
             for (int stage = 0; stage < 3; stage++)
             {
@@ -237,12 +253,13 @@ namespace IslandsOfValheim
             }
             if (style.Trade == Trade.Home) homePose = new FramePose { At = pose, Yaw = yaw };
             // its door, in the islet's space (the altar puts the real ones in: SpiritsIslet.BuildDoors)
-            Vector3 door = pose + turn * new Vector3(DoorX(width, Size(rows[0]).x), 0f, -length * 0.5f);
-            DoorPieces.Add(new HomePiece { Prefab = new[] { SpiritsIslet.DoorName }, At = door, Yaw = yaw });
+            Vector3 door = pose + turn * new Vector3(doorAt, 0f, -length * 0.5f);
+            DoorPieces.Add(new HomePiece { Prefab = new[] { gate != null ? SpiritsIslet.GateName : SpiritsIslet.DoorName, SpiritsIslet.DoorName }, At = door, Yaw = yaw });
         }
 
         static FramePose homePose;
-        static float doorAt; // the door's x in the building being built (braziers either side of it)
+        // the doorway of the building being built: its middle's x, its width and height (braziers either side)
+        static float doorAt, doorWide = 2f, doorHigh = 2f;
 
         static void Floor(float length, float width, string kind)
         {
@@ -280,7 +297,8 @@ namespace IslandsOfValheim
         static void Walls(float length, float width, string[] rows, int stage)
         {
             int wear = stage == 0 ? 2 : stage == 1 ? 1 : 0;
-            float y = 0f, doorTop = 0f, doorX = DoorX(width, Size(rows[0]).x);
+            float y = 0f;
+            float openL = doorAt - doorWide * 0.5f, openR = doorAt + doorWide * 0.5f;
             for (int r = 0; r < rows.Length; r++)
             {
                 Vector2 size = Size(rows[r]);
@@ -291,24 +309,36 @@ namespace IslandsOfValheim
                 foreach (float z in new[] { -length * 0.5f, length * 0.5f })
                     for (float x = -width * 0.5f + size.x * 0.5f; x < width * 0.5f; x += size.x)
                     {
-                        bool door = z < 0f && Mathf.Abs(x - doorX) < size.x * 0.5f && y < 1.9f;
-                        if (door) { doorTop = Mathf.Max(doorTop, y + size.y); continue; }
-                        if (villageRandom.NextDouble() >= gone) SpProp(new[] { rows[r] }, new Vector3(x, y, z), Inward(x, z, false), false, wear);
+                        float l = x - size.x * 0.5f, rr = x + size.x * 0.5f;
+                        bool door = z < 0f && y < doorHigh - 0.05f && rr > openL + 0.01f && l < openR - 0.01f;
+                        if (!door)
+                        {
+                            if (villageRandom.NextDouble() >= gone) SpProp(new[] { rows[r] }, new Vector3(x, y, z), Inward(x, z, false), false, wear);
+                            continue;
+                        }
+                        // a piece the doorway cuts through: what's left of it either side, and above the doorway
+                        if (openL - l > 0.05f) Board(rows[r], size, (l + openL) * 0.5f, y, openL - l, size.y, z, wear);
+                        if (rr - openR > 0.05f) Board(rows[r], size, (openR + rr) * 0.5f, y, rr - openR, size.y, z, wear);
+                        float top = y + size.y;
+                        if (top > doorHigh + 0.05f)
+                        {
+                            float a = Mathf.Max(l, openL), b = Mathf.Min(rr, openR);
+                            Board(rows[r], size, (a + b) * 0.5f, doorHigh, b - a, top - doorHigh, z, wear);
+                        }
                     }
                 y += size.y;
             }
-            // the opening is as high as a door (2 m); above it, where a row reached higher, a board to close it
-            if (doorTop > 2.05f)
-            {
-                Vector3 at = new Vector3(doorX, 2f, -length * 0.5f);
-                GameObject lintel = SpProp(new[] { Planks }, at, 180f, false, wear);
-                if (lintel != null)
-                {
-                    lintel.transform.localScale = new Vector3(1f, (doorTop - 2f) / Size(Planks).y, 1f);
-                    lintel.transform.localPosition = Vector3.zero;
-                    Move(lintel, LocalBounds(lintel), at, false);
-                }
-            }
+        }
+
+        // Part of a wall piece: one stretched to the width and height wanted, its foot at y.
+        static void Board(string row, Vector2 size, float x, float y, float w, float h, float z, int wear)
+        {
+            Vector3 at = new Vector3(x, y, z);
+            GameObject go = SpProp(new[] { row }, at, Inward(x, z, false), false, wear);
+            if (go == null) return;
+            go.transform.localScale = new Vector3(w / size.x, h / size.y, 1f);
+            go.transform.localPosition = Vector3.zero;
+            Move(go, LocalBounds(go), at, false);
         }
 
         // Where a door goes in the front wall: the wall piece nearest the middle (1.10.90 left two out where the
@@ -528,8 +558,8 @@ namespace IslandsOfValheim
 
         static void Doorway(float length)
         {
-            foreach (float x in new[] { -1.9f, 1.9f })
-                SpProp(new[] { "piece_brazierfloor01" }, new Vector3(doorAt + x, 0f, -length * 0.5f - 0.9f), 0f, false, -1, true);
+            foreach (float s in new[] { -1f, 1f })
+                SpProp(new[] { "piece_brazierfloor01" }, new Vector3(doorAt + s * (doorWide * 0.5f + 0.9f), 0f, -length * 0.5f - 0.9f), 0f, false, -1, true);
         }
 
         // Stones and old logs lying about a ruin, and weeds through its floor.

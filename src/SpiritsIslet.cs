@@ -18,6 +18,7 @@ namespace IslandsOfValheim
     {
         internal const string AltarName = "IoV_SpiritAltar";
         internal const string DoorName = "IoV_SpiritDoor";
+        internal const string GateName = "IoV_SpiritGate"; // the hall's great dark gate (the user's choice)
         internal const string DoorsKey = "IoV_T4Doors";    // on the altar: the houses' doors are in
         internal const string Map = "IoV_StoryMapBrim";
         internal const string Stage1Key = "iovt4stage1", Stage2Key = "iovt4stage2";
@@ -68,7 +69,8 @@ namespace IslandsOfValheim
             go.AddComponent<SpiritAltar>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Debug("Brim village: the altar made from " + source);
-            RegisterDoor();
+            RegisterDoor(DoorName, "wood_door");
+            RegisterDoor(GateName, "darkwood_gate");
         }
 
         internal static string[][] Cost(int stage) { return stage == 0 ? Clearing : Rebuilding; }
@@ -114,6 +116,12 @@ namespace IslandsOfValheim
                     Vector3 size = OwnSize(prefab);
                     if (size.x > size.z) rotation *= Quaternion.Euler(0f, 90f, 0f);
                 }
+                // a door lies across its doorway (its wide side along the wall)
+                if (mark == null)
+                {
+                    Vector3 size = OwnSize(prefab);
+                    if (size.z > size.x) rotation *= Quaternion.Euler(0f, 90f, 0f);
+                }
                 GameObject go = Object.Instantiate(prefab, at, rotation);
                 // its foot on the floor, wherever its own middle is (1.10.88's braziers sank into it)
                 Bounds drawn = new Bounds();
@@ -143,10 +151,10 @@ namespace IslandsOfValheim
         }
 
         // The door: the game's wooden door with nothing on it that can be broken or taken apart.
-        static void RegisterDoor()
+        static void RegisterDoor(string name, string source)
         {
-            if (PrefabManager.Instance.GetPrefab("wood_door") == null) { Plugin.Log.LogWarning("Brim village: no wooden door; its houses have none."); return; }
-            GameObject go = PrefabManager.Instance.CreateClonedPrefab(DoorName, "wood_door");
+            if (PrefabManager.Instance.GetPrefab(source) == null) { Plugin.Log.LogWarning("Brim village: no " + source + "; " + name + " left out."); return; }
+            GameObject go = PrefabManager.Instance.CreateClonedPrefab(name, source);
             foreach (WearNTear wear in go.GetComponentsInChildren<WearNTear>(true)) Object.DestroyImmediate(wear);
             foreach (Piece piece in go.GetComponentsInChildren<Piece>(true)) Object.DestroyImmediate(piece);
             go.GetComponent<ZNetView>().m_persistent = true;
