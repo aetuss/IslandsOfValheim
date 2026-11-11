@@ -116,13 +116,9 @@ namespace IslandsOfValheim
                     Vector3 size = OwnSize(prefab);
                     if (size.x > size.z) rotation *= Quaternion.Euler(0f, 90f, 0f);
                 }
-                // a door lies across its doorway (its wide side along the wall)
-                if (mark == null)
-                {
-                    Vector3 size = OwnSize(prefab);
-                    if (size.z > size.x) rotation *= Quaternion.Euler(0f, 90f, 0f);
-                }
                 GameObject go = Object.Instantiate(prefab, at, rotation);
+                // a door taller than the game's (the user found them low to go through)
+                if (h.Scale > 0f && Mathf.Abs(h.Scale - 1f) > 0.01f) go.transform.localScale = Vector3.one * h.Scale;
                 // its foot on the floor, wherever its own middle is (1.10.88's braziers sank into it)
                 Bounds drawn = new Bounds();
                 bool any = false;
@@ -142,6 +138,7 @@ namespace IslandsOfValheim
                     // where it ends up is where it comes back (a piece has nothing that keeps its place in step)
                     view.GetZDO().SetPosition(go.transform.position);
                     view.GetZDO().SetRotation(go.transform.rotation);
+                    if (view.m_syncInitialScale) view.GetZDO().Set(ZDOVars.s_scaleHash, go.transform.localScale);
                     if (mark != null) view.GetZDO().Set(mark, true);
                 }
                 if (mark != null) Keep(go);
@@ -158,6 +155,7 @@ namespace IslandsOfValheim
             foreach (WearNTear wear in go.GetComponentsInChildren<WearNTear>(true)) Object.DestroyImmediate(wear);
             foreach (Piece piece in go.GetComponentsInChildren<Piece>(true)) Object.DestroyImmediate(piece);
             go.GetComponent<ZNetView>().m_persistent = true;
+            go.GetComponent<ZNetView>().m_syncInitialScale = true; // (made taller where it's put in: kept so)
             go.AddComponent<SpiritDoor>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
         }
