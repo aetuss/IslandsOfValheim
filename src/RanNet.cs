@@ -432,7 +432,7 @@ namespace IslandsOfValheim
         protected override void Everywhere(int stage)
         {
             Shine(stage >= 1, 3f, 8f);
-            Storm(stage >= 1 && LocalPlayerWithin(RanNet.Area));
+            // (its storm is the graveyard's: GraveyardStand brings the weather in soft steps)
         }
 
         internal override float HurtScale(HitData hit) { return 1.8f; }
@@ -522,7 +522,18 @@ namespace IslandsOfValheim
         void OnDestroy()
         {
             loaded.Remove(this);
-            Mist(false);
+            if (!mist) return;
+            // gone from the world with its weather still on (sailed away): the world's own, softly, and the game's
+            // own blending back once that's done
+            WeatherNow(0);
+            float back = savedTransition;
+            if (back >= 0f && Plugin.Instance != null) Plugin.Instance.StartCoroutine(BlendBack(back));
+        }
+
+        static System.Collections.IEnumerator BlendBack(float transition)
+        {
+            yield return new WaitForSeconds(Blend + 1f);
+            if (EnvMan.instance != null) EnvMan.instance.m_transitionDuration = transition;
         }
 
         Vector3 Middle { get { return new Vector3(transform.position.x, ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : transform.position.y, transform.position.z); } }
@@ -569,7 +580,8 @@ namespace IslandsOfValheim
             }
             if (souls != null && done && !rising) souls.SetActive(false);
 
-            Mist(here && !done && (fight == null || fight.CurrentStage < 1));
+            // the weather: a mist while the net holds, a storm from the second stage, the world's own after (or away)
+            Weather(!here || done ? 0 : fight != null && fight.CurrentStage >= 1 ? Skies.Length - 1 : 1);
 
             // the knots all broken while the beast lives: Rán's word, once
             if (beast != null && knots > 0) sawKnots = true;
@@ -868,24 +880,48 @@ namespace IslandsOfValheim
             renderer.receiveShadows = false;
         }
 
-        // A mist over the graveyard while the net holds (this client's weather; only ever undoes its own: lifting it
-        // when the second stage's storm has already come cleared the storm too, the moment it came).
-        void Mist(bool want)
+        // The graveyard's weather (this client's own), in steps: the game blends light and fog from one weather to
+        // the next (over Blend s here, while we change it), but rain starts and stops at once, so a storm comes in
+        // steps (light rain, rain, thunder) and goes the same way, and the mist comes and goes softly (the user:
+        // "no sharp changes"). Only ever undoes its own.
+        static readonly string[] Skies = { "", "Misty", "LightRain", "Rain", "ThunderStorm" };
+        const float StepEvery = 10f, Blend = 9f;
+        int sky, skyWanted;
+        float nextSky, savedTransition = -1f;
+
+        void Weather(int wanted)
+        {
+            skyWanted = wanted;
+            EnvMan env = EnvMan.instance;
+            if (env == null) return;
+            if (sky != skyWanted && Time.time >= nextSky)
+            {
+                sky += skyWanted > sky ? 1 : -1;
+                // (from the mist straight down to the world's own: no rain in between)
+                if (skyWanted == 0 && sky == 1) sky = 0;
+                WeatherNow(sky);
+                nextSky = Time.time + StepEvery;
+            }
+            else if (sky == skyWanted && savedTransition >= 0f && Time.time >= nextSky)
+            {
+                env.m_transitionDuration = savedTransition; // the game's own again, once the change is done
+                savedTransition = -1f;
+            }
+        }
+
+        void WeatherNow(int level)
         {
             EnvMan env = EnvMan.instance;
-            if (env == null || want == mist) return;
-            mist = want;
-            if (want) env.SetForceEnvironment("Misty");
-            else if (Forced(env) == "Misty") env.SetForceEnvironment("");
-            Plugin.Debug("T3: mist " + (want ? "over the graveyard" : "lifts") + " (weather now: " + Forced(env) + ")");
+            if (env == null) return;
+            sky = level;
+            if (level == 0 && !mist) return; // (we never set one: nothing of ours to undo)
+            if (savedTransition < 0f) savedTransition = env.m_transitionDuration;
+            env.m_transitionDuration = Mathf.Max(savedTransition, Blend);
+            env.SetForceEnvironment(Skies[level]);
+            mist = level != 0;
+            Plugin.Debug("T3: the graveyard's weather: " + (level == 0 ? "the world's own" : Skies[level]));
         }
 
-        static readonly System.Reflection.FieldInfo forceEnv = HarmonyLib.AccessTools.Field(typeof(EnvMan), "m_forceEnv");
-
-        static string Forced(EnvMan env)
-        {
-            return forceEnv != null ? (forceEnv.GetValue(env) as string ?? "") : "";
-        }
 
         // ---- the net round your ship (on the client that steers it) ----
 
