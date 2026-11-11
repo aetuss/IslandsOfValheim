@@ -87,6 +87,7 @@ namespace IslandsOfValheim
         {
             foreach (Transform t in GetComponentsInChildren<Transform>(true)) if (!bones.ContainsKey(t.name)) bones[t.name] = t;
             ReadSkin();
+            if (skin == null) return; // (nothing that fits read: plain, rather than things floating off it)
             foreach (Thing t in Things) Put(t);
             Material rope = RopeMaterial();
             if (rope != null) foreach (Line l in Ropes) Rope(rope, l);
@@ -100,16 +101,34 @@ namespace IslandsOfValheim
             foreach (SkinnedMeshRenderer r in GetComponentsInChildren<SkinnedMeshRenderer>(true))
                 if (r.sharedMesh != null && (body == null || r.sharedMesh.vertexCount > body.sharedMesh.vertexCount)) body = r;
             if (body == null) { Plugin.Debug("Hafgufa: no skin to read"); return; }
-            // Read two ways (its scale baked in and placed without it, or baked without and placed with the full
-            // transform): which is right depends on how the model was made; the one whose skin lies nearer its
-            // middle bone is kept. (1.10.81 read it the first way only, and found its skin far from its bones.)
-            Vector3[] scaled = Bake(body, true, Matrix4x4.TRS(body.transform.position, body.transform.rotation, Vector3.one));
-            Vector3[] plain = Bake(body, false, body.transform.localToWorldMatrix);
-            Transform main;
-            float a = 0f, b = 0f;
-            if (bones.TryGetValue("Main", out main)) { a = Nearest(scaled, main.position); b = Nearest(plain, main.position); }
-            skin = a <= b ? scaled : plain;
-            Plugin.Debug("Hafgufa's skin: baked with its scale " + a.ToString("F1") + " m from its middle bone, without " + b.ToString("F1") + " m; " + (a <= b ? "the first" : "the second") + " kept");
+            // Read four ways (baked with its scale or without, then placed with its whole transform or without the
+            // scale): which is right depends on how the model was made (its skin's scale is 250: the root's 2.5 and
+            // the model's own 100). Kept: the one that is about as big as Hafgufa (tens of metres: 1.10.83's pick
+            // spanned 0.3 m, all of it by one bone, so everything went under its belly) and lies along its bones.
+            Matrix4x4 noScale = Matrix4x4.TRS(body.transform.position, body.transform.rotation, Vector3.one);
+            Matrix4x4 full = body.transform.localToWorldMatrix;
+            Vector3[][] ways = { Bake(body, true, noScale), Bake(body, false, full), Bake(body, true, full), Bake(body, false, noScale) };
+            string[] names = { "scale baked, placed without", "baked without, placed with", "scale baked, placed with", "neither" };
+            float best = float.MaxValue;
+            int pick = -1;
+            string tried = "";
+            for (int i = 0; i < ways.Length; i++)
+            {
+                Bounds span = new Bounds(ways[i].Length > 0 ? ways[i][0] : transform.position, Vector3.zero);
+                foreach (Vector3 v in ways[i]) span.Encapsulate(v);
+                float off = 0f;
+                foreach (string n in new[] { "Main", "Tail3", "Tail6", "Tail9" })
+                {
+                    Transform bone;
+                    if (bones.TryGetValue(n, out bone)) off += Nearest(ways[i], bone.position);
+                }
+                tried += " [" + names[i] + ": " + span.size.magnitude.ToString("F0") + " m long, " + off.ToString("F1") + " m off its bones]";
+                if (span.size.magnitude < 15f || span.size.magnitude > 400f) continue;
+                if (off < best) { best = off; pick = i; }
+            }
+            Plugin.Debug("Hafgufa's skin read four ways:" + tried + (pick >= 0 ? "; kept " + names[pick] : "; none fits, left undressed"));
+            if (pick < 0 || best > 40f) { skin = null; return; }
+            skin = ways[pick];
             // (what it read, to tune from the log: where its skin is against its bones)
             Bounds all = new Bounds(skin.Length > 0 ? skin[0] : transform.position, Vector3.zero);
             foreach (Vector3 v in skin) all.Encapsulate(v);

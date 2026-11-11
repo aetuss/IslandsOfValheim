@@ -426,7 +426,8 @@ namespace IslandsOfValheim
         static readonly float[] stages = { 0.5f };
         protected override string StageKey { get { return "IoV_HafgufaStage"; } }
         protected override float[] Thresholds { get { return stages; } }
-        protected override string LineFor(int stage) { return stage == 1 ? "$iov_ran_net" : null; }
+        // (Rán's words at the second stage are the graveyard's, in the middle of the screen with the rest: over its head
+        // they looked out of place, the user said)
         internal int CurrentStage { get { return Stage; } }
 
         protected override void Everywhere(int stage)
@@ -522,6 +523,7 @@ namespace IslandsOfValheim
         void OnDestroy()
         {
             loaded.Remove(this);
+            RanMusic.Want(null);
             if (!mist) return;
             // gone from the world with its weather still on (sailed away): the world's own, softly, and the game's
             // own blending back once that's done
@@ -593,8 +595,14 @@ namespace IslandsOfValheim
             int stage = fight != null ? fight.CurrentStage : -1;
             // (not as it dies: its last blow takes it past half and to nothing at once)
             if (stage >= 1 && lastStage == 0 && here && !done && beast.GetHealth() > 0f)
+            {
+                RanVoice.Say(local, "$iov_ran_net", 4f);
                 RanVoice.Say(local, "$iov_ran_hull", 5f);
+            }
             lastStage = stage;
+            // the fight's music (RanMusic): Rán's beast while the net holds, the storm's after
+            if (here) RanMusic.Want(done || beast == null ? null : stage >= 1 ? RanMusic.Storm : RanMusic.Beast);
+            else RanMusic.Want(null);
 
             if (done) return;
             KeepNear(beast);
@@ -797,7 +805,7 @@ namespace IslandsOfValheim
             {
                 float a = Random.Range(0f, Mathf.PI * 2f);
                 Vector3 at = middle + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(8f, 50f);
-                LightBeam.Over(at, 5f);
+                LightBeam.Over(at, 5f, 0.55f, 1.5f, 2.5f, true); // (soft and thin: the plain beams looked coarse, the user said)
                 yield return new WaitForSeconds(1.1f);
             }
             yield return new WaitForSeconds(4f);
