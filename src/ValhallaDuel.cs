@@ -106,9 +106,10 @@ namespace IslandsOfValheim
             nview.m_persistent = false; // a bout's, not the world's
             VisEquipment vis = go.GetComponent<VisEquipment>();
             if (vis != null) vis.m_isPlayer = false;
-            // (Hafdís always a woman: a creature's body is otherwise picked at random, man or woman; 1.10.104's
-            // came as a bald man)
-            if (vis != null && name == HafdisPrefab) vis.m_randomModelIndex = false;
+            // (Hafdís always a woman, with her own hair: the game puts a body's model and colours on only if it's
+            // a player's (VisEquipment.UpdateVisuals), and picks a creature's at random; 1.10.104-105's came as the
+            // body's default, a bald man)
+            if (vis != null && name == HafdisPrefab) { vis.m_randomModelIndex = false; vis.m_isPlayer = true; }
             go.AddComponent<EinherjarFighter>();
             PrefabManager.Instance.AddPrefab(new CustomPrefab(go, false));
             Plugin.Log.LogInfo("Duel: " + name + " made from the player's body");
@@ -169,6 +170,17 @@ namespace IslandsOfValheim
             waiting = false;
             if (ai != null) ai.enabled = true;
             nextEcho = Time.time + 4f;
+            // her bar across the top of the view only now (1.10.105 showed it from when she came into the ring,
+            // the player still far off): a boss's, made afresh (one made while she waited would be the plain kind)
+            body.m_boss = true;
+            EnemyHud hud = EnemyHud.instance;
+            System.Collections.IDictionary huds = hud != null ? Traverse.Create(hud).Field("m_huds").GetValue() as System.Collections.IDictionary : null;
+            if (huds != null && huds.Contains(body))
+            {
+                GameObject gui = Traverse.Create(huds[body]).Field("m_gui").GetValue<GameObject>();
+                if (gui != null) Destroy(gui);
+                huds.Remove(body);
+            }
         }
 
         // Beaten (its health run out): it doesn't die, it kneels, says so, and before long is gone.
@@ -842,6 +854,7 @@ namespace IslandsOfValheim
                         new[] { "", "ArmorCarapaceChest", "ArmorCarapaceLegs" });
                     EinherjarFighter f = her != null ? her.GetComponent<EinherjarFighter>() : null;
                     if (f != null) { f.hafdis = true; f.echoPierce = 25f + 12f * tier; f.waiting = waitingForYou; }
+                    if (her != null && waitingForYou) her.m_boss = false; // (no bar over the view till the bout: Fight)
                     VisEquipment vis = her != null ? her.GetComponent<VisEquipment>() : null;
                     if (vis != null) vis.SetHairColor(HafdisHair);
                 });
