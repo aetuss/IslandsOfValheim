@@ -179,17 +179,31 @@ namespace IslandsOfValheim
         // weapon in the world otherwise).
         static readonly System.Reflection.MethodInfo copyOf = typeof(object).GetMethod("MemberwiseClone", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
-        void Quicker()
+        // (and the first bout's one, a little: the user found it waiting long between blows, 1.10.120; once its
+        // weapons are in its hands, a moment after it's made: the game gives a creature its gear as it starts)
+        float soonLeast, soonMost;
+
+        internal void QuickerSoon(float least, float most)
         {
-            if (ai != null) ai.m_minAttackInterval = 0.4f;
+            soonLeast = least;
+            soonMost = most;
+            if (ai != null) ai.m_minAttackInterval = least;
+            Invoke("QuickerNow", 0.8f);
+        }
+
+        void QuickerNow() { Quicker(soonLeast, soonMost); }
+
+        internal void Quicker(float least = 0.4f, float most = 0.7f)
+        {
+            if (ai != null) ai.m_minAttackInterval = least;
             Humanoid me = body as Humanoid;
             if (me == null || copyOf == null) return;
             foreach (ItemDrop.ItemData item in me.GetInventory().GetAllItems())
             {
                 if (item == null || !item.IsWeapon()) continue;
                 ItemDrop.ItemData.SharedData own = (ItemDrop.ItemData.SharedData)copyOf.Invoke(item.m_shared, null);
-                Plugin.Debug("T5: Hafdís's " + own.m_name + ": " + own.m_aiAttackInterval.ToString("F1") + " s between blows, now " + Mathf.Min(own.m_aiAttackInterval, 0.7f).ToString("F1"));
-                own.m_aiAttackInterval = Mathf.Min(own.m_aiAttackInterval, 0.7f);
+                Plugin.Debug("Duel: " + body.m_name + "'s " + own.m_name + ": " + own.m_aiAttackInterval.ToString("F1") + " s between blows, now " + Mathf.Min(own.m_aiAttackInterval, most).ToString("F1"));
+                own.m_aiAttackInterval = Mathf.Min(own.m_aiAttackInterval, most);
                 item.m_shared = own;
             }
         }
@@ -257,17 +271,15 @@ namespace IslandsOfValheim
             ClearBar(); // (the bout's over: no bar over a farewell; NoBarOnceYielded keeps it gone)
             if (kneel)
             {
-                // (Hafdís lowers her spear, Starkaðr his great weapon: out of their hands, and with it whatever blow
-                // they were in the middle of; and his slam's wind-up pose let go. 1.10.118: beaten mid-swing or
-                // mid-wind-up, the champion stood on and never knelt, the user saw; the kneel after that, and once
-                // more a moment later for him, should the first be lost under the blow's end)
-                Unset("emote_challenge");
+                // (Hafdís lowers her spear: out of her hand)
+                Unset("emote_challenge"); // (and the champion's slam wind-up pose let go)
                 Humanoid me = body as Humanoid;
-                bool champion = slamDamage > 0f;
-                ItemDrop.ItemData held = (hafdis || champion) && me != null ? me.GetCurrentWeapon() : null;
-                if (held != null && held.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield && me.GetInventory().ContainsItem(held)) me.UnequipItem(held, false);
-                Emote("emote_kneel");
-                if (champion) Invoke("KneelAgain", 0.5f);
+                ItemDrop.ItemData spear = hafdis && me != null ? me.GetCurrentWeapon() : null;
+                if (spear != null && spear.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield) me.UnequipItem(spear, false);
+                // The kneel once the blow it was beaten in is over (Update): the log showed the champion beaten
+                // mid-swing each time, and a kneel then was lost under the swing's end (1.10.118: he never
+                // knelt); 1.10.120 took his weapon from him and knelt him twice: he knelt and rose, over and over.
+                kneelPending = true;
                 if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
             }
         }
@@ -485,6 +497,11 @@ namespace IslandsOfValheim
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
+            if (kneelPending && (!body.InAttack() || Time.time > yieldedAt + 1.5f))
+            {
+                kneelPending = false;
+                Emote("emote_kneel");
+            }
             // (Hafdís kneels longer: her words first; through her farewell, if there's one: the ceremony takes her)
             if (ceremony) return;
             float stays = hafdis ? 9f : 3.5f;
@@ -497,7 +514,7 @@ namespace IslandsOfValheim
             if (Time.time > yieldedAt + stays + 1f && nview != null && nview.IsOwner()) ZNetScene.instance.Destroy(gameObject);
         }
 
-        void KneelAgain() { if (yielded && !goingHome) Emote("emote_kneel"); }
+        bool kneelPending;
 
         // A pose held by a switch (as the champion's challenge), let go.
         void Unset(string name)
@@ -554,8 +571,6 @@ namespace IslandsOfValheim
                 {
                     __instance.SetHealth(__instance.GetMaxHealth() * 0.25f);
                     ValhallaDuel.Current.Lose("$iov_duel_lost");
-                    // beaten, you kneel as they do (till you move; the user, 1.10.118)
-                    ((Player)__instance).StartEmote("kneel", false);
                     return false;
                 }
                 return true;
@@ -964,7 +979,12 @@ namespace IslandsOfValheim
             else if (round == 1)
             {
                 Vector3 at = centre + away * In;
-                Later(at, () => Fighter(PrefabName(false), at, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]));
+                Later(at, () =>
+                {
+                    Character one = Fighter(PrefabName(false), at, player, tier, Health[tier], 0, Pick(Swords, tier), Pick(Shields, tier), "Hair5", "Beard3", Capes[tier]);
+                    EinherjarFighter f = one != null ? one.GetComponent<EinherjarFighter>() : null;
+                    if (f != null) f.QuickerSoon(1f, 1.2f); // (alone against you: not so long between his blows)
+                });
             }
             else if (round == 2)
             {

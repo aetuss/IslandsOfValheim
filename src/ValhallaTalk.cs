@@ -16,9 +16,9 @@ namespace IslandsOfValheim
         // his harbour's old fire and on his village's pier
         internal const int BrimSoul = 8, BrimElder = 9, SaevarHarbour = 10, SaevarVillage = 11;
         static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
-        static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3" };
+        static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3", "$iov_brimelder_home" };
         static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour2" };
-        static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village2" };
+        static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village2", "$iov_saevar_home" };
         static int saevarTurn; // (his lines by turns, not at random: both heard in two talks)
         internal string[] lines; // one of the folk's own (else the folk's at random)
         int ownTurn;

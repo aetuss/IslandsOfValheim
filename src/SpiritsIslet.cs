@@ -135,6 +135,15 @@ namespace IslandsOfValheim
             Plugin.Debug("Brim village: " + made + " doors put in");
         }
 
+        // The meadow's pickables (the game's own, picked and growing again), put in by the altar once.
+        internal const string MeadowKey = "IoV_T4Meadow"; // on the altar: the meadow's pickables are in
+
+        internal static void BuildMeadow(Transform altar)
+        {
+            int made = Spawn(altar, IsletBuilder.MeadowPickables, null);
+            Plugin.Debug("Brim village: " + made + " things to pick put in the meadow");
+        }
+
         static int Spawn(Transform altar, List<IsletBuilder.HomePiece> pieces, string mark, bool doors = false)
         {
             Quaternion turn = altar.rotation;
@@ -469,6 +478,11 @@ namespace IslandsOfValheim
             {
                 view.GetZDO().Set(SpiritsIslet.DoorsKey, true);
                 SpiritsIslet.BuildDoors(transform);
+            }
+            if (!view.GetZDO().GetBool(SpiritsIslet.MeadowKey) && IsletBuilder.MeadowPickables.Count > 0)
+            {
+                view.GetZDO().Set(SpiritsIslet.MeadowKey, true);
+                SpiritsIslet.BuildMeadow(transform);
             }
             if (SpiritsIslet.Stage < 2 || SpiritsIslet.IsHomeBuilt(view)) return;
             SpiritsIslet.HomeBuilt(view, true);

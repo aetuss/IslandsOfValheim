@@ -78,6 +78,7 @@ namespace IslandsOfValheim
             frames.Clear();
             HomePieces.Clear();
             DoorPieces.Clear();
+            MeadowPickables.Clear();
             pieceSize.Clear();
             occupied.Clear();
             takenCircles.Clear();
@@ -1364,10 +1365,12 @@ namespace IslandsOfValheim
             }
         }
 
-        // The player's yard: open ground, only its corner posts (torches once rebuilt).
+        // The player's yard: open ground, only its corner posts while the village is being rebuilt (once it
+        // stands, nothing: the yard is the player's to build on, and 1.10.89-120's torches at its corners, the
+        // village's, couldn't be taken down; the user had them go).
         static void SpYard(Vector2 at)
         {
-            for (int stage = 1; stage < 3; stage++)
+            for (int stage = 1; stage < 2; stage++)
             {
                 parent = stageGroups[stage];
                 for (int i = 0; i < 4; i++)
@@ -1487,9 +1490,10 @@ namespace IslandsOfValheim
                 parent = stageGroups[stage];
                 SpProp(new[] { "piece_brazierfloor02", "piece_brazierfloor01" }, new Vector3(at.x, ground, at.y), 0f, false, -1, stage > 0, stage == 0);
             }
-            // one standing quiet by its fire, come in by the path (T5 done)
+            // one standing quiet by its fire, across it from the path, facing it (T5 done; 1.10.113-120 stood him on
+            // the path's side: the user marked the far side)
             parent = stageGroups[2];
-            Vector2 by = at + (from - at).normalized * 2.3f;
+            Vector2 by = at - (from - at).normalized * 2.3f;
             SoulAt(new Vector3(by.x, Height(by.x, by.y), by.y), new Vector3(at.x - by.x, 0f, at.y - by.y));
         }
 
@@ -1559,14 +1563,14 @@ namespace IslandsOfValheim
                     else if (pick < 0.72f) name = "Pickable_Mushroom";
                     else name = "Pickable_Dandelion";
                     if (Find(new[] { name }) == null) name = "Pickable_Dandelion";
-                    SpPlant(name, x, Height(x, z), z, Mathf.Repeat(x * 37f + z * 11f, 360f), sink);
+                    MeadowPlant(name, x, z, Mathf.Repeat(x * 37f + z * 11f, 360f), sink);
                     placed++;
                     if (name == "Pickable_Dandelion")
                         for (int k = 0; k < 3; k++)
                         {
                             float cx = x + 1.3f * Mathf.Cos(k * 2.1f + jitter * 6f), cz = z + 1.3f * Mathf.Sin(k * 2.1f + jitter * 6f);
                             if (!Free(cx, cz, 0.5f)) continue;
-                            SpPlant(name, cx, Height(cx, cz), cz, k * 97f, sink);
+                            MeadowPlant(name, cx, cz, k * 97f, sink);
                             placed++;
                         }
                 }
@@ -1987,6 +1991,22 @@ namespace IslandsOfValheim
             Quaternion turn = Quaternion.Euler(0f, homePose.Yaw, 0f);
             foreach (HomePiece h in homeLocal)
                 HomePieces.Add(new HomePiece { Prefab = h.Prefab, At = homePose.At + turn * h.At, Yaw = homePose.Yaw + h.Yaw, AlongZ = h.AlongZ });
+        }
+
+        // ---- what can be picked in the meadow ----
+
+        // The meadow's berries, flax, thistle, mushrooms and dandelions: the game's own, to be picked and to grow
+        // again (1.10.94-120 laid still copies of them, that nothing could be taken from; the user asked for them
+        // picked, the field's crops and the hives' honey apart). Networked, so they're put in by the altar, once
+        // (SpiritsIslet.BuildMeadow), where the plan has them; the rest of the meadow (bushes, saplings, stones)
+        // stays the village's own.
+        internal static readonly List<HomePiece> MeadowPickables = new List<HomePiece>();
+        static readonly HashSet<string> pickable = new HashSet<string> { "RaspberryBush", "BlueberryBush", "Pickable_Flax_Wild", "Pickable_Thistle", "Pickable_Mushroom", "Pickable_Dandelion" };
+
+        static void MeadowPlant(string name, float x, float z, float yaw, float sink)
+        {
+            if (!pickable.Contains(name)) { SpPlant(name, x, Height(x, z), z, yaw, sink); return; }
+            MeadowPickables.Add(new HomePiece { Prefab = new[] { name }, At = new Vector3(x, Height(x, z) - sink, z), Yaw = yaw, Scale = 1f });
         }
 
         // ---- the Brim Folk at home (the tale's end, T5): where each spirit is (SoulSpot; BrimSouls makes them) ----
