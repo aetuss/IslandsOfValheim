@@ -609,6 +609,45 @@ namespace IslandsOfValheim
             return person;
         }
 
+        // Sat on a seat of the game's (a bench's, a throne's: its Chair read off the piece's own prefab, since the
+        // copies have had their workings taken out), slid `along` the seat's own length for a second sitter.
+        internal static SpiritHuman SitOn(Look look, Transform piece, float along, int ghost, Transform under, string rightHand = "")
+        {
+            if (piece == null) return null;
+            string name = piece.name;
+            int cut = name.IndexOf('(');
+            if (cut >= 0) name = name.Substring(0, cut);
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name.Trim());
+            Chair chair = prefab != null ? prefab.GetComponentInChildren<Chair>(true) : null;
+            if (chair == null || chair.m_attachPoint == null) { Plugin.Debug("Spirits: " + piece.name + " has no seat"); return null; }
+            Vector3 local = prefab.transform.InverseTransformPoint(chair.m_attachPoint.position);
+            Quaternion turn = Quaternion.Inverse(prefab.transform.rotation) * chair.m_attachPoint.rotation;
+            if (along != 0f) local += SeatAxis(prefab) * along;
+            return MakeLocal(look, Sit, chair.m_attachAnimation, ghost, under, piece.TransformPoint(local), piece.rotation * turn, rightHand);
+        }
+
+        // A seat's long way, in its prefab's own space (its meshes measured there, so however the copy is turned).
+        static Vector3 SeatAxis(GameObject prefab)
+        {
+            Bounds b = new Bounds();
+            bool any = false;
+            Matrix4x4 into = prefab.transform.worldToLocalMatrix;
+            foreach (MeshFilter m in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (m.sharedMesh == null) continue;
+                Bounds mb = m.sharedMesh.bounds;
+                Matrix4x4 to = into * m.transform.localToWorldMatrix;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
+                    Vector3 p = to.MultiplyPoint3x4(corner);
+                    if (!any) { b = new Bounds(p, Vector3.zero); any = true; }
+                    else b.Encapsulate(p);
+                }
+            }
+            return b.size.x >= b.size.z ? Vector3.right : Vector3.forward;
+        }
+
         // ---- the test (development builds): iov_spirits ----
 
         // In a row in front of you, left to right: the man solid (to compare), then the two ways of drawing a

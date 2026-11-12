@@ -99,7 +99,7 @@ namespace IslandsOfValheim
                 }, true);
 
             new Terminal.ConsoleCommand("iov_t5",
-                "[duel|reset] - IslandsOfValheim (development): Hafdís: her bout in the ring now (duel, as if asked at the rock's edge), or undo it all (reset: not yet yielded, not yet met, the tale not done, Odin back on his high seat)",
+                "[duel|done|reset] - IslandsOfValheim (development): Hafdís: her bout in the ring now (duel, as if asked at the rock's edge), the tale's end at once (done: the Brim Folk home), or undo it all (reset: not yet yielded, not yet met, the tale not done, Odin back on his high seat)",
                 args =>
                 {
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
@@ -109,7 +109,7 @@ namespace IslandsOfValheim
                         Player me = Player.m_localPlayer;
                         System.Reflection.FieldInfo field = HarmonyLib.AccessTools.Field(typeof(Player), "m_shownTutorials");
                         System.Collections.Generic.HashSet<string> seen = me != null && field != null ? field.GetValue(me) as System.Collections.Generic.HashSet<string> : null;
-                        if (seen != null) { seen.Remove(ValhallaSpeaker.HafdisMetKey); seen.Remove(ValhallaSpeaker.OdinSpokeKey); }
+                        if (seen != null) { seen.Remove(ValhallaSpeaker.HafdisMetKey); seen.Remove(ValhallaSpeaker.OdinSpokeKey); seen.Remove(BrimSouls.ArrivedKey); }
                         if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
                         if (ValhallaPeople.Current != null) ValhallaPeople.Current.Remake();
                         args.Context.AddString("Hafdís: not yet met, not yet yielded.");
@@ -123,7 +123,16 @@ namespace IslandsOfValheim
                         args.Context.AddString("Hafdís waits in the ring.");
                         return;
                     }
-                    args.Context.AddString("iov_t5 duel | reset");
+                    if (what == "done")
+                    {
+                        // the tale's end at once (as if she had yielded and gone): Odin to his hall, the Brim Folk home
+                        Story.Set(ValhallaDuel.HafdisWonKey);
+                        Story.Set(ValhallaPeople.DoneKey);
+                        if (ValhallaPeople.Current != null) ValhallaPeople.Current.Remake();
+                        args.Context.AddString("The tale is done: the Brim Folk are home (the village, the harbour), Odin in his hall.");
+                        return;
+                    }
+                    args.Context.AddString("iov_t5 duel | done | reset");
                 }, true);
 
             new Terminal.ConsoleCommand("iov_call",

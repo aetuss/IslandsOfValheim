@@ -171,8 +171,22 @@ namespace IslandsOfValheim
             Vector2 fire = H(-5.8f, 5f);
             LitProp(new[] { "fire_pit", "fire_pit_haldor" }, fire, 0f, 0.05f);
             Prop(new[] { "piece_cookingstation" }, fire, face + 90f, 0.02f);
-            Bench(fire, H(-7.6f, 4.8f));
+            GameObject oldSeat = Bench(fire, H(-7.6f, 4.8f));
             Bench(fire, H(-5.6f, 6.9f));
+            // Once the tale is done (T5), Sævar's spirit sits by his old fire (as in Valhalla and on his village's
+            // pier): a word with him there.
+            if (oldSeat != null)
+            {
+                GameObject mark = new GameObject("IoV_Soul");
+                mark.transform.SetParent(oldSeat.transform, false);
+                SoulSpot saevar = mark.AddComponent<SoulSpot>();
+                saevar.kind = SoulSpot.Sit;
+                saevar.who = SoulSpot.Saevar;
+                saevar.talks = true;
+                GameObject souls = new GameObject("IoV_BrimSouls");
+                souls.transform.SetParent(root.transform, false);
+                souls.AddComponent<BrimSouls>();
+            }
             FishersCorner(H(5.8f, 4.6f));
             Seal(H(-4.6f, 1.2f), fire); // beside the house, looking at the campfire
 #if IOV_DEV
@@ -433,11 +447,11 @@ namespace IslandsOfValheim
             return face - a;
         }
 
-        static void Bench(Vector2 fire, Vector2 at)
+        static GameObject Bench(Vector2 fire, Vector2 at)
         {
             Vector2 to = fire - at;
             float yaw = Mathf.Atan2(to.x, to.y) * Mathf.Rad2Deg; // its seat facing the fire
-            Prop(new[] { "piece_logbench01", "piece_bench01" }, at, yaw, 0.05f);
+            return OnGround(new[] { "piece_logbench01", "piece_bench01" }, at, yaw, 0f, 0.05f, true);
         }
 
         // Drying racks with a barrel and crates beside them.

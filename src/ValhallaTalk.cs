@@ -12,6 +12,14 @@ namespace IslandsOfValheim
     {
         internal const string WelcomedKey = "iovvalhallawelcomed";
         internal const int Bragi = 0, Saevar = 1, Odin = 2, Guard = 3, HighSeatGuard = 4, RingMaster = 5, Captain = 6, Hafdis = 7;
+        // the Brim Folk at home, once the tale is done (BrimSouls): one of them, their elder, and Sævar's spirit at
+        // his harbour's old fire and on his village's pier
+        internal const int BrimSoul = 8, BrimElder = 9, SaevarHarbour = 10, SaevarVillage = 11;
+        static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
+        static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3" };
+        static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour2" };
+        static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village2" };
+        static int saevarTurn; // (his lines by turns, not at random: both heard in two talks)
         internal const string HafdisMetKey = "iovt5met"; // (the player's own: Hafdís has told them who she is)
         internal string captain = ""; // which of the tale's captains (TaleCaptains), for Captain
 
@@ -35,6 +43,9 @@ namespace IslandsOfValheim
             {
                 if (who == Captain) return TaleCaptains.Of(captain).Name;
                 if (who == Hafdis) return "$iov_hafdis";
+                if (who == BrimSoul) return "$iov_brimsoul";
+                if (who == BrimElder) return "$iov_brimelder";
+                if (who == SaevarHarbour || who == SaevarVillage) return SeaTrader.NameToken;
                 return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
             }
         }
@@ -102,6 +113,14 @@ namespace IslandsOfValheim
                 Say("$iov_t5_challenge");
                 ValhallaDuel.Current.BeginHafdis();
                 if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true, 5f); // (her words read first)
+                return true;
+            }
+            if (who == BrimSoul) { Say(SoulTalk[Random.Range(0, SoulTalk.Length)]); return true; }
+            if (who == BrimElder) { Say(ElderTalk[Random.Range(0, ElderTalk.Length)]); return true; }
+            if (who == SaevarHarbour || who == SaevarVillage)
+            {
+                string[] lines = who == SaevarHarbour ? HarbourTalk : VillageTalk;
+                Say(lines[saevarTurn++ % lines.Length]);
                 return true;
             }
             if (who == Guard || who == HighSeatGuard)

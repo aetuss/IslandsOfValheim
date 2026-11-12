@@ -383,12 +383,12 @@ namespace IslandsOfValheim
             return new SpiritHuman.Look { Hair = "Hair4", Beard = "Beard12", HairColor = new Vector3(0.86f, 0.8f, 0.68f), Chest = "ArmorTunic3", Legs = "ArmorLeatherLegs", Shoulder = "CapeLinen" };
         }
 
-        static SpiritHuman.Look Saevar()
+        internal static SpiritHuman.Look Saevar()
         {
             return new SpiritHuman.Look { Hair = "Hair3", Beard = "Beard5", HairColor = new Vector3(0.45f, 0.33f, 0.22f), Helmet = SeafarerGear.Hat, Chest = SeafarerGear.Vest, Legs = SeafarerGear.Trousers, Shoulder = SeafarerGear.Cape };
         }
 
-        static SpiritHuman.Look BrimFolk(int i)
+        internal static SpiritHuman.Look BrimFolk(int i)
         {
             bool woman = i % 2 == 1;
             return new SpiritHuman.Look

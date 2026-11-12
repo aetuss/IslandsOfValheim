@@ -82,6 +82,7 @@ namespace IslandsOfValheim
             occupied.Clear();
             takenCircles.Clear();
             pathPoints.Clear();
+            soulCount = 0;
             Transform top = parent;
             groupAll = SpGroup(top, "IoV_SpiritAll", true);
             for (int s = 0; s < 3; s++) stageGroups[s] = SpGroup(top, SpiritStages.GroupName(s), s == 0);
@@ -141,6 +142,26 @@ namespace IslandsOfValheim
             Vector2 bySide = dock > 180f ? At(-6.5f, -31f) : At(-9.5f, 36f);
             Lane(10, false, dock > 180f ? sw : nw, bySide, pierFoot);
             DressLanes();
+            // The Brim Folk at home (T5 done): a few walk the lanes, from the square's edge (clear of its benches)
+            // and back, resting a while at either end; one goes slowly round the square.
+            {
+                const float edge = 7.6f;
+                Vector2 hallDoor = Door(hall, hallStyle), pierGap = dock > 180f ? sw : nw;
+                SoulWalk(0.9f, 5f, false, hallDoor.normalized * edge, hallDoor);
+                SoulWalk(1.0f, 6f, false, pierGap.normalized * edge, pierGap, bySide, pierFoot);
+                SoulWalk(0.85f, 8f, false, se.normalized * edge, se, memorial - (memorial - se).normalized * 4.5f);
+                SoulWalk(0.9f, 5f, false, nw.normalized * edge, nw, lighthouse - (lighthouse - nw).normalized * 4.5f);
+                Vector2[] round = new Vector2[12];
+                for (int i = 0; i < round.Length; i++)
+                {
+                    float a = i * Mathf.PI * 2f / round.Length;
+                    round[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 7.2f;
+                }
+                SoulWalk(0.8f, 0f, true, round);
+                GameObject souls = new GameObject("IoV_BrimSouls");
+                souls.transform.SetParent(top, false);
+                souls.AddComponent<BrimSouls>().village = true;
+            }
             parent = groupAll;
             Trees(kind);
             Slopes(kind);
@@ -475,8 +496,11 @@ namespace IslandsOfValheim
         static Thing T(float yaw, params string[] names) { return new Thing { Names = names, Yaw = yaw }; }
         static Thing Table(params string[] names) { return new Thing { Names = names, Table = true }; }
 
+        static int hallSeat, hallSouls;
+
         static void Inside(Trade trade, int stage, float length, float width)
         {
+            hallSeat = hallSouls = 0;
             float back = length * 0.5f, side = width * 0.5f;
             if (stage == 0)
             {
@@ -509,13 +533,25 @@ namespace IslandsOfValheim
                         SpFeastTable(t, k++);
                         foreach (float off in new[] { -1.15f, 1.15f })
                             foreach (float dz in new[] { -1.6f, 1.6f })
-                                SpSeat(new[] { "piece_bench01" }, new Vector3(x + off, 0f, z + dz), new Vector3(-Mathf.Sign(off), 0f, 0f));
+                            {
+                                GameObject b = SpSeat(new[] { "piece_bench01" }, new Vector3(x + off, 0f, z + dz), new Vector3(-Mathf.Sign(off), 0f, 0f));
+                                // the folk at home (T5 done): here one, there two, a good many places empty; every
+                                // third with a tankard; the first of them to talk to
+                                foreach (float along in new[] { -0.55f, 0.55f })
+                                {
+                                    if (SoulPick(hallSeat++, 23) > 0.34f) continue;
+                                    SoulSpot soul = SoulOn(b, along, true, hallSouls % 3 == 1 ? "Tankard" : "");
+                                    if (soul != null && hallSouls++ == 0) soul.talks = true;
+                                }
+                            }
                     }
                 // the high seat on a stone dais at the far end, blue fires either side, furs before it
                 float daisZ = back - 2f;
                 for (float x = -2f; x <= 2.01f; x += 2f)
                     SpProp(new[] { "stone_floor_2x2" }, new Vector3(x, 0.35f, daisZ), 0f, true);
-                SpSeat(new[] { "piece_throne01", "piece_chair02" }, new Vector3(0f, 0.35f, daisZ), Vector3.back);
+                GameObject highSeat = SpSeat(new[] { "piece_throne01", "piece_chair02" }, new Vector3(0f, 0.35f, daisZ), Vector3.back);
+                SoulSpot elder = SoulOn(highSeat, 0f, false); // the village's elder on it, to talk to
+                if (elder != null) { elder.who = SoulSpot.Elder; elder.talks = true; }
                 // standing iron torches either side of it, and sconces down both side walls over the benches,
                 // between the tables' ends (no braziers indoors: the user, 1.10.99)
                 foreach (float x in new[] { -2.4f, 2.4f })
@@ -563,7 +599,15 @@ namespace IslandsOfValheim
             {
                 case Trade.Smith: // the forge at the back, the anvil beside it, the bench on the right; he sleeps by the door
                     P(new[] { "forge" }, -1.6f, back - 1f, 180f, ' ', side, back, 'B');
-                    P(new[] { "forge_ext1", "forge_ext2" }, -side + 0.6f, back - 3.5f, 90f, ' ', side, back, 'L');
+                    {
+                        GameObject anvil = P(new[] { "forge_ext1", "forge_ext2" }, -side + 0.6f, back - 3.5f, 90f, ' ', side, back, 'L');
+                        // (the smith at it, hammer in hand, at work: T5 done)
+                        if (anvil != null)
+                        {
+                            Bounds ab = LocalBounds(anvil);
+                            SoulAt(new Vector3(ab.max.x + 0.6f, 0f, ab.center.z), Vector3.left, "Hammer", 1.4f).chest = "ArmorLeatherChest";
+                        }
+                    }
                     P(new[] { "piece_workbench" }, side - 1f, 1f, -90f, 'z', side, back, 'R');
                     P(chest, side - 0.5f, back - 0.6f, -90f, ' ', side, back, 'R', 'B');
                     P(bed, side - 1f, -back + 2.4f, 0f, 'z', side, back, 'R');
@@ -575,7 +619,15 @@ namespace IslandsOfValheim
                 case Trade.Weaver: // her bed along the back wall, the wheel on the right, chests, a table by the front wall
                     P(bed, -side + 1.6f, back - 1f, 90f, 'x', side, back, 'L', 'B');
                     P(chest, side - 0.5f, back - 0.6f, -90f, ' ', side, back, 'R', 'B');
-                    P(new[] { "piece_spinningwheel" }, side - 1f, 0.5f, -90f, ' ', side, back, 'R');
+                    {
+                        GameObject wheel = P(new[] { "piece_spinningwheel" }, side - 1f, 0.5f, -90f, ' ', side, back, 'R');
+                        // (the weaver at it: T5 done; a woman, as the folk's odd ones are)
+                        if (wheel != null)
+                        {
+                            Bounds wb = LocalBounds(wheel);
+                            SoulAt(new Vector3(wb.min.x - 0.5f, 0f, wb.center.z), Vector3.right).index = 101;
+                        }
+                    }
                     P(chest, -side + 0.5f, 0f, 90f, ' ', side, back, 'L');
                     {
                         GameObject t = P(table, side - 1.6f, -back + 0.8f, 0f, 'x', side, back, 'F');
@@ -592,7 +644,7 @@ namespace IslandsOfValheim
                     {
                         GameObject t = P(table, -side + 1f, 0.3f, 0f, 'z', side, back, 'L');
                         SpLaid(t, 12);
-                        if (t != null) SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left);
+                        if (t != null) SoulOn(SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left), 0f, true); // (at his supper: T5 done)
                     }
                     P(chest, side - 0.5f, 1.2f, -90f, ' ', side, back, 'R');
                     P(barrel, side - 0.5f, -back + 0.6f, 0f, ' ', side, back, 'R', 'F');
@@ -611,7 +663,7 @@ namespace IslandsOfValheim
                     {
                         GameObject t = P(table, -side + 1f, 1.2f, 0f, 'z', side, back, 'L');
                         SpLaid(t, 13);
-                        if (t != null) SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left);
+                        if (t != null) SoulOn(SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left), 0f, true, "Tankard"); // (tasting his own: T5 done)
                     }
                     P(bed, side - 1f, 2f, 0f, 'z', side, back, 'R');
                     P(chest, side - 0.5f, -1.2f, -90f, ' ', side, back, 'R');
@@ -1177,7 +1229,11 @@ namespace IslandsOfValheim
                     float a = i * 45f + 22.5f;
                     Vector3 q = Quaternion.Euler(0f, a, 0f) * new Vector3(0f, 0f, 5.5f);
                     q.y = Height(q.x, q.z);
-                    SpSeat(new[] { "piece_bench01" }, q, -q.normalized);
+                    GameObject bench = SpSeat(new[] { "piece_bench01" }, q, -q.normalized);
+                    // (the folk at home, T5 done: on three of them by the fire, two on one; one to talk to)
+                    if (i == 0) { SoulSpot s = SoulOn(bench, 0f, false); if (s != null) s.talks = true; }
+                    if (i == 3) SoulOn(bench, 0f, false, "Tankard");
+                    if (i == 6) { SoulOn(bench, -0.55f, false); SoulOn(bench, 0.55f, false); }
                 }
             }
             return top;
@@ -1266,6 +1322,8 @@ namespace IslandsOfValheim
                 roofFrame.transform.localPosition = new Vector3(at.x, 0f, at.y);
                 parent = keep;
                 // its fire in an iron basket (1.10.98's bonfire burned up into its roof and over the railing)
+                // its keeper at a corner of the gallery, looking out to sea (T5 done)
+                SoulAt(new Vector3(at.x + Mathf.Sign(at.x) * 2.45f, walk, at.y + Mathf.Sign(at.y) * 2.45f), new Vector3(at.x, 0f, at.y).sqrMagnitude > 1f ? new Vector3(at.x, 0f, at.y) : Vector3.forward);
                 GameObject fire = SpProp(new[] { "fire_pit_iron", "fire_pit" }, new Vector3(at.x, walk, at.y), 0f, false, -1, true);
                 if (fire != null)
                 {
@@ -1326,6 +1384,9 @@ namespace IslandsOfValheim
                     }
                 }
             // (no fence round it: the user, 1.10.101)
+            // one at work in it, hoe in hand (T5 done)
+            parent = stageGroups[2];
+            SoulAt(new Vector3(at.x + 1.5f, Height(at.x + 1.5f, at.y - 0.5f), at.y - 0.5f), Vector3.left, "Hoe", 2.4f);
         }
 
         // A dark beam from one point to another, sloping as they do, stretched to fit, its middle on the line
@@ -1402,6 +1463,10 @@ namespace IslandsOfValheim
                 parent = stageGroups[stage];
                 SpProp(new[] { "piece_brazierfloor02", "piece_brazierfloor01" }, new Vector3(at.x, ground, at.y), 0f, false, -1, stage > 0, stage == 0);
             }
+            // one standing quiet by its fire, come in by the path (T5 done)
+            parent = stageGroups[2];
+            Vector2 by = at + (from - at).normalized * 2.3f;
+            SoulAt(new Vector3(by.x, Height(by.x, by.y), by.y), new Vector3(at.x - by.x, 0f, at.y - by.y));
         }
 
         // (No well, cart or evening fire about the village: the user had the well taken away in 1.10.99, the
@@ -1626,6 +1691,27 @@ namespace IslandsOfValheim
                     float mesh = LocalBounds(boat).min.y, hull = SolidBounds(boat).min.y;
                     boat.transform.localPosition += Vector3.up * (-0.9f - hull);
                     Plugin.Debug("Brim village: the ship's lowest mesh at " + mesh.ToString("F2") + ", its hull at " + hull.ToString("F2") + "; the hull put at -0.90");
+                }
+                // The folk at home (T5 done): one fishing off the pier's end, on the side away from the ship (to
+                // talk to), another off the landing; and Sævar on the landing, looking at his ship.
+                Vector2 rod = u * (end - 2.6f) - side * 0.6f;
+                SoulAt(new Vector3(rod.x, deck, rod.y), new Vector3(-side.x, 0f, -side.y), "FishingRod").talks = true;
+                Vector2 look = u * shipAt + side * off;
+                if (land > 0f)
+                {
+                    Vector2 rod2 = u * (land + 2.2f) - side * 2.4f;
+                    SoulAt(new Vector3(rod2.x, deck, rod2.y), new Vector3(-side.x, 0f, -side.y), "FishingRod");
+                    Vector2 sv = u * land - side * 1.4f;
+                    SoulSpot saevar = SoulAt(new Vector3(sv.x, deck, sv.y), new Vector3(look.x - sv.x, 0f, look.y - sv.y));
+                    saevar.who = SoulSpot.Saevar;
+                    saevar.talks = true;
+                }
+                else
+                {
+                    Vector2 sv = u * (start + 2f) - side * 0.6f;
+                    SoulSpot saevar = SoulAt(new Vector3(sv.x, deck, sv.y), new Vector3(look.x - sv.x, 0f, look.y - sv.y));
+                    saevar.who = SoulSpot.Saevar;
+                    saevar.talks = true;
                 }
             }
             Taken(foot, 4f);
@@ -1875,6 +1961,64 @@ namespace IslandsOfValheim
             Quaternion turn = Quaternion.Euler(0f, homePose.Yaw, 0f);
             foreach (HomePiece h in homeLocal)
                 HomePieces.Add(new HomePiece { Prefab = h.Prefab, At = homePose.At + turn * h.At, Yaw = homePose.Yaw + h.Yaw, AlongZ = h.AlongZ });
+        }
+
+        // ---- the Brim Folk at home (the tale's end, T5): where each spirit is (SoulSpot; BrimSouls makes them) ----
+
+        static int soulCount;
+
+        static SoulSpot SoulMark(Transform under, int kind)
+        {
+            GameObject go = new GameObject("IoV_Soul");
+            go.transform.SetParent(under, false);
+            SoulSpot s = go.AddComponent<SoulSpot>();
+            s.kind = kind;
+            s.index = soulCount++;
+            return s;
+        }
+
+        // On a seat (a bench, the high seat): along it; at a feast, a bite now and then.
+        static SoulSpot SoulOn(GameObject seat, float along, bool feast, string holds = "")
+        {
+            if (seat == null) return null;
+            SoulSpot s = SoulMark(seat.transform, feast ? SoulSpot.Feast : SoulSpot.Sit);
+            s.along = along;
+            s.holds = holds;
+            return s;
+        }
+
+        // Standing at a place of the current parent, looking a way; at work, a swing every so often.
+        static SoulSpot SoulAt(Vector3 at, Vector3 look, string holds = "", float every = 0f)
+        {
+            SoulSpot s = SoulMark(parent, every > 0f ? SoulSpot.Work : SoulSpot.Stand);
+            s.transform.localPosition = at;
+            look.y = 0f;
+            s.transform.localRotation = Quaternion.LookRotation(look.sqrMagnitude > 0.001f ? look.normalized : Vector3.forward);
+            s.holds = holds;
+            s.every = every;
+            return s;
+        }
+
+        // Walking a lane there and back (or round), slowly.
+        static SoulSpot SoulWalk(float speed, float rest, bool loop, params Vector2[] route)
+        {
+            SoulSpot s = SoulMark(stageGroups[2], SoulSpot.Walk);
+            s.route = new Vector3[route.Length];
+            for (int i = 0; i < route.Length; i++) s.route[i] = new Vector3(route[i].x, Height(route[i].x, route[i].y), route[i].y);
+            s.speed = speed;
+            s.rest = rest;
+            s.loop = loop;
+            return s;
+        }
+
+        // A steady 0..1 for an index (not the village's own random: what it draws lays out the rest).
+        static float SoulPick(int i, int salt)
+        {
+            uint h = (uint)(i * 2654435761L + salt * 40503L);
+            h ^= h >> 15;
+            h *= 2246822519u;
+            h ^= h >> 13;
+            return (h & 1023) / 1023f;
         }
 
         // ---- pieces ----
