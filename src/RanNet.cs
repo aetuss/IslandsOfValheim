@@ -811,9 +811,7 @@ namespace IslandsOfValheim
             }
             yield return new WaitForSeconds(4f);
             if (souls != null) souls.SetActive(false);
-            rising = false;
-            // (and what they owe you: they'll hold your ship once a day when she's breaking up, SeaGifts)
-            if (local != null) local.Message(MessageHud.MessageType.TopLeft, "$iov_drowned_given");
+            rising = false; // (and what they owe you, told a little after: ValhallaGifts)
         }
 
         // ---- the souls under the water (this client's own) ----

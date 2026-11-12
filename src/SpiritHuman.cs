@@ -155,7 +155,8 @@ namespace IslandsOfValheim
                 // (up at once: the player's body starts out as a player does coming into the world, sitting on
                 // the ground and getting up; one made in front of you, as those come to watch Hafdís's bout, was
                 // seen so)
-                if (!up) { SetBool("wakeup", false); up = true; }
+                bool first = !up;
+                if (first) { SetBool("wakeup", false); up = true; }
                 // As a player on the ground, walking as fast as it's moved (or standing); seated if it was put on
                 // a seat; standing as its weapons have it stand.
                 SetBool("onGround", true);
@@ -164,6 +165,10 @@ namespace IslandsOfValheim
                 if (pose == Sit && sitAnim.Length > 0) SetBool(sitAnim, true);
                 if (stance >= 0) { SetInt("statei", stance); SetFloat("statef", stance); }
                 SetBool("blocking", blocking || Time.time < knockUntil);
+                // and its getting up played through at once, unseen: told to get up, the body still sat up
+                // from the ground in front of you (1.10.111-118: the witnesses, the drowned at the ship), so it
+                // comes already in its pose (standing, or seated if it was put on a seat)
+                if (first) { animator.Update(2.5f); animator.Update(2.5f); }
             }
             if (ghost == Solid) return;
             // Unseen until it's dressed and made a ghost: no glimpse of a living man first.

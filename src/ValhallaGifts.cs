@@ -55,10 +55,30 @@ namespace IslandsOfValheim
             next = Time.time + 0.25f;
             Player player = Player.m_localPlayer;
             if (player == null || player.IsDead() || EnvMan.instance == null || ZNet.instance == null) return;
-            Resting(player, OathDay, oathHash, Story.Key(ValhallaDuel.WonKey));
-            Resting(player, DebtDay, debtHash, RanNet.Done);
+            bool oath = Story.Key(ValhallaDuel.WonKey), debt = RanNet.Done;
+            Resting(player, OathDay, oathHash, oath);
+            Resting(player, DebtDay, debtHash, debt);
+            Told(player, OathTold, oath, "$iov_oath_given", 9f, ref oathSeen);
+            Told(player, DebtTold, debt, "$iov_drowned_given", 16f, ref debtSeen); // (after Rán's last words)
             Oath(player);
             Debt(player);
+        }
+
+        // ---- what you've been given, told once (each player, whenever they first have it: as it's won, or in a
+        // world where it was won before; 1.10.118 told it only as the champion fell for the first time in the
+        // world, and the user, winning again, never saw it), a while after it's won, when the bout's own words
+        // are read ----
+
+        internal const string OathTold = "iovoathtold", DebtTold = "iovdebttold";
+        float oathSeen = -1f, debtSeen = -1f;
+
+        static void Told(Player player, string key, bool have, string line, float after, ref float seen)
+        {
+            if (!have || player.HaveSeenTutorial(key)) { seen = -1f; return; }
+            if (seen < 0f) { seen = Time.time; return; }
+            if (Time.time - seen < after || ValhallaDuel.Active) return;
+            player.SetSeenTutorial(key);
+            player.Message(MessageHud.MessageType.Center, line);
         }
 
         // ---- once a day ----
@@ -199,8 +219,12 @@ namespace IslandsOfValheim
             StartCoroutine(Mend(player, ship, nview));
         }
 
-        // Pale, out of the sea along both her sides, their hands on her; she's held and mended (her owner does it:
-        // MendRpc), and they sink back.
+        // Pale, out of the sea along both her sides, each in a thin soft column of light (the light lasting just as
+        // long as they're there: up, at work, down again), hammers in hand; they hammer at her hull while she's
+        // mended (her owner does it: MendRpc), then sink back as their light goes. (The user, 1.10.118: they came
+        // up seated, with no light, and stood idle.)
+        const float Rise = 1.4f, Work = 3.2f, Sink = 1.1f, MendsAt = Rise + 1.2f;
+
         internal IEnumerator Mend(Player player, Ship ship, ZNetView nview)
         {
             mending = true;
@@ -208,46 +232,74 @@ namespace IslandsOfValheim
             Bounds b = ShipBounds(ship);
             float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : ship.transform.position.y;
             List<SpiritHuman> souls = new List<SpiritHuman>();
-            List<float> depth = new List<float>();
+            List<Vector3> places = new List<Vector3>(); // each one's place by her side, in her own space
             int n = 0;
             foreach (float side in new[] { -1f, 1f })
                 foreach (float along in new[] { -0.3f, 0.3f })
                 {
-                    Vector3 local = new Vector3(side * (b.extents.x + 0.35f), 0f, b.center.z + along * b.size.z);
+                    Vector3 local = new Vector3(side * (b.extents.x + 0.4f), 0f, b.center.z + along * b.size.z);
                     Vector3 at = ship.transform.TransformPoint(local);
                     at.y = water - 1.8f;
-                    Vector3 face = ship.transform.position - at;
-                    face.y = 0f;
+                    LightBeam.Over(new Vector3(at.x, water - 0.2f, at.z), Rise + Work + Sink, 0.55f, 0.9f, 1.2f, true);
                     SpiritHuman soul = SpiritHuman.MakeLocal(ValhallaPeople.BrimFolk(n++), SpiritHuman.Stand, "", SpiritHuman.GhostSoft, null, at,
-                        Quaternion.LookRotation(face.sqrMagnitude > 0.01f ? face : Vector3.forward));
+                        Facing(ship, at), "Hammer");
                     if (soul == null) continue;
                     souls.Add(soul);
-                    depth.Add(local.x);
+                    places.Add(local);
                     BossKit.Effect("vfx_WaterImpact_Karve", new Vector3(at.x, water, at.z));
                 }
-            // up to the waist out of the water, keeping with her as she drifts
-            for (float t = 0f; t < 4.5f; t += Time.deltaTime)
+            bool mended = false;
+            long lastBlow = -1;
+            const float total = Rise + Work + Sink;
+            for (float t = 0f; t < total; t += Time.deltaTime)
             {
                 if (ship == null) break;
-                float rise = Mathf.Clamp01(t / 1.4f);
+                // up to the waist out of the water; at work; down again; keeping by her as she drifts
+                float y = water - 1.8f + 1.0f * Mathf.Clamp01(t / Rise) - (t > Rise + Work ? (t - Rise - Work) / Sink * 1.6f : 0f);
+                Vector3 eye = Utils.GetMainCamera() != null ? Utils.GetMainCamera().transform.position : ship.transform.position;
                 for (int i = 0; i < souls.Count; i++)
                 {
                     if (souls[i] == null) continue;
-                    Vector3 p = souls[i].transform.position;
-                    p.y = water - 1.8f + 1.0f * rise - (t > 3.6f ? (t - 3.6f) * 1.6f : 0f);
-                    souls[i].transform.position = p;
-                    souls[i].Detail(Vector3.Distance(Utils.GetMainCamera() != null ? Utils.GetMainCamera().transform.position : p, p));
+                    Vector3 p = ship.transform.TransformPoint(places[i]);
+                    p.y = y;
+                    souls[i].transform.SetPositionAndRotation(p, Facing(ship, p));
+                    souls[i].Detail(Vector3.Distance(eye, p));
                 }
-                if (t >= 1.5f && t - Time.deltaTime < 1.5f && nview != null && nview.IsValid())
+                // hammering by turns (a blow from one of them every 0.4 s, each his own every 1.6 s), the hull's
+                // wood answering
+                if (t > Rise && t < Rise + Work)
                 {
+                    long blow = (long)((t - Rise) / 0.4f);
+                    if (blow != lastBlow)
+                    {
+                        lastBlow = blow;
+                        int who = (int)(blow % Mathf.Max(1, souls.Count));
+                        SpiritHuman soul = souls.Count > 0 ? souls[who] : null;
+                        if (soul != null)
+                        {
+                            soul.Strike((int)(blow / 4), null);
+                            BossKit.Effect("sfx_build_hammer_wood", soul.transform.position + Vector3.up * 1.2f + soul.transform.forward * 0.5f);
+                        }
+                    }
+                }
+                if (!mended && t >= MendsAt && nview != null && nview.IsValid())
+                {
+                    mended = true;
                     nview.InvokeRPC(MendRpc);
-                    BossKit.Effect("vfx_HealthUpgrade", ship.transform.position);
-                    Plugin.Debug("Debt: the drowned hold the ship");
+                    Plugin.Debug("Debt: the drowned mend the ship");
                 }
                 yield return null;
             }
             foreach (SpiritHuman soul in souls) if (soul != null) Destroy(soul.gameObject);
             mending = false;
+        }
+
+        // Facing her middle, level.
+        static Quaternion Facing(Ship ship, Vector3 from)
+        {
+            Vector3 face = ship.transform.position - from;
+            face.y = 0f;
+            return Quaternion.LookRotation(face.sqrMagnitude > 0.01f ? face : Vector3.forward);
         }
 
         // A ship's size in her own space (her meshes measured there).
@@ -322,6 +374,7 @@ namespace IslandsOfValheim
             if (Time.time >= nextLook)
             {
                 nextLook = Time.time + 1f;
+                Unstick();
                 Character foe = ValhallaGifts.Foe(player, player.transform.position, 25f);
                 if (foe != null)
                 {
@@ -333,6 +386,37 @@ namespace IslandsOfValheim
             }
             if (Time.time >= until) { Leave("$iov_oath_leave"); return; }
             if (Time.time - since > 8f && Time.time - lastFoe > 6f) Leave("$iov_oath_leave");
+        }
+
+        // Where the game's pathfinding can't take him (a wall, a ledge, a ship's deck, deep water), or once he's
+        // fallen far behind, he doesn't walk: the light that brought him sets him down by you again (the user,
+        // 1.10.118: his way-finding could be better). Looked at once a second.
+        Vector3 lastAt;
+        float stuckFor;
+
+        void Unstick()
+        {
+            if (body == null || player == null) return;
+            float far = Vector3.Distance(transform.position, player.transform.position);
+            MonsterAI ai = GetComponent<MonsterAI>();
+            Character target = ai != null ? Traverse.Create(ai).Field("m_targetCreature").GetValue<Character>() : null;
+            // getting nowhere while he should be going somewhere (to you, or to his foe)
+            float wantsTo = target != null && !target.IsDead() ? Vector3.Distance(transform.position, target.transform.position) : far;
+            bool still = Vector3.Distance(transform.position, lastAt) < 0.4f;
+            lastAt = transform.position;
+            stuckFor = still && wantsTo > 6f ? stuckFor + 1f : 0f;
+            if (far < 18f && stuckFor < 3f) return;
+            stuckFor = 0f;
+            Vector3 side = Vector3.Cross(Vector3.up, player.transform.forward).normalized;
+            Vector3 p = player.transform.position + side * 1.6f - player.transform.forward * 0.6f;
+            Vector3 to = BossKit.Ground(p + Vector3.up * 2f) ?? player.transform.position;
+            LightBeam.Over(transform.position, 1.6f, 1.4f, 0.4f, 1f, true);
+            LightBeam.Over(to, 2f, 1.4f, 0.4f, 1.2f, true);
+            transform.position = to + Vector3.up * 0.1f;
+            Rigidbody rb = GetComponent<Rigidbody>();
+            if (rb != null) { rb.position = transform.position; rb.velocity = Vector3.zero; }
+            lastAt = transform.position;
+            Plugin.Debug("Oath: Starkaðr " + (far >= 18f ? "fell behind (" + far.ToString("F0") + " m)" : "couldn't get on") + "; set down by the player again");
         }
 
         // Its foe: roused, and knowing where it is.

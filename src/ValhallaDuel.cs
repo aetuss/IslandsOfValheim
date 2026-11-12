@@ -536,6 +536,8 @@ namespace IslandsOfValheim
                 {
                     __instance.SetHealth(__instance.GetMaxHealth() * 0.25f);
                     ValhallaDuel.Current.Lose("$iov_duel_lost");
+                    // beaten, you kneel as they do (till you move; the user, 1.10.118)
+                    ((Player)__instance).StartEmote("kneel", false);
                     return false;
                 }
                 return true;
@@ -693,9 +695,7 @@ namespace IslandsOfValheim
         {
             Message("$iov_duel_won");
             ValhallaSpeaker.Shout(ValhallaSpeaker.RingMaster, "$iov_ringmaster_won");
-            // (the champion beaten, his oath: at your side once a day when you're hard pressed, ChampionOath)
-            if (!Story.Key(WonKey) && Player.m_localPlayer != null) Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "$iov_oath_given");
-            Story.Set(WonKey);
+            Story.Set(WonKey); // (and with it the champion's oath, told a little after: ValhallaGifts)
             if (ValhallaPeople.Current != null) ValhallaPeople.Current.CaptainsArrive(); // (T2: the captains come to Sævar's table)
             endAt = Time.time + 5f;
             Plugin.Debug("Duel: won");
