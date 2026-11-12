@@ -237,6 +237,7 @@ namespace IslandsOfValheim
             if (yielded) return;
             yielded = true;
             yieldedAt = Time.time;
+            Plugin.Debug("Duel: " + body.m_name + " yields" + (kneel ? ", kneeling" : "") + " (mid-blow: " + body.InAttack() + ", winding up a slam: " + (slamAt > 0f || shockAt > 0f) + ")");
             if (slamGlow != null) Destroy(slamGlow.gameObject); // (beaten mid-blow)
             if (ring != null) Destroy(ring.gameObject);
             slamAt = shockAt = -1f;
@@ -256,11 +257,17 @@ namespace IslandsOfValheim
             ClearBar(); // (the bout's over: no bar over a farewell; NoBarOnceYielded keeps it gone)
             if (kneel)
             {
-                Emote("emote_kneel");
-                // (Hafdís lowers her spear: out of her hand)
+                // (Hafdís lowers her spear, Starkaðr his great weapon: out of their hands, and with it whatever blow
+                // they were in the middle of; and his slam's wind-up pose let go. 1.10.118: beaten mid-swing or
+                // mid-wind-up, the champion stood on and never knelt, the user saw; the kneel after that, and once
+                // more a moment later for him, should the first be lost under the blow's end)
+                Unset("emote_challenge");
                 Humanoid me = body as Humanoid;
-                ItemDrop.ItemData spear = hafdis && me != null ? me.GetCurrentWeapon() : null;
-                if (spear != null && spear.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield) me.UnequipItem(spear, false);
+                bool champion = slamDamage > 0f;
+                ItemDrop.ItemData held = (hafdis || champion) && me != null ? me.GetCurrentWeapon() : null;
+                if (held != null && held.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield && me.GetInventory().ContainsItem(held)) me.UnequipItem(held, false);
+                Emote("emote_kneel");
+                if (champion) Invoke("KneelAgain", 0.5f);
                 if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
             }
         }
@@ -488,6 +495,17 @@ namespace IslandsOfValheim
             }
             ZNetView nview = GetComponent<ZNetView>();
             if (Time.time > yieldedAt + stays + 1f && nview != null && nview.IsOwner()) ZNetScene.instance.Destroy(gameObject);
+        }
+
+        void KneelAgain() { if (yielded && !goingHome) Emote("emote_kneel"); }
+
+        // A pose held by a switch (as the champion's challenge), let go.
+        void Unset(string name)
+        {
+            Animator animator = GetComponentInChildren<Animator>();
+            if (animator == null) return;
+            foreach (AnimatorControllerParameter p in animator.parameters)
+                if (p.name == name && p.type == AnimatorControllerParameterType.Bool) { animator.SetBool(name, false); return; }
         }
 
         void Emote(string name)
