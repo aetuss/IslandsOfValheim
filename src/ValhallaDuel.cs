@@ -17,13 +17,35 @@ namespace IslandsOfValheim
     {
         internal const string PrefabName = "IoV_Einherjar", ChampionPrefab = "IoV_EinherjarChampion";
         internal const string HafdisPrefab = "IoV_HafdisDuelist"; // T5: Hafdís as she was, a shield-maiden
+        internal const string AllyPrefab = "IoV_StarkadrAlly";    // the champion's oath: at your side (ChampionOath)
 
         internal static void Register()
         {
             Make(PrefabName, false, "$iov_einherjar");
             Make(ChampionPrefab, true, "$iov_starkadr");
             Make(HafdisPrefab, true, "$iov_hafdis");
+            Make(AllyPrefab, false, "$iov_starkadr");
+            // on your side: the players' own (so he goes for whatever is your foe, and never for you or your
+            // tamed beasts: BaseAI.IsEnemy), hunting no player
+            GameObject ally = PrefabManager.Instance.GetPrefab(AllyPrefab);
+            if (ally != null)
+            {
+                ally.GetComponent<Humanoid>().m_faction = Character.Faction.Players;
+                MonsterAI ai = ally.GetComponent<MonsterAI>();
+                ai.m_enableHuntPlayer = false;
+                ai.m_viewAngle = 360f;
+                ai.m_viewRange = 30f;
+                ai.m_alertRange = 30f;
+                ai.m_maxChaseDistance = 30f;
+                ai.m_avoidWater = false;
+                ai.m_minAttackInterval = 1.2f;
+                ally.GetComponent<EinherjarFighter>().ally = true;
+            }
         }
+
+        // the champion come to your side (ChampionOath): falls back when beaten, with a word of his own
+        // (public: the prefab's copies keep it)
+        public bool ally;
 
         static void Make(string name, bool champion, string display)
         {
@@ -239,7 +261,7 @@ namespace IslandsOfValheim
                 Humanoid me = body as Humanoid;
                 ItemDrop.ItemData spear = hafdis && me != null ? me.GetCurrentWeapon() : null;
                 if (spear != null && spear.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield) me.UnequipItem(spear, false);
-                if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : "$iov_duel_yield", false);
+                if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
             }
         }
 
@@ -671,6 +693,8 @@ namespace IslandsOfValheim
         {
             Message("$iov_duel_won");
             ValhallaSpeaker.Shout(ValhallaSpeaker.RingMaster, "$iov_ringmaster_won");
+            // (the champion beaten, his oath: at your side once a day when you're hard pressed, ChampionOath)
+            if (!Story.Key(WonKey) && Player.m_localPlayer != null) Player.m_localPlayer.Message(MessageHud.MessageType.TopLeft, "$iov_oath_given");
             Story.Set(WonKey);
             if (ValhallaPeople.Current != null) ValhallaPeople.Current.CaptainsArrive(); // (T2: the captains come to Sævar's table)
             endAt = Time.time + 5f;
@@ -832,7 +856,7 @@ namespace IslandsOfValheim
         // ---- the fighters ----
 
         // The strongest boss this world has beaten: 0 none, 1 Eikthyr ... 7 Fader.
-        static int Tier()
+        internal static int Tier()
         {
             if (ZoneSystem.instance == null) return 0;
             string[] keys = { "defeated_eikthyr", "defeated_gdking", "defeated_bonemass", "defeated_dragon", "defeated_goblinking", "defeated_queen", "defeated_fader" };
@@ -842,7 +866,7 @@ namespace IslandsOfValheim
         }
 
         // By tier (0..7): armour, cape, and each kind of weapon (the first the game has, of a few).
-        static readonly string[][] Armour =
+        internal static readonly string[][] Armour =
         {
             new[] { "HelmetLeather", "ArmorLeatherChest", "ArmorLeatherLegs" },
             new[] { "HelmetTrollLeather", "ArmorTrollLeatherChest", "ArmorTrollLeatherLegs" },
@@ -874,12 +898,12 @@ namespace IslandsOfValheim
             new[] { "AtgeirBronze" }, new[] { "AtgeirBronze" }, new[] { "AtgeirBronze" }, new[] { "AtgeirIron" }, new[] { "AtgeirIron" },
             new[] { "AtgeirBlackmetal" }, new[] { "AtgeirHimminAfl", "AtgeirBlackmetal" }, new[] { "AtgeirHimminAfl", "AtgeirBlackmetal" },
         };
-        static readonly string[][] Great =
+        internal static readonly string[][] Great =
         {
             new[] { "Battleaxe" }, new[] { "Battleaxe" }, new[] { "Battleaxe" }, new[] { "Battleaxe" }, new[] { "BattleaxeCrystal", "Battleaxe" },
             new[] { "BattleaxeCrystal", "Battleaxe" }, new[] { "THSwordKrom", "BattleaxeCrystal" }, new[] { "THSwordSlayer", "THSwordKrom", "BattleaxeCrystal" },
         };
-        static readonly float[] Health = { 120f, 180f, 260f, 400f, 600f, 850f, 1200f, 1700f };
+        internal static readonly float[] Health = { 120f, 180f, 260f, 400f, 600f, 850f, 1200f, 1700f };
         // Hafdís's: spears, and round shields (the sea serpent's scales once the world has them)
         static readonly string[][] Spears =
         {
@@ -970,7 +994,7 @@ namespace IslandsOfValheim
 
         static string PrefabName(bool champion) { return champion ? EinherjarFighter.ChampionPrefab : EinherjarFighter.PrefabName; }
 
-        static string Pick(string[][] table, int tier)
+        internal static string Pick(string[][] table, int tier)
         {
             foreach (string name in table[Mathf.Clamp(tier, 0, table.Length - 1)])
                 if (ObjectDB.instance != null && ObjectDB.instance.GetItemPrefab(name) != null) return name;

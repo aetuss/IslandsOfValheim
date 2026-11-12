@@ -135,6 +135,35 @@ namespace IslandsOfValheim
                     args.Context.AddString("iov_t5 duel | done | reset");
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_gifts",
+                "[ready|oath|debt] - IslandsOfValheim (development): the Valhalla tale's rewards: ready gives both back for today; oath brings Starkaðr to your side now; debt breaks the ship you're on to a fifth of her hull (the drowned come if Rán's net is torn)",
+                args =>
+                {
+                    string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
+                    Player me = Player.m_localPlayer;
+                    if (me == null || ValhallaGifts.Instance == null) return;
+                    if (what == "ready") { ValhallaGifts.Ready(me); args.Context.AddString("Both rewards ready again today."); return; }
+                    if (what == "oath")
+                    {
+                        ValhallaGifts.Instance.StartCoroutine(ValhallaGifts.Instance.Comes(me, ValhallaGifts.Foe(me, me.transform.position, 25f)));
+                        args.Context.AddString("Starkaðr comes.");
+                        return;
+                    }
+                    if (what == "debt")
+                    {
+                        Ship ship = Ship.GetLocalShip();
+                        ZNetView nview = ship != null ? ship.GetComponent<ZNetView>() : null;
+                        WearNTear hull = ship != null ? ship.GetComponent<WearNTear>() : null;
+                        if (nview == null || hull == null || !nview.IsValid()) { args.Context.AddString("Not on a ship."); return; }
+                        nview.ClaimOwnership();
+                        nview.GetZDO().Set(ZDOVars.s_health, hull.m_health * 0.2f);
+                        nview.InvokeRPC(ZNetView.Everybody, "RPC_HealthChanged", hull.m_health * 0.2f);
+                        args.Context.AddString("The ship is breaking up (a fifth of her hull)." + (RanNet.Done ? "" : " Rán's net isn't torn: nobody comes."));
+                        return;
+                    }
+                    args.Context.AddString("iov_gifts ready | oath | debt");
+                }, true);
+
             new Terminal.ConsoleCommand("iov_call",
                 "[now|reset] - IslandsOfValheim (development): now: Odin's call comes at once (the gate wakes, Hugin comes, the light stands over the harbour), tale or not; reset: as if Sævar's tale had just ended",
                 args =>

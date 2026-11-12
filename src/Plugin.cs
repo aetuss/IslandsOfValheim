@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "1.10.117";
+        public const string Version = "1.10.118";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -57,6 +57,7 @@ namespace IslandsOfValheim
             gameObject.AddComponent<RestlessSea>();
 #if IOV_DEV
             gameObject.AddComponent<ValhallaCall>(); // Odin's call after the tale (Valhalla arc, work in progress)
+            gameObject.AddComponent<ValhallaGifts>(); // the champion's oath, the drowned's debt (Valhalla arc's rewards)
 #endif
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
@@ -86,6 +87,7 @@ namespace IslandsOfValheim
             EinherjarFighter.Register(); // the einherjar of the ring's duels (Valhalla arc, work in progress)
             RanNet.Register(); // Hafgufa, Rán's knots, the drowned and the graveyard's marker (Valhalla arc, T3)
             SpiritsIslet.Register(); // the Brim village's altar (Valhalla arc, T4)
+            ValhallaGifts.Register(); // the rewards' resting icons (Valhalla arc)
         }
 
         void OnVanillaLocations()
