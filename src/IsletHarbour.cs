@@ -43,22 +43,18 @@ namespace IslandsOfValheim
 
             float jetty = cliffDeg + 229f; // the low side, between two of the shore rocks
             Frame(jetty);
-#if IOV_DEV
             // The gate's place, out on the jetty side's shoulder, raised level with the plateau (it dipped there).
             riseAt = GateSpot;
             riseRadius = 3.6f;
             riseFade = 3f;
             riseTo = PlateauHeight + 0.1f;
-#endif
             Material ground;
             try
             {
                 ground = BuildGround();
                 HarbourRocks();
                 PlaceHarbour(jetty);
-#if IOV_DEV
                 ClearPlants(GateSpot, 5f);
-#endif
             }
             finally { riseRadius = 0f; }
             Pave(ground, PavedPath(jetty), 0.8f);
@@ -189,12 +185,10 @@ namespace IslandsOfValheim
             }
             FishersCorner(H(5.8f, 4.6f));
             Seal(H(-4.6f, 1.2f), fire); // beside the house, looking at the campfire
-#if IOV_DEV
             // The stone gate that wakes when Odin calls, on its raised place, looking over the campfire to the
-            // house. (Development builds only, until the call is made.)
+            // house (dark until then).
             Vector2 gate = GateSpot, gateLook = H(-3f, 3f) - gate;
             Gate(new Vector3(gate.x, Height(gate.x, gate.y) - 0.05f, gate.y), Mathf.Atan2(gateLook.x, gateLook.y) * Mathf.Rad2Deg, false);
-#endif
 
             // Down by the shore, beside the jetty: an old hull he's mending.
             float wreck = j + 38f;

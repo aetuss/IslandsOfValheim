@@ -149,18 +149,20 @@ namespace IslandsOfValheim
             {
                 // up to Valhalla's rock, right onto the ground in front of its gate (the rock isn't turned, and
                 // its ground's height is known before it's there); placed there first, if it isn't yet
+                // (placed now if the call hasn't seen to it yet: IsletBuilder.PlaceValhalla; until 1.10.128 the
+                // development builds' own test placing did it, and a game without them had no Valhalla at all)
+                Vector3 rock;
+                if (!IsletBuilder.FindValhalla(out rock) && !(IsletBuilder.PlaceValhalla() && IsletBuilder.FindValhalla(out rock)))
+                {
+                    player.Message(MessageHud.MessageType.Center, "$iov_gate_notyet");
+                    Plugin.Log.LogWarning("Gate: Valhalla isn't in this world yet");
+                    return;
+                }
                 arriving = ToValhalla;
                 player.SetSeenTutorial(ValhallaCall.EnteredKey); // the light over the harbour has done its work
-                ZoneSystem.LocationInstance rock;
-                if (Find(IsletBuilder.ValhallaBase, out rock))
-                {
-                    float z = IsletBuilder.ValhallaGateZ + 3f;
-                    Vector3 target = new Vector3(rock.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SkyHeight + IsletBuilder.SkyGround(0f, z) + 0.3f, rock.m_position.z + z);
-                    player.TeleportTo(target, Quaternion.identity, true);
-                }
-                else
-                    TerrainIsletTest.Goto(Console.instance, IsletBuilder.ValhallaBase, IsletBuilder.SkyHeight + 1f, 150f, 900f, 0f,
-                        IsletBuilder.ValhallaArrival.x, IsletBuilder.ValhallaArrival.z);
+                float z = IsletBuilder.ValhallaGateZ + 3f;
+                Vector3 target = new Vector3(rock.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SkyHeight + IsletBuilder.SkyGround(0f, z) + 0.3f, rock.z + z);
+                player.TeleportTo(target, Quaternion.identity, true);
             }
             Plugin.Debug("Gate: through " + (valhallaSide ? "Valhalla's gate to the harbour" : "the harbour's gate to Valhalla"));
         }

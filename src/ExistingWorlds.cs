@@ -18,7 +18,9 @@ namespace IslandsOfValheim
     // When it's done a world key is set, so it doesn't run again (iov_placeislets runs it again).
     static class ExistingWorlds
     {
-        internal const string DoneKey = "islandsofvalheim_existing_v1"; // a world key, not a text key
+        // a world key, not a text key; v2 with 2.0.0: worlds that had v1's pass get the Valhalla tale's new
+        // islet (Rán's graveyard) too (the pass only adds what a world is missing)
+        internal const string DoneKey = "islandsofvalheim_existing_v2";
         const float BuildingDistance = 100f; // no islet built this close to a player's piece or ship
         const float PlayerDistance = 250f;   // nor this close to a player
         const float IsletSpacing = 150f;     // between any two of our locations

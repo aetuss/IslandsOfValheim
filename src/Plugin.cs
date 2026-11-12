@@ -55,10 +55,8 @@ namespace IslandsOfValheim
 
             Texts.LoadOwn();
             gameObject.AddComponent<RestlessSea>();
-#if IOV_DEV
-            gameObject.AddComponent<ValhallaCall>(); // Odin's call after the tale (Valhalla arc, work in progress)
-            gameObject.AddComponent<ValhallaGifts>(); // the champion's oath, the drowned's debt (Valhalla arc's rewards)
-#endif
+            gameObject.AddComponent<ValhallaCall>(); // Odin's call after the tale (the Valhalla tale)
+            gameObject.AddComponent<ValhallaGifts>(); // the champion's oath, the drowned's debt (the Valhalla tale's rewards)
             PrefabManager.OnVanillaPrefabsAvailable += OnVanillaPrefabs;
             ZoneManager.OnVanillaLocationsAvailable += OnVanillaLocations;
 
@@ -69,6 +67,7 @@ namespace IslandsOfValheim
         {
             ExistingWorlds.Tick();
             SpiritsIslet.Tick();
+            IsletBuilder.ValhallaTick();
         }
 
         // Spawners and chests are networked objects, so they need prefabs of their own in ZNetScene.
@@ -105,9 +104,9 @@ namespace IslandsOfValheim
                 IsletBuilder.RegisterSpiritsIslet(); // the Brim village, near his harbour (Valhalla arc, T4)
             }
             IsletBuilder.RegisterLargeIslets();
+            IsletBuilder.RegisterValhallaBase(); // Valhalla (the Valhalla tale), placed when the way to it opens
 #if IOV_DEV
             TerrainIsletTest.Register(); // research prototype (branch iov-terrain-test)
-            IsletBuilder.RegisterValhallaBase(); // Valhalla's bare rock, to lay out its draft on (iov_goto draft_valhalla)
 #endif
         }
 

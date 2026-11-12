@@ -52,12 +52,17 @@ namespace IslandsOfValheim
 
             Location location = root.AddComponent<Location>();
             location.m_applyRandomDamage = false;
+#if IOV_DEV
             location.m_noBuild = false; // the bare rock is for laying out: pieces built here with the hammer go into the draft
+#else
+            location.m_noBuild = true;  // the Allfather's hall: nothing of yours is built in it
+            location.m_noBuildRadiusOverride = ValhallaEdge + 20f;
+#endif
             location.m_exteriorRadius = ValhallaEdge + 20f;
 
             LocationConfig config = new LocationConfig();
             config.Biome = Heightmap.Biome.Ocean;
-            config.Quantity = 0; // placed by iov_goto draft_valhalla (later: when the way to it opens)
+            config.Quantity = 0; // placed when the way to it opens (PlaceValhalla), not as the world is made
             config.SnapToWater = true;
             config.ClearArea = false;
             config.RandomRotation = false;
@@ -65,6 +70,102 @@ namespace IslandsOfValheim
             config.Group = ValhallaBase;
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + ValhallaBase + " (Valhalla's bare rock, " + SkyHeight + " m up)");
+        }
+
+        // ---- where it is in the world ----
+
+        // Valhalla's place: open, deep sea (the rock hangs high over it), clear of every other place, the nearest
+        // such spot 900 m or more out from the world's middle; registered once, by the server (or the host), when
+        // Odin's call opens the way (ValhallaTick), or as someone first steps through the harbour's gate. Built
+        // at once if that sea's zone is already there, else when someone comes. Unturned: the gate's far end is
+        // found from where the rock is.
+        static readonly System.Reflection.MethodInfo registerValhalla = AccessTools.Method(typeof(ZoneSystem), "RegisterLocation");
+        static readonly System.Reflection.MethodInfo spawnValhalla = AccessTools.Method(typeof(ZoneSystem), "SpawnLocation");
+        static readonly System.Reflection.FieldInfo generatedZonesV = AccessTools.Field(typeof(ZoneSystem), "m_generatedZones");
+
+        internal static bool FindValhalla(out Vector3 at)
+        {
+            at = Vector3.zero;
+            if (ZoneSystem.instance == null) return false;
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
+                if (instance.m_location != null && instance.m_location.m_prefabName == ValhallaBase) { at = instance.m_position; return true; }
+            return false;
+        }
+
+        internal static bool PlaceValhalla()
+        {
+            Vector3 at;
+            if (FindValhalla(out at)) return true;
+            ZoneSystem zones = ZoneSystem.instance;
+            if (zones == null || WorldGenerator.instance == null || ZNet.instance == null || !ZNet.instance.IsServer()) return false;
+            ZoneSystem.ZoneLocation location = null;
+            foreach (ZoneSystem.ZoneLocation l in zones.m_locations)
+                if (l != null && l.m_prefabName == ValhallaBase) { location = l; break; }
+            if (location == null || registerValhalla == null || spawnValhalla == null) { Plugin.Log.LogWarning("Valhalla isn't registered"); return false; }
+            Vector3 spot;
+            if (!ValhallaSpot(out spot, ValhallaEdge + 70f, 900f)) { Plugin.Log.LogWarning("Valhalla: no open, deep sea found for it"); return false; }
+            spot.y = zones.m_waterLevel;
+            HashSet<Vector2s> generated = generatedZonesV != null ? generatedZonesV.GetValue(zones) as HashSet<Vector2s> : null;
+            bool built = generated != null && generated.Contains(ZoneSystem.GetZone(spot));
+            registerValhalla.Invoke(zones, new object[] { location, spot, built });
+            if (built)
+                spawnValhalla.Invoke(zones, new object[] { location, 1234, spot, Quaternion.identity, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+            Plugin.Log.LogInfo("Valhalla placed at " + spot.ToString("F0") + (built ? " (its zone already there: built now)" : " (built when its zone is)"));
+            return true;
+        }
+
+        // Once Odin's call has opened the way (on the server): Valhalla where it can be gone to.
+        static float valhallaWait = 15f;
+
+        internal static void ValhallaTick()
+        {
+            if (ZNet.instance == null || !ZNet.instance.IsServer() || ZoneSystem.instance == null || !ZoneSystem.instance.LocationsGenerated) return;
+            valhallaWait -= Time.deltaTime;
+            if (valhallaWait > 0f) return;
+            valhallaWait = 10f;
+            Vector3 at;
+            if (!ZoneSystem.instance.GetGlobalKey(ValhallaGate.OpenKey) || FindValhalla(out at)) return;
+            if (!PlaceValhalla()) valhallaWait = 120f;
+        }
+
+        // The open sea nearest the world's middle past `from`: Ocean at least 10 m deep, deep all round for
+        // `reach`, well clear of every place already in the world; ring by ring outwards.
+        static bool ValhallaSpot(out Vector3 spot, float reach, float from)
+        {
+            float water = ZoneSystem.instance.m_waterLevel;
+            List<Vector3> taken = new List<Vector3>();
+            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList()) taken.Add(instance.m_position);
+            for (float r = from; r < 10000f; r += 64f)
+            {
+                int steps = Mathf.Max(16, Mathf.RoundToInt(r * 2f * Mathf.PI / 64f));
+                for (int i = 0; i < steps; i++)
+                {
+                    float a = i * Mathf.PI * 2f / steps;
+                    Vector3 p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    if (!DeepSea(p, water, 10f)) continue;
+                    bool clear = true;
+                    foreach (Vector3 t in taken)
+                        if (Utils.DistanceXZ(t, p) < reach + 60f) { clear = false; break; }
+                    if (!clear) continue;
+                    bool open = true;
+                    for (int k = 0; k < 12 && open; k++)
+                    {
+                        float b = k * Mathf.PI * 2f / 12f;
+                        open = DeepSea(p + new Vector3(Mathf.Cos(b), 0f, Mathf.Sin(b)) * reach, water, 4f);
+                    }
+                    if (!open) continue;
+                    spot = p;
+                    return true;
+                }
+            }
+            spot = Vector3.zero;
+            return false;
+        }
+
+        static bool DeepSea(Vector3 p, float water, float depth)
+        {
+            WorldGenerator gen = WorldGenerator.instance;
+            return gen.GetBiome(p) == Heightmap.Biome.Ocean && gen.GetHeight(p.x, p.z) < water - depth;
         }
 
         // ---- the rock ----

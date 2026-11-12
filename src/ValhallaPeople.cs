@@ -205,13 +205,8 @@ namespace IslandsOfValheim
                 Beast("Chicken", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.6f, new Color(1f, 0.76f, 0.22f), "");
             yield return null;
 
-#if IOV_DEV
-            // The Brim Folk's ghosts: round their own feast, slowly, outside its tables and inside its torches
-            // (a circle cut across the tables' ends: they walked over them). (In the tale they come as the tasks
-            // bring them.)
-            for (int i = 0; i < 3; i++)
-                Walk(BrimFolk(i), SpiritHuman.GhostSoft, 0.7f, 3f, true, Around(Feast, 6.8f, 11.2f, 1.5f));
-#endif
+            // (1.10.69-128's development builds had three of the Brim Folk's ghosts walking round their feast,
+            // to see them by: gone, the user had them out; the tale brings its own)
 
             // iov_people crowd N: so many more, standing in rows west of the way, to see what they cost.
             for (int i = 0; i < devCrowd; i++)
