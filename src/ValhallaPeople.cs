@@ -63,6 +63,7 @@ namespace IslandsOfValheim
                 ZNetScene.instance.Destroy(farewellOf.gameObject);
             farewellOf = null;
             witnesses.Clear();
+            byTheTale.Clear();
             foreach (GameObject go in made) if (go != null) Destroy(go);
             made.Clear();
             walkers.Clear();
@@ -95,18 +96,7 @@ namespace IslandsOfValheim
             bool after = After();
 
             // The two thrones.
-            Transform hallThrone = Find("piece_throne01", t => Mathf.Abs(t.localPosition.x) < 9f);
-            Transform highSeat = Find("piece_blackmarble_throne", t => true);
-            if (after)
-            {
-                Speaks(Seat(Odin(), hallThrone, 0f), ValhallaSpeaker.Odin, 1.7f);
-                Speaks(Stand(Bragi(), new Vector3(-2f, 0f, HallEnd - 6.2f), Vector3.back, 3f), ValhallaSpeaker.Bragi, 2.2f);
-            }
-            else
-            {
-                Speaks(Seat(Bragi(), hallThrone, 0f), ValhallaSpeaker.Bragi, 1.7f);
-                Speaks(Seat(Odin(), highSeat, 0f), ValhallaSpeaker.Odin, 1.7f);
-            }
+            Thrones(after);
             // Sævar, waiting at his own people's table (the Brim Folk's, under the golden birches to the west):
             // at its head, between the two rows, looking out towards the way you come by.
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
@@ -194,23 +184,9 @@ namespace IslandsOfValheim
                     Speaks(Stand(Guard(g++), new Vector3(x, 0f, z), new Vector3(-x, 0f, 0f), 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             foreach (float x in new[] { -5.2f, 5.2f })
                 Speaks(Stand(Guard(g++), new Vector3(x, 0f, 2.2f), Vector3.back, 3f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
-            // (once the tale is done the Allfather sits in his hall, and those who guarded his empty seat
-            // (1.10.107: still at it, still warning you off) stand by his throne instead: either side of its
-            // dais, at its front corners, facing down the hall)
-            if (!after)
-                foreach (float x in new[] { -8.2f, 8.2f })
-                    foreach (float z in new[] { -8.2f, 8.2f })
-                        Speaks(Stand(Guard(g++), new Vector3(x, 0f, high + z), new Vector3(x, 0f, z), 4f, GuardWeapon), ValhallaSpeaker.HighSeatGuard, 2.3f);
-            else
-                foreach (float x in new[] { -4.1f, 4.1f })
-                    Speaks(Stand(Guard(g++), new Vector3(x, 0f, HallEnd - 5.4f), Vector3.back, 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             walkerHolds = GuardWeapon;
             Speaks(Walk(Guard(g++), Solid, 1.1f, 0f, true, new Vector2(11.5f, -1.5f), new Vector2(11.5f, 44f), new Vector2(-11.5f, 44f), new Vector2(-11.5f, -1.5f)), ValhallaSpeaker.Guard, 2.3f);
-            if (!after)
-            {
-                walkerHolds = GuardWeapon;
-                Speaks(Walk(Guard(g++), Solid, 1.0f, 0f, true, Circle(new Vector2(0f, high), 10.5f, 20, 0.3f)), ValhallaSpeaker.HighSeatGuard, 2.3f);
-            }
+            SeatsGuard(after);
             ValhallaSpeaker.highSeat = transform.TransformPoint(new Vector3(0f, 2.4f, high));
             yield return null;
 
@@ -222,13 +198,7 @@ namespace IslandsOfValheim
             // - Gullinkambi, the golden cock that wakes the einherjar, on the hall's ridge over its doors.
             // (and once he sits in the hall, there with him: on its dais either side of his throne, facing down
             // the hall)
-            foreach (float side in new[] { -1f, 1f })
-            {
-                if (after && hallThrone != null)
-                    Beast("Wolf", new Vector3(hallThrone.localPosition.x + side * 1.45f, 0f, hallThrone.localPosition.z - 0.2f), Vector3.back, 4f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
-                else
-                    Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
-            }
+            Wolves(after);
             Vector2[] hart = IsletBuilder.HartRoute;
             BeastWalk(Beast("Eikthyr", new Vector3(hart[0].x, 0f, hart[0].y), new Vector3(0.3f, 0f, -1f), 4f, 1f, Color.white, ""), 0.9f, 14f, hart);
             if (Beast("Hen", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.3f, new Color(1f, 0.76f, 0.22f), "") == null)
@@ -254,6 +224,96 @@ namespace IslandsOfValheim
         }
 
         const int Solid = SpiritHuman.Solid;
+
+        // ---- what changes when the tale is done (the Allfather comes to his hall) ----
+
+        // Those, kept apart: at the tale's end only they go and come again in their new places (1.10.107-111
+        // made the whole of Valhalla's people again: everyone vanished and came back at once, as if new-come).
+        readonly List<GameObject> byTheTale = new List<GameObject>();
+
+        T Tale<T>(T thing) where T : Component { if (thing != null) byTheTale.Add(thing.gameObject); return thing; }
+        GameObject Tale(GameObject thing) { if (thing != null) byTheTale.Add(thing); return thing; }
+
+        Transform HallThrone { get { return Find("piece_throne01", t => Mathf.Abs(t.localPosition.x) < 9f); } }
+
+        // Before: Bragi on the hall's throne, Odin on Hliðskjálf, his back to the hall. After: Odin on the hall's
+        // throne, Bragi standing by.
+        void Thrones(bool after)
+        {
+            Transform hallThrone = HallThrone, highSeat = Find("piece_blackmarble_throne", t => true);
+            if (after)
+            {
+                Speaks(Tale(Seat(Odin(), hallThrone, 0f)), ValhallaSpeaker.Odin, 1.7f);
+                Speaks(Tale(Stand(Bragi(), new Vector3(-2f, 0f, HallEnd - 6.2f), Vector3.back, 3f)), ValhallaSpeaker.Bragi, 2.2f);
+            }
+            else
+            {
+                Speaks(Tale(Seat(Bragi(), hallThrone, 0f)), ValhallaSpeaker.Bragi, 1.7f);
+                Speaks(Tale(Seat(Odin(), highSeat, 0f)), ValhallaSpeaker.Odin, 1.7f);
+            }
+        }
+
+        // Before: four round Hliðskjálf's foot looking out (they speak up if you come too close to the Allfather)
+        // and one walking round it. After: two at the hall's dais's front corners, facing down the hall (1.10.107
+        // left them guarding the empty seat, warning you off it).
+        void SeatsGuard(bool after)
+        {
+            float high = IsletBuilder.LookoutZ;
+            int g = 20;
+            if (!after)
+            {
+                foreach (float x in new[] { -8.2f, 8.2f })
+                    foreach (float z in new[] { -8.2f, 8.2f })
+                        Speaks(Tale(Stand(Guard(g++), new Vector3(x, 0f, high + z), new Vector3(x, 0f, z), 4f, GuardWeapon)), ValhallaSpeaker.HighSeatGuard, 2.3f);
+                walkerHolds = GuardWeapon;
+                Speaks(Tale(Walk(Guard(g++), Solid, 1.0f, 0f, true, Circle(new Vector2(0f, high), 10.5f, 20, 0.3f))), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            }
+            else
+                foreach (float x in new[] { -4.1f, 4.1f })
+                    Speaks(Tale(Stand(Guard(g++), new Vector3(x, 0f, HallEnd - 5.4f), Vector3.back, 4f, GuardWeapon)), ValhallaSpeaker.Guard, 2.3f);
+        }
+
+        // Geri and Freki: on Hliðskjálf's third tier, or on the hall's dais either side of its throne.
+        void Wolves(bool after)
+        {
+            float high = IsletBuilder.LookoutZ;
+            Transform hallThrone = HallThrone;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                if (after && hallThrone != null)
+                    Tale(Beast("Wolf", new Vector3(hallThrone.localPosition.x + side * 1.45f, 0f, hallThrone.localPosition.z - 0.2f), Vector3.back, 4f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping"));
+                else
+                    Tale(Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping"));
+            }
+        }
+
+        // The tale's end, while you're here: those it moves go, in the light, and come again where they now
+        // belong, the Allfather to his hall in a column of light; everyone else as they were.
+        internal void TaleEnds()
+        {
+            foreach (GameObject go in byTheTale)
+            {
+                if (go == null) continue;
+                SpiritHuman person = go.GetComponent<SpiritHuman>();
+                if (person != null)
+                {
+                    everyone.Remove(person);
+                    walkers.RemoveAll(w => w.who == person);
+                    actors.RemoveAll(a => a.who == person);
+                }
+                else walkers.RemoveAll(w => w.beast == go.transform);
+                voices.RemoveAll(v => v.who == go.transform);
+                made.Remove(go);
+                Destroy(go);
+            }
+            byTheTale.Clear();
+            Thrones(true);
+            SeatsGuard(true);
+            Wolves(true);
+            Transform hallThrone = HallThrone;
+            if (hallThrone != null) LightBeam.Over(hallThrone.position, 5f, 1.8f, 1.2f, 2.6f, true);
+            Plugin.Debug("Valhalla: the tale's end: Odin to his hall");
+        }
 
         // ---- looks ----
 
@@ -546,7 +606,8 @@ namespace IslandsOfValheim
             yield return new WaitForSeconds(2f);
             if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
             Plugin.Debug("T5: Hafdís's farewell done; Odin to the hall");
-            Remake();
+            TaleEnds();
+            HafdisSpear();
         }
 
         // Her spear, planted upright where she came into the ring (its north side, between where you fight and
