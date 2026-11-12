@@ -225,6 +225,9 @@ namespace IslandsOfValheim
                 ai.m_randomMoveRange = 0f;
                 Traverse.Create(ai).Field("m_targetCreature").SetValue(null);
                 Traverse.Create(ai).Method("SetAlerted", new[] { typeof(bool) }).GetValue(false);
+                // and its mind put to rest: still awake, it kept walking at you, kneeling, wherever you went (it
+                // still knew where you'd last been); stilled as Starkaðr is for his slam
+                ai.enabled = false;
             }
             if (echoGlow != null) Destroy(echoGlow.gameObject);
             if (hafdis) { body.m_boss = false; ClearBar(); } // (the bout's over: no bar over her farewell)
