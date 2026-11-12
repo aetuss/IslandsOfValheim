@@ -230,7 +230,8 @@ namespace IslandsOfValheim
                 ai.enabled = false;
             }
             if (echoGlow != null) Destroy(echoGlow.gameObject);
-            if (hafdis) { body.m_boss = false; ClearBar(); } // (the bout's over: no bar over her farewell)
+            if (hafdis) body.m_boss = false;
+            ClearBar(); // (the bout's over: no bar over a farewell; NoBarOnceYielded keeps it gone)
             if (kneel)
             {
                 Emote("emote_kneel");
@@ -477,6 +478,20 @@ namespace IslandsOfValheim
                 if (p.type == AnimatorControllerParameterType.Trigger) animator.SetTrigger(name);
                 else if (p.type == AnimatorControllerParameterType.Bool) animator.SetBool(name, true);
                 return;
+            }
+        }
+
+        // One who has yielded shows no bar and no "searching" mark over its head (1.10.107: Hafdís, kneeling for
+        // her farewell, still had both).
+        [HarmonyPatch(typeof(EnemyHud), "TestShow")]
+        static class NoBarOnceYielded
+        {
+            static bool Prefix(Character __0, ref bool __result)
+            {
+                EinherjarFighter f = __0 != null ? __0.GetComponent<EinherjarFighter>() : null;
+                if (f == null || !f.yielded) return true;
+                __result = false;
+                return false;
             }
         }
 

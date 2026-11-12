@@ -192,13 +192,23 @@ namespace IslandsOfValheim
                     Speaks(Stand(Guard(g++), new Vector3(x, 0f, z), new Vector3(-x, 0f, 0f), 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             foreach (float x in new[] { -5.2f, 5.2f })
                 Speaks(Stand(Guard(g++), new Vector3(x, 0f, 2.2f), Vector3.back, 3f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
-            foreach (float x in new[] { -8.2f, 8.2f })
-                foreach (float z in new[] { -8.2f, 8.2f })
-                    Speaks(Stand(Guard(g++), new Vector3(x, 0f, high + z), new Vector3(x, 0f, z), 4f, GuardWeapon), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            // (once the tale is done the Allfather sits in his hall, and those who guarded his empty seat
+            // (1.10.107: still at it, still warning you off) stand by his throne instead: either side of its
+            // dais, at its front corners, facing down the hall)
+            if (!after)
+                foreach (float x in new[] { -8.2f, 8.2f })
+                    foreach (float z in new[] { -8.2f, 8.2f })
+                        Speaks(Stand(Guard(g++), new Vector3(x, 0f, high + z), new Vector3(x, 0f, z), 4f, GuardWeapon), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            else
+                foreach (float x in new[] { -4.1f, 4.1f })
+                    Speaks(Stand(Guard(g++), new Vector3(x, 0f, HallEnd - 5.4f), Vector3.back, 4f, GuardWeapon), ValhallaSpeaker.Guard, 2.3f);
             walkerHolds = GuardWeapon;
             Speaks(Walk(Guard(g++), Solid, 1.1f, 0f, true, new Vector2(11.5f, -1.5f), new Vector2(11.5f, 44f), new Vector2(-11.5f, 44f), new Vector2(-11.5f, -1.5f)), ValhallaSpeaker.Guard, 2.3f);
-            walkerHolds = GuardWeapon;
-            Speaks(Walk(Guard(g++), Solid, 1.0f, 0f, true, Circle(new Vector2(0f, high), 10.5f, 20, 0.3f)), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            if (!after)
+            {
+                walkerHolds = GuardWeapon;
+                Speaks(Walk(Guard(g++), Solid, 1.0f, 0f, true, Circle(new Vector2(0f, high), 10.5f, 20, 0.3f)), ValhallaSpeaker.HighSeatGuard, 2.3f);
+            }
             ValhallaSpeaker.highSeat = transform.TransformPoint(new Vector3(0f, 2.4f, high));
             yield return null;
 
@@ -208,8 +218,15 @@ namespace IslandsOfValheim
             // - Eikþyrnir, the hart of Valhalla (the game's Eikthyr is him), wandering the meadow east of the hall,
             //   slowly, stopping a while at either end: between the guard's round (x 11.5) and the ring's walker;
             // - Gullinkambi, the golden cock that wakes the einherjar, on the hall's ridge over its doors.
+            // (and once he sits in the hall, there with him: on its dais either side of his throne, facing down
+            // the hall)
             foreach (float side in new[] { -1f, 1f })
-                Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
+            {
+                if (after && hallThrone != null)
+                    Beast("Wolf", new Vector3(hallThrone.localPosition.x + side * 1.45f, 0f, hallThrone.localPosition.z - 0.2f), Vector3.back, 4f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
+                else
+                    Beast("Wolf", new Vector3(side * 2.7f, 0f, high + 3.25f), new Vector3(-side, 0f, 0f), 6f, 1f, new Color(1f, 0.9f, 0.68f), "sleeping");
+            }
             Vector2[] hart = IsletBuilder.HartRoute;
             BeastWalk(Beast("Eikthyr", new Vector3(hart[0].x, 0f, hart[0].y), new Vector3(0.3f, 0f, -1f), 4f, 1f, Color.white, ""), 0.9f, 14f, hart);
             if (Beast("Hen", new Vector3(0f, 0f, 4.6f), Vector3.back, 40f, 1.3f, new Color(1f, 0.76f, 0.22f), "") == null)
@@ -434,18 +451,37 @@ namespace IslandsOfValheim
         {
             yield return new WaitForSeconds(3f);
             if (her == null) yield break;
+            // Their places: a half ring round her on their own side of her (so none walks through her), each
+            // given the place on his own side of the others (sorted round her alike: no two paths cross), and
+            // they set off one after another. (1.10.107 sent each to the place of his turn: paths crossed, and
+            // some went through her.)
             Vector3 at = transform.InverseTransformPoint(her.transform.position);
-            Vector2 inward = new Vector2(Ring.x - at.x, Ring.y - at.z).normalized;
-            if (inward == Vector2.zero) inward = Vector2.left;
-            for (int i = 0; i < witnesses.Count; i++)
+            Vector2 mine = new Vector2(at.x, at.z), theirs = Vector2.zero;
+            List<SpiritHuman> going = new List<SpiritHuman>();
+            foreach (SpiritHuman w in witnesses)
+                if (w != null) { going.Add(w); Vector3 p = transform.InverseTransformPoint(w.transform.position); theirs += new Vector2(p.x, p.z); }
+            if (going.Count > 0)
             {
-                if (witnesses[i] == null) continue;
-                float off = (-60f + i * 30f) * Mathf.Deg2Rad;
-                Vector2 d = new Vector2(inward.x * Mathf.Cos(off) - inward.y * Mathf.Sin(off), inward.x * Mathf.Sin(off) + inward.y * Mathf.Cos(off));
-                Vector3 to = new Vector3(at.x + d.x * 2.8f, 0f, at.z + d.y * 2.8f);
-                moves.Add(new Move { who = witnesses[i], to = to, end = transform.rotation * Quaternion.LookRotation(new Vector3(-d.x, 0f, -d.y)), back = false });
+                Vector2 toward = (theirs / going.Count - mine).normalized;
+                if (toward == Vector2.zero) toward = Vector2.left;
+                // round her, from their side's left to its right
+                System.Func<Vector2, float> round = p => Vector2.SignedAngle(toward, p - mine);
+                going.Sort((a, b) =>
+                {
+                    Vector3 pa = transform.InverseTransformPoint(a.transform.position), pb = transform.InverseTransformPoint(b.transform.position);
+                    return round(new Vector2(pa.x, pa.z)).CompareTo(round(new Vector2(pb.x, pb.z)));
+                });
+                float span = going.Count > 1 ? 120f / (going.Count - 1) : 0f;
+                for (int i = 0; i < going.Count; i++)
+                {
+                    float off = (going.Count > 1 ? -60f + i * span : 0f) * Mathf.Deg2Rad;
+                    Vector2 d = new Vector2(toward.x * Mathf.Cos(off) - toward.y * Mathf.Sin(off), toward.x * Mathf.Sin(off) + toward.y * Mathf.Cos(off));
+                    Vector3 to = new Vector3(mine.x + d.x * 2.8f, 0f, mine.y + d.y * 2.8f);
+                    moves.Add(new Move { who = going[i], to = to, end = transform.rotation * Quaternion.LookRotation(new Vector3(-d.x, 0f, -d.y)), back = false });
+                    yield return new WaitForSeconds(0.4f);
+                }
             }
-            yield return new WaitForSeconds(6f);
+            yield return new WaitForSeconds(5f);
             for (int i = 0; i < witnesses.Count && i < WitnessLines.Length; i++)
             {
                 ValhallaSpeaker speaker = witnesses[i] != null ? witnesses[i].GetComponent<ValhallaSpeaker>() : null;
@@ -474,7 +510,9 @@ namespace IslandsOfValheim
             Remake();
         }
 
-        // Her spear, lying where she knelt (the ring's north side, where she came in), once she's gone.
+        // Her spear, planted upright where she came into the ring (its north side, between where you fight and
+        // its columns), its point to the sky and a faint gold light at it: her memorial. (1.10.107 laid it on
+        // the ground, a thin dark line the user could hardly make out.)
         void HafdisSpear()
         {
             if (!Story.Key(ValhallaDuel.HafdisWonKey)) return;
@@ -488,19 +526,53 @@ namespace IslandsOfValheim
             foreach (Collider c in spear.GetComponentsInChildren<Collider>(true)) DestroyImmediate(c);
             foreach (Rigidbody r in spear.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(r);
             spear.transform.localScale = look.lossyScale;
-            Vector3 at = new Vector3(Ring.x + 0.6f, 0f, Ring.y + 7.5f);
+            Vector3 at = new Vector3(Ring.x, 0f, Ring.y + 10.7f);
             spear.transform.localPosition = at;
             spear.transform.localRotation = Quaternion.identity;
-            // lying on the ground: its long side level (east-west)
+            // its long side, and its point: the end of it furthest from where it's held (its own middle, the hand)
+            Bounds own = OwnBounds(spear);
+            Vector3 size = own.size;
+            Vector3 axis = size.x >= size.y && size.x >= size.z ? Vector3.right : size.y >= size.z ? Vector3.up : Vector3.forward;
+            float far = Vector3.Dot(own.max, axis), near = Vector3.Dot(own.min, axis);
+            Vector3 point = Mathf.Abs(far) >= Mathf.Abs(near) ? axis : -axis;
+            spear.transform.localRotation = Quaternion.FromToRotation(point, Vector3.up);
+            // stood in the ground, a hand of it sunk
             Bounds b = WorldBounds(spear);
-            Vector3 local = transform.InverseTransformVector(b.size);
-            if (Mathf.Abs(local.y) >= Mathf.Abs(local.x) && Mathf.Abs(local.y) >= Mathf.Abs(local.z)) spear.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-            else if (Mathf.Abs(local.z) > Mathf.Abs(local.x)) spear.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
-            b = WorldBounds(spear);
             float ground = Ground(at.x, at.z, 4f);
             Vector3 bottom = transform.InverseTransformPoint(new Vector3(b.center.x, b.min.y, b.center.z));
-            spear.transform.localPosition += new Vector3(at.x - bottom.x, ground + 0.03f - bottom.y, at.z - bottom.z);
+            spear.transform.localPosition += new Vector3(at.x - bottom.x, ground - 0.35f - bottom.y, at.z - bottom.z);
+            GameObject glow = new GameObject("IoV_HafdisSpearGlow");
+            glow.transform.SetParent(transform, false);
+            glow.transform.localPosition = new Vector3(at.x, ground + b.size.y - 0.3f, at.z);
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = HafdisBoss.Glow;
+            light.range = 3f;
+            light.intensity = 0.9f;
+            light.shadows = LightShadows.None;
             made.Add(spear);
+            made.Add(glow);
+            Plugin.Debug("Valhalla: Hafdís's spear planted, " + b.size.y.ToString("F2") + " m high (its point along its own " + point + ")");
+        }
+
+        // A thing's mesh bounds in its own space (its pivot at the middle).
+        static Bounds OwnBounds(GameObject go)
+        {
+            Bounds result = new Bounds();
+            bool any = false;
+            foreach (MeshFilter f in go.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (f.sharedMesh == null) continue;
+                Bounds m = f.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 corner = m.center + Vector3.Scale(m.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    Vector3 p = go.transform.InverseTransformPoint(f.transform.TransformPoint(corner));
+                    if (!any) { result = new Bounds(p, Vector3.zero); any = true; }
+                    else result.Encapsulate(p);
+                }
+            }
+            return result;
         }
 
         static Bounds WorldBounds(GameObject go)
