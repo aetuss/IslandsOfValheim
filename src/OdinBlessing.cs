@@ -20,13 +20,24 @@ namespace IslandsOfValheim
 
         static bool Home { get { return Story.Key(ValhallaPeople.DoneKey); } }
 
-        // His words, the light about you, and the page.
+        // His words; once they're said (read), the light about you, the word of it and the page. (1.10.123 gave it
+        // all at once, the light and the word over his words still being read: the user had them one after
+        // the other.)
+        const float Speaks = 9f;
+
         internal static void Give(Player player, ValhallaSpeaker odin)
         {
             player.SetSeenTutorial(Key);
-            odin.Say("$iov_odin_bless", 12f);
-            player.AddKnownText("$iov_blessing_page", "$iov_blessing_page_text");
+            odin.Say("$iov_odin_bless", Speaks);
+            odin.StartCoroutine(Blessed(player, Speaks));
+        }
+
+        static System.Collections.IEnumerator Blessed(Player player, float after)
+        {
+            yield return new WaitForSeconds(after);
+            if (player == null) yield break;
             player.Message(MessageHud.MessageType.Center, "$iov_blessing_given");
+            player.AddKnownText("$iov_blessing_page", "$iov_blessing_page_text");
             if (ObjectDB.instance != null)
                 foreach (string power in new[] { "GP_Eikthyr", "GP_TheElder", "GP_Bonemass", "GP_Moder" })
                 {

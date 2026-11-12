@@ -271,15 +271,23 @@ namespace IslandsOfValheim
             ClearBar(); // (the bout's over: no bar over a farewell; NoBarOnceYielded keeps it gone)
             if (kneel)
             {
-                // (Hafdís lowers her spear: out of her hand)
+                // (Hafdís lowers her spear; and anyone with a two-handed weapon lays it down: with one in his hands
+                // the champion never knelt, beaten mid-blow or not (1.10.118, 1.10.121, the log showing him idle
+                // the second time); 1.10.120, his weapon taken, knelt him, but twice, and he knelt and rose)
                 Unset("emote_challenge"); // (and the champion's slam wind-up pose let go)
                 Humanoid me = body as Humanoid;
-                ItemDrop.ItemData spear = hafdis && me != null ? me.GetCurrentWeapon() : null;
-                if (spear != null && spear.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield) me.UnequipItem(spear, false);
-                // The kneel once the blow it was beaten in is over (Update): the log showed the champion beaten
-                // mid-swing each time, and a kneel then was lost under the swing's end (1.10.118: he never
-                // knelt); 1.10.120 took his weapon from him and knelt him twice: he knelt and rose, over and over.
+                ItemDrop.ItemData held = me != null ? me.GetCurrentWeapon() : null;
+                bool twoHanded = held != null && (held.m_shared.m_itemType == ItemDrop.ItemData.ItemType.TwoHandedWeapon || held.m_shared.m_itemType == ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft);
+                bool laid = false;
+                if (held != null && (hafdis || twoHanded) && held.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Shield && me.GetInventory().ContainsItem(held))
+                {
+                    me.UnequipItem(held, false);
+                    laid = true;
+                }
+                // The kneel, once: after the blow it was beaten in is over, and after its weapon is put away
+                // (Update).
                 kneelPending = true;
+                kneelAt = Time.time + (laid ? 0.45f : 0f);
                 if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
             }
         }
@@ -497,7 +505,7 @@ namespace IslandsOfValheim
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
-            if (kneelPending && (!body.InAttack() || Time.time > yieldedAt + 1.5f))
+            if (kneelPending && Time.time >= kneelAt && (!body.InAttack() || Time.time > yieldedAt + 1.5f))
             {
                 kneelPending = false;
                 Emote("emote_kneel");
@@ -515,6 +523,7 @@ namespace IslandsOfValheim
         }
 
         bool kneelPending;
+        float kneelAt;
 
         // A pose held by a switch (as the champion's challenge), let go.
         void Unset(string name)
