@@ -377,6 +377,7 @@ namespace IslandsOfValheim
             config.MaxDistance = tier.MaxDistance;
             config.Group = "IoV_Large";
             config.MinDistanceFromSimilar = 900f;
+            if (locationName == SpiritsName) config.IconPlaced = true; // the Brim village: a house on the map once it's there
             ZoneManager.Instance.AddCustomLocation(new CustomLocation(root, false, config));
             Plugin.Log.LogInfo("Registered location " + locationName + " (quantity " + config.Quantity + ", " + built + " parts, " + missing + " prefabs not found)");
         }

@@ -78,6 +78,7 @@ namespace IslandsOfValheim
                 // his first words: what you've done, and (lightly) that the sea forgets nothing; then now and then
                 // a word of welcome
                 if (!player.HaveSeenTutorial(OdinSpokeKey)) { player.SetSeenTutorial(OdinSpokeKey); Say("$iov_odin_done"); }
+                else if (!OdinBlessing.Has(player)) OdinBlessing.Give(player, this); // (then, his blessing)
                 else Say(Random.value < 0.3f ? "$iov_odin_done" : OdinTalk[Random.Range(0, OdinTalk.Length)]);
                 return true;
             }

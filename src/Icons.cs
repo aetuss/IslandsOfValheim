@@ -8,7 +8,25 @@ namespace IslandsOfValheim
     {
         const int Size = 64;
 
-        static Sprite anchor, waves;
+        static Sprite anchor, waves, house;
+
+        // A house (its roof, its walls, a door), white as the anchor: the Brim village on the map.
+        internal static Sprite House
+        {
+            get
+            {
+                if (house == null) house = Draw("IoV_HouseIcon", HouseShape, (x, y) => Color.white);
+                return house;
+            }
+        }
+
+        static float HouseShape(float x, float y)
+        {
+            float roof = Triangle(x, y, new Vector2(-0.78f, 0.02f), new Vector2(0.78f, 0.02f), new Vector2(0f, 0.72f));
+            float walls = Box(x, y + 0.33f, 0.52f, 0.36f);
+            float door = Box(x, y + 0.5f, 0.13f, 0.2f);
+            return Mathf.Min(roof, Mathf.Max(walls, -door));
+        }
 
         internal static Sprite Anchor
         {

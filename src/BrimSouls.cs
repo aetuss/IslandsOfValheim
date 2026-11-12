@@ -87,6 +87,9 @@ namespace IslandsOfValheim
             {
                 player.SetSeenTutorial(ArrivedKey);
                 player.Message(MessageHud.MessageType.Center, "$iov_souls_home");
+                // and what their homecoming gives you (OdinBlessing): the hearth of your house, Sævar's prices
+                player.Message(MessageHud.MessageType.TopLeft, "$iov_hearth_given");
+                player.Message(MessageHud.MessageType.TopLeft, "$iov_friend_given");
             }
         }
 

@@ -195,6 +195,7 @@ namespace IslandsOfValheim
                 }
                 if (doors && go.GetComponent<SpiritDoor>() == null) go.AddComponent<SpiritDoor>();
                 if (mark != null) Keep(go);
+                if (mark != null && !doors) homePieces.Add(go.transform); // (the house's, as it's furnished)
                 made++;
             }
             return made;
@@ -254,7 +255,27 @@ namespace IslandsOfValheim
         internal static bool IsHomeBuilt(ZNetView altar) { return altar != null && altar.IsValid() && altar.GetZDO().GetBool(HomeBuiltKey); }
 
         [HarmonyPatch(typeof(WearNTear), "Awake")]
-        static class HomeWearPatch { static void Postfix(WearNTear __instance) { if (Home(__instance)) Keep(__instance.gameObject); } }
+        static class HomeWearPatch
+        {
+            static void Postfix(WearNTear __instance)
+            {
+                if (!Home(__instance)) return;
+                Keep(__instance.gameObject);
+                homePieces.Add(__instance.transform);
+            }
+        }
+
+        // The pieces of the player's house in the Brim village loaded here (its beds, chests, fires): whether a
+        // place is in it (the Brim hearth: OdinBlessing).
+        static readonly List<Transform> homePieces = new List<Transform>();
+
+        internal static bool InBrimHome(Vector3 p)
+        {
+            homePieces.RemoveAll(t => t == null);
+            foreach (Transform t in homePieces)
+                if (Vector3.Distance(t.position, p) < 6f) return true;
+            return false;
+        }
 
         [HarmonyPatch(typeof(Fireplace), "Awake")]
         static class HomeFirePatch { static void Postfix(Fireplace __instance) { if (Home(__instance)) Keep(__instance.gameObject); } }

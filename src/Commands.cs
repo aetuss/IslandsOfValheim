@@ -109,7 +109,7 @@ namespace IslandsOfValheim
                         Player me = Player.m_localPlayer;
                         System.Reflection.FieldInfo field = HarmonyLib.AccessTools.Field(typeof(Player), "m_shownTutorials");
                         System.Collections.Generic.HashSet<string> seen = me != null && field != null ? field.GetValue(me) as System.Collections.Generic.HashSet<string> : null;
-                        if (seen != null) { seen.Remove(ValhallaSpeaker.HafdisMetKey); seen.Remove(ValhallaSpeaker.OdinSpokeKey); seen.Remove(BrimSouls.ArrivedKey); }
+                        if (seen != null) { seen.Remove(ValhallaSpeaker.HafdisMetKey); seen.Remove(ValhallaSpeaker.OdinSpokeKey); seen.Remove(BrimSouls.ArrivedKey); seen.Remove(OdinBlessing.Key); }
                         if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
                         if (ValhallaPeople.Current != null) ValhallaPeople.Current.Remake();
                         args.Context.AddString("Hafdís: not yet met, not yet yielded.");

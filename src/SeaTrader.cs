@@ -237,6 +237,11 @@ namespace IslandsOfValheim
                 data.m_name = IsletBuilder.HarbourName;
                 data.m_icon = Icons.Anchor;
                 __instance.m_locationIcons.Add(data);
+                // and the Brim village's, a white house (the user, 1.10.122: like the harbour's)
+                Minimap.LocationSpriteData village = new Minimap.LocationSpriteData();
+                village.m_name = IsletBuilder.SpiritsName;
+                village.m_icon = Icons.House;
+                __instance.m_locationIcons.Add(village);
             }
         }
     }
