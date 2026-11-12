@@ -543,8 +543,14 @@ namespace IslandsOfValheim
             if (state == lastState) return;
             lastState = state;
             if (state != kneelState)
-                Plugin.Debug("Duel: " + body.m_name + ", kneeling, changed pose (state " + state + ", walking " + animator.GetFloat("forward_speed").ToString("F2") + ", player " +
-                    (Player.m_localPlayer != null ? Vector3.Distance(Player.m_localPlayer.transform.position, transform.position).ToString("F1") + " m off" : "?") + ")");
+            {
+                MonsterAI mind = GetComponent<MonsterAI>();
+                Player you = Player.m_localPlayer;
+                Plugin.Debug("Duel: " + body.m_name + ", kneeling, changed pose (state " + state + " from " + kneelState + "; walking " + animator.GetFloat("forward_speed").ToString("F2") +
+                    ", on the ground " + animator.GetBool("onGround") + ", in an attack " + body.InAttack() +
+                    ", mind " + (mind != null && mind.enabled ? "awake" : "still") + ", " + (Time.time - kneltAt).ToString("F1") + " s after kneeling; the player " +
+                    (you != null ? Vector3.Distance(you.transform.position, transform.position).ToString("F1") + " m off, moving " + you.GetVelocity().magnitude.ToString("F1") : "?") + ")");
+            }
         }
 
         // A pose held by a switch (as the champion's challenge), let go.
