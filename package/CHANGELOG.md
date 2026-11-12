@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.2
+
+- Fixed: fish caught on an islet's fishing ground never reached the mod. The game picks up a fish another way than the mod was watching, so Sigrún's fragment was never found in her fish, and the sodden pouches never came up. Both work again.
+- The message about what you found in a fish now replaces the game's "caught" line, instead of being covered by it.
+
 ## 1.10.1
 
 - The README's pictures are the same size now, so they line up. No changes in the game.
