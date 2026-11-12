@@ -200,10 +200,10 @@ namespace IslandsOfValheim
         void OnEnable() { if (!all.Contains(this)) all.Add(this); }
         void OnDisable() { all.Remove(this); }
 
-        internal void Say(string line)
+        internal void Say(string line, float seconds = 9f)
         {
             if (Chat.instance == null) return;
-            Chat.instance.SetNpcText(gameObject, Vector3.up * height, 35f, 9f, "", line, false); // (the ring's master is heard across his ring)
+            Chat.instance.SetNpcText(gameObject, Vector3.up * height, 35f, seconds, "", line, false); // (the ring's master is heard across his ring)
         }
     }
 

@@ -523,8 +523,10 @@ namespace IslandsOfValheim
             {
                 ValhallaSpeaker speaker = witnesses[i] != null ? witnesses[i].GetComponent<ValhallaSpeaker>() : null;
                 if (speaker == null) continue;
-                speaker.Say(WitnessLines[i]);
-                yield return new WaitForSeconds(4.5f);
+                // (one at a time: each gone before the next is said; 1.10.107-110 left each up 9 s, and next to
+                // each other two or three stood over their heads at once)
+                speaker.Say(WitnessLines[i], 4.6f);
+                yield return new WaitForSeconds(4.8f);
             }
             if (her != null && Chat.instance != null) Chat.instance.SetNpcText(her.gameObject, Vector3.up * 2.2f, 30f, 7f, "", "$iov_t5_farewell", false);
             yield return new WaitForSeconds(6f);

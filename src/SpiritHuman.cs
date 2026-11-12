@@ -152,6 +152,10 @@ namespace IslandsOfValheim
             if (animator == null || !animator.enabled) { if (ghost == Solid) return; }
             else
             {
+                // (up at once: the player's body starts out as a player does coming into the world, sitting on
+                // the ground and getting up; one made in front of you, as those come to watch Hafdís's bout, was
+                // seen so)
+                if (!up) { SetBool("wakeup", false); up = true; }
                 // As a player on the ground, walking as fast as it's moved (or standing); seated if it was put on
                 // a seat; standing as its weapons have it stand.
                 SetBool("onGround", true);
@@ -166,15 +170,19 @@ namespace IslandsOfValheim
             if (!shown)
                 foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
                     if (r != null && !ghosted.Contains(r)) r.forceRenderingOff = true;
-            if (Time.time >= nextGhostCheck)
+            // (its clothes come a little after it's made: looked over twice a second for a while, then left be;
+            // a score of ghosts at the Brim Folk's feast went through all their parts twice a second for ever)
+            if (Time.time >= nextGhostCheck && (ghostSince < 0f || Time.time - ghostSince < 10f))
             {
                 nextGhostCheck = Time.time + 0.5f;
+                if (ghostSince < 0f) ghostSince = Time.time;
                 Ghostly();
                 shown = true;
             }
         }
 
-        bool shown;
+        bool shown, up;
+        float ghostSince = -1f;
 
         // The body's animator parameters, read once (they're the same for everyone; asking the animator for them
         // makes a new list of 170 each time, which, every frame for dozens of people, cost real frame rate).
@@ -327,10 +335,12 @@ namespace IslandsOfValheim
         internal bool keepMoving; // a walker: its legs keep going further off
 
         // Near: everything. Further: no shadows, capes not blown about. Far: its pose held still (the animator
-        // off). Very far: not drawn at all. (The living only; the few ghosts stay as they are.)
+        // off). Very far: not drawn at all. Ghosts (now a score of them at the Brim Folk's feast) alike, and
+        // their glow only near.
         internal void Detail(float distance)
         {
-            if (ghost != Solid || animator == null) return;
+            if (animator == null) return;
+            if (ghost != Solid) { GhostDetail(distance); return; }
             if (born < 0f) born = Time.time;
             int want = distance < 14f ? 0 : distance < 38f ? 1 : distance < 70f ? 2 : 3;
             // its clothes come a moment after it's made: look again for a while
@@ -352,6 +362,16 @@ namespace IslandsOfValheim
                 r.shadowCastingMode = want == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;
             }
             foreach (Cloth c in capes) if (c != null) c.enabled = want == 0;
+            animator.enabled = want <= 1 || (keepMoving && want == 2);
+        }
+
+        void GhostDetail(float distance)
+        {
+            if (glow != null) glow.enabled = distance < 25f;
+            int want = distance < 38f ? 1 : distance < 70f ? 2 : 3;
+            if (want == detail || !shown) return; // (not before it's made pale: no glimpse of the living)
+            detail = want;
+            foreach (Renderer r in ghosted) if (r != null) r.forceRenderingOff = want == 3;
             animator.enabled = want <= 1 || (keepMoving && want == 2);
         }
 
