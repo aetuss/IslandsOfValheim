@@ -20,6 +20,8 @@ namespace IslandsOfValheim
         static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour2" };
         static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village2" };
         static int saevarTurn; // (his lines by turns, not at random: both heard in two talks)
+        internal string[] lines; // one of the folk's own (else the folk's at random)
+        int ownTurn;
         internal const string HafdisMetKey = "iovt5met"; // (the player's own: Hafdís has told them who she is)
         internal string captain = ""; // which of the tale's captains (TaleCaptains), for Captain
 
@@ -115,7 +117,13 @@ namespace IslandsOfValheim
                 if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true, 5f); // (her words read first)
                 return true;
             }
-            if (who == BrimSoul) { Say(SoulTalk[Random.Range(0, SoulTalk.Length)]); return true; }
+            if (who == BrimSoul)
+            {
+                // each their own few lines, of their own place (the hall, the square, the pier), by turns
+                if (lines != null && lines.Length > 0) Say(lines[ownTurn++ % lines.Length]);
+                else Say(SoulTalk[Random.Range(0, SoulTalk.Length)]);
+                return true;
+            }
             if (who == BrimElder) { Say(ElderTalk[Random.Range(0, ElderTalk.Length)]); return true; }
             if (who == SaevarHarbour || who == SaevarVillage)
             {

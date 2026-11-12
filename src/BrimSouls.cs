@@ -16,6 +16,7 @@ namespace IslandsOfValheim
         public string holds = "";    // in the right hand
         public string chest = "";    // dressed otherwise than the folk's vest (the smith's leather)
         public bool talks;
+        public string[] lines;       // what this one says, by turns (else the folk's own, at random)
         public float every;          // Work: a swing each so many seconds, four in a row, then a breath
         public Vector3[] route;      // Walk: in BrimSouls' space, there and back (or round, loop)
         public bool loop;
@@ -135,6 +136,7 @@ namespace IslandsOfValheim
                 speaker.who = spot.who == SoulSpot.Saevar ? (village ? ValhallaSpeaker.SaevarVillage : ValhallaSpeaker.SaevarHarbour)
                     : spot.who == SoulSpot.Elder ? ValhallaSpeaker.BrimElder : ValhallaSpeaker.BrimSoul;
                 speaker.height = seated ? 1.7f : 2.2f;
+                if (spot.lines != null && spot.lines.Length > 0) speaker.lines = spot.lines;
             }
             return person;
         }

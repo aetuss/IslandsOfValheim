@@ -536,12 +536,22 @@ namespace IslandsOfValheim
                             {
                                 GameObject b = SpSeat(new[] { "piece_bench01" }, new Vector3(x + off, 0f, z + dz), new Vector3(-Mathf.Sign(off), 0f, 0f));
                                 // the folk at home (T5 done): here one, there two, a good many places empty; every
-                                // third with a tankard; the first of them to talk to
+                                // third with a tankard; the first of them to talk to. At one of the two tables
+                                // nearest the high seat, every place taken but one, on the aisle side, its tankard
+                                // poured before it: kept for
+                                // someone who hasn't come home (the sea forgets nothing; the user, 1.10.113)
+                                bool keptTable = s < 0f && z > 0f;
                                 foreach (float along in new[] { -0.55f, 0.55f })
                                 {
-                                    if (SoulPick(hallSeat++, 23) > 0.34f) continue;
+                                    bool kept = keptTable && off > 0f && dz < 0f && along > 0f;
+                                    if (keptTable ? kept : SoulPick(hallSeat, 23) > 0.34f) { hallSeat++; continue; }
+                                    hallSeat++;
                                     SoulSpot soul = SoulOn(b, along, true, hallSouls % 3 == 1 ? "Tankard" : "");
-                                    if (soul != null && hallSouls++ == 0) soul.talks = true;
+                                    if (soul != null && hallSouls++ == 0)
+                                    {
+                                        soul.talks = true;
+                                        soul.lines = new[] { "$iov_brimsoul_talk3", "$iov_brimsoul_talk6" };
+                                    }
                                 }
                             }
                     }
@@ -1231,7 +1241,7 @@ namespace IslandsOfValheim
                     q.y = Height(q.x, q.z);
                     GameObject bench = SpSeat(new[] { "piece_bench01" }, q, -q.normalized);
                     // (the folk at home, T5 done: on three of them by the fire, two on one; one to talk to)
-                    if (i == 0) { SoulSpot s = SoulOn(bench, 0f, false); if (s != null) s.talks = true; }
+                    if (i == 0) { SoulSpot s = SoulOn(bench, 0f, false); if (s != null) { s.talks = true; s.lines = new[] { "$iov_brimsoul_talk5", "$iov_brimsoul_talk2" }; } }
                     if (i == 3) SoulOn(bench, 0f, false, "Tankard");
                     if (i == 6) { SoulOn(bench, -0.55f, false); SoulOn(bench, 0.55f, false); }
                 }
@@ -1695,7 +1705,9 @@ namespace IslandsOfValheim
                 // The folk at home (T5 done): one fishing off the pier's end, on the side away from the ship (to
                 // talk to), another off the landing; and Sævar on the landing, looking at his ship.
                 Vector2 rod = u * (end - 2.6f) - side * 0.6f;
-                SoulAt(new Vector3(rod.x, deck, rod.y), new Vector3(-side.x, 0f, -side.y), "FishingRod").talks = true;
+                SoulSpot fisher = SoulAt(new Vector3(rod.x, deck, rod.y), new Vector3(-side.x, 0f, -side.y), "FishingRod");
+                fisher.talks = true;
+                fisher.lines = new[] { "$iov_brimsoul_talk1", "$iov_brimsoul_talk4" };
                 Vector2 look = u * shipAt + side * off;
                 if (land > 0f)
                 {

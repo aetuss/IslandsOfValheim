@@ -404,7 +404,10 @@ namespace IslandsOfValheim
         void Tick()
         {
             Player player = Player.m_localPlayer;
-            if (!gone && Story.Key(Story.FinalDone) && Time.time >= leaveAt)
+            // (and gone, his chest left, once the Valhalla tale is done too: his spirit sits by his old fire then
+            // (BrimSouls), and a world brought there by the development commands, its first tale not ended, had
+            // both him and his spirit at the harbour, 1.10.113)
+            if (!gone && (Story.Key(Story.FinalDone) || Story.Key(ValhallaPeople.DoneKey)) && Time.time >= leaveAt)
                 Leave(false); // already gone when you come (the one who brought the last fragment sees it: Story.Ending)
             if (gone || trader == null || player == null) return;
             float distance = Vector3.Distance(player.transform.position, transform.position);
