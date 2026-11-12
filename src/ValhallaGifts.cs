@@ -17,21 +17,23 @@ namespace IslandsOfValheim
     class ValhallaGifts : MonoBehaviour
     {
         internal const string OathDay = "IoV_OathDay", DebtDay = "IoV_DebtDay";
-        internal const string OathEffect = "IoV_SE_OathRests", DebtEffect = "IoV_SE_DebtRests";
+        internal const string OathEffect = "IoV_SE_Oath", DebtEffect = "IoV_SE_Debt";
         internal const string MendRpc = "IoV_DrownedMend";
         const float Pressed = 0.25f, OathStays = 60f, FoeNear = 20f;
 
-        static int oathHash, debtHash;
+        internal static int oathHash, debtHash;
         internal static ValhallaGifts Instance;
 
         internal static void Register()
         {
-            oathHash = Rests(OathEffect, "iov_oath", new[] { "Battleaxe", "SwordIron" });
-            debtHash = Rests(DebtEffect, "iov_debt", new[] { "TrophyDraugr", "TrophySerpent" });
+            oathHash = Shown(OathEffect, "iov_oath", new[] { "Battleaxe", "SwordIron" });
+            debtHash = Shown(DebtEffect, "iov_debt", new[] { "TrophyDraugr", "TrophySerpent" });
         }
 
-        // An icon that only counts down (no stats): the gift resting till the next day.
-        static int Rests(string name, string token, string[] icons)
+        // An icon (no stats) while the gift is at work, counting down till it's over: Starkaðr at your side, the
+        // drowned at your ship. (1.10.118-121 showed it while the gift rested till the next day instead: the user
+        // asked why, once a day as it is, and had it shown while it's in use.)
+        static int Shown(string name, string token, string[] icons)
         {
             SE_Stats effect = SeafarerGear.Effect(name, token, false);
             foreach (string icon in icons)
@@ -56,8 +58,6 @@ namespace IslandsOfValheim
             Player player = Player.m_localPlayer;
             if (player == null || player.IsDead() || EnvMan.instance == null || ZNet.instance == null) return;
             bool oath = Story.Key(ValhallaDuel.WonKey), debt = RanNet.Done;
-            Resting(player, OathDay, oathHash, oath);
-            Resting(player, DebtDay, debtHash, debt);
             Told(player, OathTold, oath, "$iov_oath_given", 9f, ref oathSeen);
             Told(player, DebtTold, debt, "$iov_drowned_given", 16f, ref debtSeen); // (after Rán's last words)
             Oath(player);
@@ -93,18 +93,19 @@ namespace IslandsOfValheim
 
         static void Use(Player player, string key) { player.m_customData[key] = Today().ToString(); }
 
-        // Its icon while it rests, counting down to the next day (again after a reload: the icon isn't kept).
-        static void Resting(Player player, string key, int hash, bool have)
+        // Its icon while it's at work, for so long (taken away sooner if it's over sooner: Ended).
+        internal static void Showing(Player player, int hash, float seconds)
         {
-            SEMan effects = player.GetSEMan();
+            SEMan effects = player != null ? player.GetSEMan() : null;
             if (effects == null || hash == 0) return;
-            bool rests = have && UsedToday(player, key);
-            if (!rests) { if (effects.HaveStatusEffect(hash)) effects.RemoveStatusEffect(hash, true); return; }
-            if (effects.HaveStatusEffect(hash)) return;
             StatusEffect se = effects.AddStatusEffect(hash, true, 0, 0f, (short)0);
-            if (se == null) return;
-            double length = EnvMan.instance.m_dayLengthSec;
-            se.m_ttl = Mathf.Max(1f, (float)((Today() + 1) * length - ZNet.instance.GetTimeSeconds()));
+            if (se != null) se.m_ttl = seconds;
+        }
+
+        internal static void Ended(Player player, int hash)
+        {
+            SEMan effects = player != null ? player.GetSEMan() : null;
+            if (effects != null && hash != 0 && effects.HaveStatusEffect(hash)) effects.RemoveStatusEffect(hash, true);
         }
 
         // (development: iov_gifts ready) both given back for today
@@ -156,6 +157,7 @@ namespace IslandsOfValheim
             ChampionAlly ally = him.gameObject.AddComponent<ChampionAlly>();
             ally.player = player;
             ally.until = Time.time + OathStays;
+            Showing(player, oathHash, OathStays); // (gone with him, if he goes sooner: ChampionAlly)
             if (Chat.instance != null) Chat.instance.SetNpcText(him.gameObject, Vector3.up * 2.4f, 30f, 4f, "", "$iov_oath_arrive", false);
             Plugin.Debug("Oath: Starkaðr at the player's side, " + him.GetMaxHealth().ToString("F0") + " health" + (foe != null ? ", against " + foe.m_name : ""));
         }
@@ -229,6 +231,7 @@ namespace IslandsOfValheim
         {
             mending = true;
             player.Message(MessageHud.MessageType.Center, "$iov_debt_rise");
+            Showing(player, debtHash, Rise + Work + Sink);
             Bounds b = ShipBounds(ship);
             float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : ship.transform.position.y;
             List<SpiritHuman> souls = new List<SpiritHuman>();
@@ -291,6 +294,7 @@ namespace IslandsOfValheim
                 yield return null;
             }
             foreach (SpiritHuman soul in souls) if (soul != null) Destroy(soul.gameObject);
+            Ended(player, debtHash);
             mending = false;
         }
 
@@ -369,7 +373,7 @@ namespace IslandsOfValheim
         {
             ZNetView nview = GetComponent<ZNetView>();
             if (nview == null || !nview.IsValid() || !nview.IsOwner() || leaving) return;
-            if (fighter != null && fighter.yielded) { enabled = false; return; }
+            if (fighter != null && fighter.yielded) { ValhallaGifts.Ended(player, ValhallaGifts.oathHash); enabled = false; return; }
             if (player == null || player.IsDead() || Vector3.Distance(player.transform.position, transform.position) > 60f) { Leave(""); return; }
             if (Time.time >= nextLook)
             {
@@ -430,9 +434,12 @@ namespace IslandsOfValheim
             t.Method("SetAlerted", new[] { typeof(bool) }).GetValue(true);
         }
 
+        void OnDestroy() { ValhallaGifts.Ended(player, ValhallaGifts.oathHash); }
+
         void Leave(string line)
         {
             leaving = true;
+            ValhallaGifts.Ended(player, ValhallaGifts.oathHash); // (his icon goes as he says his farewell)
             if (line.Length > 0 && Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.4f, 30f, 4f, "", line, false);
             StartCoroutine(Going());
         }
