@@ -643,6 +643,19 @@ namespace IslandsOfValheim
             float ground = Ground(at.x, at.z, 4f);
             Vector3 bottom = transform.InverseTransformPoint(new Vector3(b.center.x, b.min.y, b.center.z));
             spear.transform.localPosition += new Vector3(at.x - bottom.x, ground - 0.35f - bottom.y, at.z - bottom.z);
+            // solid, as a spear stood in the ground is (its copy has no body of its own: the user walked through
+            // it, 1.10.127): a thin upright shaft from the ground to its point
+            Bounds stood = WorldBounds(spear);
+            GameObject shaft = new GameObject("IoV_HafdisSpearShaft");
+            shaft.transform.SetParent(transform, false);
+            shaft.transform.position = stood.center;
+            shaft.transform.rotation = Quaternion.identity;
+            shaft.layer = LayerMask.NameToLayer("static_solid");
+            CapsuleCollider body = shaft.AddComponent<CapsuleCollider>();
+            body.direction = 1; // upright
+            body.radius = 0.12f;
+            body.height = stood.size.y;
+            made.Add(shaft);
             GameObject glow = new GameObject("IoV_HafdisSpearGlow");
             glow.transform.SetParent(transform, false);
             glow.transform.localPosition = new Vector3(at.x, ground + b.size.y - 0.3f, at.z);
