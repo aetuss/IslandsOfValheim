@@ -535,17 +535,16 @@ namespace IslandsOfValheim
                             foreach (float dz in new[] { -1.6f, 1.6f })
                             {
                                 GameObject b = SpSeat(new[] { "piece_bench01" }, new Vector3(x + off, 0f, z + dz), new Vector3(-Mathf.Sign(off), 0f, 0f));
-                                // the folk at home (T5 done): here one, there two, a good many places empty; every
-                                // third with a tankard; the first of them to talk to. At one of the two tables
-                                // nearest the high seat, every place taken but one, on the aisle side, its tankard
-                                // poured before it: kept for
-                                // someone who hasn't come home (the sea forgets nothing; the user, 1.10.113)
-                                bool keptTable = s < 0f && z > 0f;
+                                // the folk at home (T5 done): every place taken, every third with a tankard, the
+                                // first of them to talk to; but for two, facing each other across the door's end of
+                                // the left-hand table by the door, their tankards poured before them: kept for those
+                                // who haven't come home (the sea forgets nothing). (The user, 1.10.115: 1.10.113-114
+                                // left places empty at random and kept one, which didn't show among them.)
+                                bool keptEnd = s < 0f && z < 0f && dz < 0f;
                                 foreach (float along in new[] { -0.55f, 0.55f })
                                 {
-                                    bool kept = keptTable && off > 0f && dz < 0f && along > 0f;
-                                    if (keptTable ? kept : SoulPick(hallSeat, 23) > 0.34f) { hallSeat++; continue; }
                                     hallSeat++;
+                                    if (keptEnd && b != null && SeatZ(b, along) < SeatZ(b, -along)) continue;
                                     SoulSpot soul = SoulOn(b, along, true, hallSouls % 3 == 1 ? "Tankard" : "");
                                     if (soul != null && hallSouls++ == 0)
                                     {
@@ -2023,6 +2022,15 @@ namespace IslandsOfValheim
             s.rest = rest;
             s.loop = loop;
             return s;
+        }
+
+        // How far towards the hall's back (its frame's z) a seat's place `along` it lies (the bench is turned to
+        // face its table, so which way along runs depends on the side it's on).
+        static float SeatZ(GameObject bench, float along)
+        {
+            GameObject prefab = Find(new[] { "piece_bench01" });
+            Vector3 axis = prefab != null ? SpiritHuman.SeatAxis(prefab) : Vector3.right;
+            return bench.transform.localPosition.z + (bench.transform.localRotation * axis * along).z;
         }
 
         // A steady 0..1 for an index (not the village's own random: what it draws lays out the rest).

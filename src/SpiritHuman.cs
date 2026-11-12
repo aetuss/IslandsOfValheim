@@ -627,7 +627,7 @@ namespace IslandsOfValheim
         }
 
         // A seat's long way, in its prefab's own space (its meshes measured there, so however the copy is turned).
-        static Vector3 SeatAxis(GameObject prefab)
+        internal static Vector3 SeatAxis(GameObject prefab)
         {
             Bounds b = new Bounds();
             bool any = false;
