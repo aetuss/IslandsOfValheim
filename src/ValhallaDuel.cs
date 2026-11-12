@@ -508,6 +508,11 @@ namespace IslandsOfValheim
             if (kneelPending && Time.time >= kneelAt && (!body.InAttack() || Time.time > yieldedAt + 1.5f))
             {
                 kneelPending = false;
+                // (a stop left set from the champion's slam (his challenge pose ended with it, and nothing used it
+                // up) ended the kneel the moment it began: he knelt and got straight up, 1.10.118-126. The game
+                // clears it before an emote too: Player.UpdateEmote.)
+                Animator animator = GetComponentInChildren<Animator>();
+                if (animator != null) animator.ResetTrigger("emote_stop");
                 Emote("emote_kneel");
                 // held there: nothing to push it about while it kneels (1.10.124: the champion knelt, and got up
                 // as the user moved off; a body nudged walks, and walking ends an emote)
@@ -881,7 +886,7 @@ namespace IslandsOfValheim
             if (pending.Count > 0)
             {
                 // in the light that brings them: they step out of it at its brightest
-                if (Time.time >= pendingAt) { foreach (System.Action make in pending) make(); pending.Clear(); }
+                if (Time.time >= pendingAt) { foreach (System.Action make in pending) make(); pending.Clear(); cameAt = Time.time; }
                 return;
             }
             if (fighters.Count == 0)
@@ -905,6 +910,14 @@ namespace IslandsOfValheim
                     // eyes on you all the bout: the first one in (you still on your way into the ring) stood with
                     // its back to you, turning now and then, looking for you where it last knew you (nowhere)
                     if (remind) EyesOn(c, player);
+                    // and turned to you as it steps out of the light (made facing where you were a moment before,
+                    // the first came with its back to you as you walked into the ring, the user saw, 1.10.126)
+                    if (Time.time - cameAt < 2.5f && !c.InAttack())
+                    {
+                        Vector3 to = player.transform.position - c.transform.position;
+                        to.y = 0f;
+                        if (to.sqrMagnitude > 0.01f) c.SetLookDir(to.normalized, 0f);
+                    }
                 }
             }
             if (lastHealth >= 0f && health < lastHealth - 0.5f && Time.time >= nextCheer && ValhallaPeople.Current != null)
@@ -1045,7 +1058,7 @@ namespace IslandsOfValheim
 
         // They come in Valhalla's own light (a soft column, as the one that took Sævar), and step out of it.
         readonly List<System.Action> pending = new List<System.Action>();
-        float pendingAt;
+        float pendingAt, cameAt = -100f;
 
         void Later(Vector3 at, System.Action make)
         {
