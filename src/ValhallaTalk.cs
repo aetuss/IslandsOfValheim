@@ -39,9 +39,14 @@ namespace IslandsOfValheim
             }
         }
 
+        // The tale done (Hafdís at peace): the Allfather sits in his hall, and speaks.
+        static bool TaleDone { get { return Story.Key(ValhallaPeople.DoneKey); } }
+        internal const string OdinSpokeKey = "iovodinspoke"; // (the player's own: his first words heard)
+        static readonly string[] OdinTalk = { "$iov_odin_talk1", "$iov_odin_talk2", "$iov_odin_talk3" };
+
         public string GetHoverText()
         {
-            if (who == Odin) return Localization.instance.Localize(Name);
+            if (who == Odin && !TaleDone) return Localization.instance.Localize(Name);
             if (who == RingMaster)
                 return Localization.instance.Localize(Name + (ValhallaDuel.Active ? "" : "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_duel_challenge"));
             return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
@@ -54,7 +59,15 @@ namespace IslandsOfValheim
         public bool Interact(Humanoid user, bool hold, bool alt)
         {
             Player player = user as Player;
-            if (hold || player == null || player != Player.m_localPlayer || who == Odin) return false;
+            if (hold || player == null || player != Player.m_localPlayer || (who == Odin && !TaleDone)) return false;
+            if (who == Odin)
+            {
+                // his first words: what you've done, and (lightly) that the sea forgets nothing; then now and then
+                // a word of welcome
+                if (!player.HaveSeenTutorial(OdinSpokeKey)) { player.SetSeenTutorial(OdinSpokeKey); Say("$iov_odin_done"); }
+                else Say(Random.value < 0.3f ? "$iov_odin_done" : OdinTalk[Random.Range(0, OdinTalk.Length)]);
+                return true;
+            }
             if (who == Captain)
             {
                 string free;

@@ -151,6 +151,27 @@ namespace IslandsOfValheim
             vis.SetBeardItem(beardWanted.Length > 0 ? beardWanted.GetStableHashCode() : 0);
         }
 
+        // Hafdís's blows come quicker (the user: she waited too long between them). A creature waits between
+        // its blows its own while (MonsterAI's) and each weapon's own while for creatures (the item's, made for
+        // the player's hand: long); hers, on her own copies of her weapons' settings (shared with every such
+        // weapon in the world otherwise).
+        static readonly System.Reflection.MethodInfo copyOf = typeof(object).GetMethod("MemberwiseClone", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        void Quicker()
+        {
+            if (ai != null) ai.m_minAttackInterval = 0.4f;
+            Humanoid me = body as Humanoid;
+            if (me == null || copyOf == null) return;
+            foreach (ItemDrop.ItemData item in me.GetInventory().GetAllItems())
+            {
+                if (item == null || !item.IsWeapon()) continue;
+                ItemDrop.ItemData.SharedData own = (ItemDrop.ItemData.SharedData)copyOf.Invoke(item.m_shared, null);
+                Plugin.Debug("T5: Hafdís's " + own.m_name + ": " + own.m_aiAttackInterval.ToString("F1") + " s between blows, now " + Mathf.Min(own.m_aiAttackInterval, 0.7f).ToString("F1"));
+                own.m_aiAttackInterval = Mathf.Min(own.m_aiAttackInterval, 0.7f);
+                item.m_shared = own;
+            }
+        }
+
         // Hafdís (T5) waiting in the ring for you: still, facing you; then the bout.
         internal bool waiting;
 
@@ -170,17 +191,22 @@ namespace IslandsOfValheim
             waiting = false;
             if (ai != null) ai.enabled = true;
             nextEcho = Time.time + 4f;
+            if (hafdis) Quicker();
             // her bar across the top of the view only now (1.10.105 showed it from when she came into the ring,
             // the player still far off): a boss's, made afresh (one made while she waited would be the plain kind)
             body.m_boss = true;
+            ClearBar();
+        }
+
+        // Her bar as the game keeps it, taken away (to be made again as it should be now, or not at all).
+        void ClearBar()
+        {
             EnemyHud hud = EnemyHud.instance;
             System.Collections.IDictionary huds = hud != null ? Traverse.Create(hud).Field("m_huds").GetValue() as System.Collections.IDictionary : null;
-            if (huds != null && huds.Contains(body))
-            {
-                GameObject gui = Traverse.Create(huds[body]).Field("m_gui").GetValue<GameObject>();
-                if (gui != null) Destroy(gui);
-                huds.Remove(body);
-            }
+            if (huds == null || !huds.Contains(body)) return;
+            GameObject gui = Traverse.Create(huds[body]).Field("m_gui").GetValue<GameObject>();
+            if (gui != null) Destroy(gui);
+            huds.Remove(body);
         }
 
         // Beaten (its health run out): it doesn't die, it kneels, says so, and before long is gone.
@@ -201,6 +227,7 @@ namespace IslandsOfValheim
                 Traverse.Create(ai).Method("SetAlerted", new[] { typeof(bool) }).GetValue(false);
             }
             if (echoGlow != null) Destroy(echoGlow.gameObject);
+            if (hafdis) { body.m_boss = false; ClearBar(); } // (the bout's over: no bar over her farewell)
             if (kneel)
             {
                 Emote("emote_kneel");
@@ -217,6 +244,7 @@ namespace IslandsOfValheim
         // down on it (fewer and lighter than the Fallen Valkyrie's) ----
 
         internal bool hafdis;
+        internal bool ceremony; // yielded, she stays for her farewell (ValhallaPeople.Ceremony)
         internal float echoPierce = 30f;
         const float EchoEvery = 14f, EchoWarning = 1.6f, EchoHold = 0.45f, EchoHeight = 8f, EchoSpread = 0.6f;
         const int EchoFeathers = 4;
@@ -424,7 +452,8 @@ namespace IslandsOfValheim
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
             if (!yielded || body == null) return;
             body.SetMoveDir(Vector3.zero);
-            // (Hafdís kneels longer: her words first)
+            // (Hafdís kneels longer: her words first; through her farewell, if there's one: the ceremony takes her)
+            if (ceremony) return;
             float stays = hafdis ? 9f : 3.5f;
             if (!goingHome && Time.time > yieldedAt + stays)
             {
@@ -653,19 +682,30 @@ namespace IslandsOfValheim
             fighters.Clear();
             pending.Clear();
             if (round > 0 && ValhallaPeople.Current != null) ValhallaPeople.Current.RingCleared(false);
-            // (her bout not won: back at the rock's edge, to be asked again)
-            if (hafdisBout && ValhallaPeople.Current != null && !Story.Key(HafdisWonKey)) ValhallaPeople.Current.HafdisAway(false);
+            // (her bout not won: back at the rock's edge, to be asked again; those who watched go)
+            if (hafdisBout && ValhallaPeople.Current != null && !Story.Key(HafdisWonKey)) { ValhallaPeople.Current.HafdisAway(false); ValhallaPeople.Current.Witnesses(false); }
             hafdisBout = waitingForYou = false;
             round = 0;
             endAt = -1f;
             outsideSince = -1f;
         }
 
-        void HafdisWon()
+        // She has yielded: her farewell (ValhallaPeople.Ceremony: those who watched come to her, a word each,
+        // her last, the light), which ends it (Stop); and with it the tale (the world's keys first, so a
+        // farewell missed, leaving Valhalla in the middle of it, still leaves the tale done).
+        void HafdisWon(Character her)
         {
             Message("$iov_t5_won");
             Story.Set(HafdisWonKey);
-            endAt = Time.time + 11f; // (she kneels, says her last, and the light takes her)
+            Story.Set(ValhallaPeople.DoneKey);
+            EinherjarFighter f = her != null ? her.GetComponent<EinherjarFighter>() : null;
+            if (ValhallaPeople.Current != null && f != null)
+            {
+                f.ceremony = true;
+                endAt = Time.time + 300f; // (the ceremony ends it before then)
+                ValhallaPeople.Current.Ceremony(her);
+            }
+            else endAt = Time.time + 11f; // (she kneels, says her last, and the light takes her)
             Plugin.Debug("T5: Hafdís yielded");
         }
 
@@ -713,6 +753,7 @@ namespace IslandsOfValheim
                     if (f != null) f.Fight();
                     EyesOn(c, player);
                 }
+                if (ValhallaPeople.Current != null) ValhallaPeople.Current.Witnesses(true); // (Sævar and the captains come to watch)
                 Message("$iov_t5_bout");
                 Plugin.Debug("T5: Hafdís's bout begins");
                 return;
@@ -762,8 +803,9 @@ namespace IslandsOfValheim
             lastHealth = health;
             if (standing) return;
             // every one of them yielded: the next bout (a breath first, some health back), or the end
+            Character her = fighters.Count > 0 ? fighters[0] : null;
             fighters.Clear();
-            if (hafdisBout) { HafdisWon(); return; }
+            if (hafdisBout) { HafdisWon(her); return; }
             if (round >= 3) { Win(); return; }
             player.Heal(player.GetMaxHealth() * 0.35f, true);
             Next(round + 1);

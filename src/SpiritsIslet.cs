@@ -370,7 +370,7 @@ namespace IslandsOfValheim
         internal static string SaevarLine(Player player)
         {
             // once it stands again: to Hafdís at the rock's edge (T5); once she has yielded, not yet the end
-            if (Stage >= 2) return Story.Key(ValhallaDuel.HafdisWonKey) ? "$iov_valsaevar_t5won" : "$iov_valsaevar_t5";
+            if (Stage >= 2) return Story.Key(ValhallaPeople.DoneKey) ? "$iov_valsaevar_done" : Story.Key(ValhallaDuel.HafdisWonKey) ? "$iov_valsaevar_t5won" : "$iov_valsaevar_t5";
             if (!player.HaveSeenTutorial(ToldKey))
             {
                 player.SetSeenTutorial(ToldKey);

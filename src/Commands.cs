@@ -99,17 +99,17 @@ namespace IslandsOfValheim
                 }, true);
 
             new Terminal.ConsoleCommand("iov_t5",
-                "[duel|reset] - IslandsOfValheim (development): Hafdís: her bout in the ring now (duel, as if asked at the rock's edge), or undo it all (reset: not yet yielded, not yet met)",
+                "[duel|reset] - IslandsOfValheim (development): Hafdís: her bout in the ring now (duel, as if asked at the rock's edge), or undo it all (reset: not yet yielded, not yet met, the tale not done, Odin back on his high seat)",
                 args =>
                 {
                     string what = args.Length > 1 ? args[1].ToLowerInvariant() : "";
                     if (what == "reset")
                     {
-                        if (ZoneSystem.instance != null) ZoneSystem.instance.RemoveGlobalKey(ValhallaDuel.HafdisWonKey);
+                        if (ZoneSystem.instance != null) { ZoneSystem.instance.RemoveGlobalKey(ValhallaDuel.HafdisWonKey); ZoneSystem.instance.RemoveGlobalKey(ValhallaPeople.DoneKey); }
                         Player me = Player.m_localPlayer;
                         System.Reflection.FieldInfo field = HarmonyLib.AccessTools.Field(typeof(Player), "m_shownTutorials");
                         System.Collections.Generic.HashSet<string> seen = me != null && field != null ? field.GetValue(me) as System.Collections.Generic.HashSet<string> : null;
-                        if (seen != null) seen.Remove(ValhallaSpeaker.HafdisMetKey);
+                        if (seen != null) { seen.Remove(ValhallaSpeaker.HafdisMetKey); seen.Remove(ValhallaSpeaker.OdinSpokeKey); }
                         if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
                         if (ValhallaPeople.Current != null) ValhallaPeople.Current.Remake();
                         args.Context.AddString("Hafdís: not yet met, not yet yielded.");

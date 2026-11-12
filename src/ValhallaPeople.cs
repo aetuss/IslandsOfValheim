@@ -56,8 +56,13 @@ namespace IslandsOfValheim
 
         void Clear()
         {
-            if (making != null) StopCoroutine(making);
+            StopAllCoroutines(); // (the making, a farewell, those going in the light)
             making = null;
+            // (a farewell left in the middle: she goes with it)
+            if (farewellOf != null && farewellOf.GetComponent<ZNetView>() != null && farewellOf.GetComponent<ZNetView>().IsOwner() && ZNetScene.instance != null)
+                ZNetScene.instance.Destroy(farewellOf.gameObject);
+            farewellOf = null;
+            witnesses.Clear();
             foreach (GameObject go in made) if (go != null) Destroy(go);
             made.Clear();
             walkers.Clear();
@@ -107,6 +112,7 @@ namespace IslandsOfValheim
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
             CaptainsAtTable();
             HafdisAtTheEdge();
+            HafdisSpear();
             yield return null;
 
             // The feast: on the hall's benches, here one, there two, some places empty; every third with a
@@ -376,6 +382,137 @@ namespace IslandsOfValheim
             LightBeam.Over(go.transform.position, 3f, 1.8f, 0.9f, 2f, true);
             yield return new WaitForSeconds(1f);
             if (go != null) go.SetActive(!away);
+        }
+
+        // ---- her bout, and her farewell (T5) ----
+
+        // Those whose curse it was watch her bout: the four captains and Sævar, come in the light to the ring's
+        // west side (towards the hall), inside its columns and outside where you fight, facing its middle.
+        readonly List<SpiritHuman> witnesses = new List<SpiritHuman>();
+        static readonly string[] WitnessOrder = { TaleCaptains.Ketill, TaleCaptains.Sigrun, TaleCaptains.Ormr, TaleCaptains.Grimr, "" };
+        static readonly string[] WitnessLines = { "$iov_t5_ketill", "$iov_t5_sigrun", "$iov_t5_ormr", "$iov_t5_grimr", "$iov_t5_saevar" };
+
+        internal void Witnesses(bool come)
+        {
+            if (!come)
+            {
+                foreach (SpiritHuman w in witnesses)
+                    if (w != null) StartCoroutine(Going(w.gameObject, true, 0f));
+                witnesses.Clear();
+                return;
+            }
+            if (witnesses.Count > 0 || made.Count == 0) return;
+            for (int i = 0; i < WitnessOrder.Length; i++)
+            {
+                float a = (150f + i * 15f) * Mathf.Deg2Rad;
+                Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 11.3f, 0f, Ring.y + Mathf.Sin(a) * 11.3f);
+                string id = WitnessOrder[i];
+                SpiritHuman w = Stand(id.Length > 0 ? CaptainLook(id) : Saevar(), at, new Vector3(Ring.x - at.x, 0f, Ring.y - at.z), 4f);
+                if (w == null) continue;
+                Speaks(w, id.Length > 0 ? ValhallaSpeaker.Captain : ValhallaSpeaker.Saevar, 2.2f);
+                ValhallaSpeaker speaker = w.GetComponent<ValhallaSpeaker>();
+                if (speaker != null) speaker.captain = id;
+                LightBeam.Over(w.transform.position, 3.2f, 1.6f, 0.6f, 2.2f, true);
+                witnesses.Add(w);
+            }
+            Plugin.Debug("T5: " + witnesses.Count + " come to watch Hafdís's bout");
+        }
+
+        // Her farewell, once she has yielded: those who watched come to her where she kneels, in a half ring
+        // between her and the ring's middle, and each says a word; then she says her last and the light takes
+        // her. Then they go, the Allfather rises from Hliðskjálf, and Valhalla is as it is after the tale (Odin
+        // in the hall: Remake), her spear left lying where she knelt.
+        Character farewellOf;
+
+        internal void Ceremony(Character her)
+        {
+            farewellOf = her;
+            StartCoroutine(Farewell(her));
+        }
+
+        IEnumerator Farewell(Character her)
+        {
+            yield return new WaitForSeconds(3f);
+            if (her == null) yield break;
+            Vector3 at = transform.InverseTransformPoint(her.transform.position);
+            Vector2 inward = new Vector2(Ring.x - at.x, Ring.y - at.z).normalized;
+            if (inward == Vector2.zero) inward = Vector2.left;
+            for (int i = 0; i < witnesses.Count; i++)
+            {
+                if (witnesses[i] == null) continue;
+                float off = (-60f + i * 30f) * Mathf.Deg2Rad;
+                Vector2 d = new Vector2(inward.x * Mathf.Cos(off) - inward.y * Mathf.Sin(off), inward.x * Mathf.Sin(off) + inward.y * Mathf.Cos(off));
+                Vector3 to = new Vector3(at.x + d.x * 2.8f, 0f, at.z + d.y * 2.8f);
+                moves.Add(new Move { who = witnesses[i], to = to, end = transform.rotation * Quaternion.LookRotation(new Vector3(-d.x, 0f, -d.y)), back = false });
+            }
+            yield return new WaitForSeconds(6f);
+            for (int i = 0; i < witnesses.Count && i < WitnessLines.Length; i++)
+            {
+                ValhallaSpeaker speaker = witnesses[i] != null ? witnesses[i].GetComponent<ValhallaSpeaker>() : null;
+                if (speaker == null) continue;
+                speaker.Say(WitnessLines[i]);
+                yield return new WaitForSeconds(4.5f);
+            }
+            if (her != null && Chat.instance != null) Chat.instance.SetNpcText(her.gameObject, Vector3.up * 2.2f, 30f, 7f, "", "$iov_t5_farewell", false);
+            yield return new WaitForSeconds(6f);
+            if (her != null)
+            {
+                LightBeam.Over(her.transform.position, 5f, 1.8f, 1.2f, 2.6f, true);
+                BossKit.Effect("vfx_odin_despawn", her.transform.position);
+            }
+            yield return new WaitForSeconds(1.3f);
+            if (her != null && her.GetComponent<ZNetView>() != null && her.GetComponent<ZNetView>().IsOwner()) ZNetScene.instance.Destroy(her.gameObject);
+            farewellOf = null;
+            yield return new WaitForSeconds(3f);
+            Witnesses(false);
+            yield return new WaitForSeconds(2.5f);
+            if (MessageHud.instance != null) MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "$iov_t5_odin_rises");
+            BossKit.Effect("vfx_odin_despawn", ValhallaSpeaker.highSeat);
+            yield return new WaitForSeconds(2f);
+            if (ValhallaDuel.Current != null) ValhallaDuel.Current.Stop();
+            Plugin.Debug("T5: Hafdís's farewell done; Odin to the hall");
+            Remake();
+        }
+
+        // Her spear, lying where she knelt (the ring's north side, where she came in), once she's gone.
+        void HafdisSpear()
+        {
+            if (!Story.Key(ValhallaDuel.HafdisWonKey)) return;
+            GameObject item = PrefabManager.Instance.GetPrefab("SpearElderbark");
+            Transform look = item != null ? item.transform.Find("attach") : null;
+            if (look == null) return;
+            GameObject spear = Instantiate(look.gameObject, transform, false);
+            spear.name = "IoV_HafdisSpear";
+            spear.SetActive(true);
+            foreach (MonoBehaviour s in spear.GetComponentsInChildren<MonoBehaviour>(true)) DestroyImmediate(s);
+            foreach (Collider c in spear.GetComponentsInChildren<Collider>(true)) DestroyImmediate(c);
+            foreach (Rigidbody r in spear.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(r);
+            spear.transform.localScale = look.lossyScale;
+            Vector3 at = new Vector3(Ring.x + 0.6f, 0f, Ring.y + 7.5f);
+            spear.transform.localPosition = at;
+            spear.transform.localRotation = Quaternion.identity;
+            // lying on the ground: its long side level (east-west)
+            Bounds b = WorldBounds(spear);
+            Vector3 local = transform.InverseTransformVector(b.size);
+            if (Mathf.Abs(local.y) >= Mathf.Abs(local.x) && Mathf.Abs(local.y) >= Mathf.Abs(local.z)) spear.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            else if (Mathf.Abs(local.z) > Mathf.Abs(local.x)) spear.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            b = WorldBounds(spear);
+            float ground = Ground(at.x, at.z, 4f);
+            Vector3 bottom = transform.InverseTransformPoint(new Vector3(b.center.x, b.min.y, b.center.z));
+            spear.transform.localPosition += new Vector3(at.x - bottom.x, ground + 0.03f - bottom.y, at.z - bottom.z);
+            made.Add(spear);
+        }
+
+        static Bounds WorldBounds(GameObject go)
+        {
+            Bounds b = new Bounds(go.transform.position, Vector3.zero);
+            bool any = false;
+            foreach (Renderer r in go.GetComponentsInChildren<Renderer>())
+            {
+                if (!any) { b = r.bounds; any = true; }
+                else b.Encapsulate(r.bounds);
+            }
+            return b;
         }
 
         // ---- the tale's captains at the Brim Folk's table (T2: TaleCaptains) ----
