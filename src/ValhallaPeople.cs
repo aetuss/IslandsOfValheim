@@ -111,6 +111,8 @@ namespace IslandsOfValheim
             // at its head, between the two rows, looking out towards the way you come by.
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
             CaptainsAtTable();
+            yield return null;
+            count += SoulsAtTheFeast();
             HafdisAtTheEdge();
             HafdisSpear();
             yield return null;
@@ -362,6 +364,36 @@ namespace IslandsOfValheim
             return Add(SpiritHuman.MakeLocal(look, SpiritHuman.Sit, chair.m_attachAnimation, ghost, transform, at, piece.rotation * turn, right));
         }
 
+        // ---- the Brim Folk's feast ----
+
+        // Once Rán's net is torn (T3), the souls it held, set free, have come to their people's feast: pale, at
+        // the Brim Folk's tables under the golden birches, here one and there two, eating and drinking (the
+        // user found the tables empty all the tale long). Not the places kept for the captains. (In Valhalla
+        // still once their village stands again: spirits, they are at home in both.)
+        int SoulsAtTheFeast()
+        {
+            if (!RanNet.Done) return 0;
+            HashSet<Transform> kept = new HashSet<Transform>();
+            foreach (KeyValuePair<Transform, float> seat in captainSeats.Values) kept.Add(seat.Key);
+            int n = 0, b = 0;
+            foreach (Transform bench in Children("piece_bench01"))
+            {
+                Vector3 p = bench.localPosition;
+                if (Mathf.Abs(p.x - Feast.x) > 9f || Mathf.Abs(p.z - Feast.y) > 10f) continue; // (the Brim Folk's benches only)
+                b++;
+                foreach (float along in new[] { -0.55f, 0.55f })
+                {
+                    if (kept.Contains(bench)) continue;
+                    if (Pick(b * 2 + (along > 0f ? 1 : 0), 59) > 0.72f) continue; // (a few places empty)
+                    SpiritHuman soul = Seat(BrimFolk(n), bench, along, n % 3 == 1 ? "Tankard" : "", SpiritHuman.GhostSoft);
+                    Act(soul, Feaster, n * 4.3f + 2f);
+                    n++;
+                }
+            }
+            Plugin.Debug("Valhalla: " + n + " freed souls at the Brim Folk's feast");
+            return n;
+        }
+
         // ---- Hafdís (T5) ----
 
         // Alone at the rock's north-western edge, away from the hall, the Brim Folk's table and the Allfather's
@@ -403,8 +435,11 @@ namespace IslandsOfValheim
 
         // ---- her bout, and her farewell (T5) ----
 
-        // Those whose curse it was watch her bout: the four captains and Sævar, come in the light to the ring's
-        // west side (towards the hall), inside its columns and outside where you fight, facing its middle.
+        // Those whose curse it was watch her bout: the four captains and Sævar, come in the light to stand in a
+        // row inside the ring, just in front of its west column (on the hall's side; where the user pointed),
+        // facing its middle. (1.10.107-109 brought them among the columns themselves, 10 m out: some came
+        // with a column in front of them, and one stood in one.)
+        const float WitnessAngle = 180f, WitnessRow = 8.6f, WitnessApart = 1.15f;
         readonly List<SpiritHuman> witnesses = new List<SpiritHuman>();
         static readonly string[] WitnessOrder = { TaleCaptains.Ketill, TaleCaptains.Sigrun, TaleCaptains.Ormr, TaleCaptains.Grimr, "" };
         static readonly string[] WitnessLines = { "$iov_t5_ketill", "$iov_t5_sigrun", "$iov_t5_ormr", "$iov_t5_grimr", "$iov_t5_saevar" };
@@ -419,10 +454,12 @@ namespace IslandsOfValheim
                 return;
             }
             if (witnesses.Count > 0 || made.Count == 0) return;
+            float w0 = WitnessAngle * Mathf.Deg2Rad;
+            Vector2 outward = new Vector2(Mathf.Cos(w0), Mathf.Sin(w0)), along = new Vector2(-outward.y, outward.x);
             for (int i = 0; i < WitnessOrder.Length; i++)
             {
-                float a = (150f + i * 15f) * Mathf.Deg2Rad;
-                Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 11.3f, 0f, Ring.y + Mathf.Sin(a) * 11.3f);
+                Vector2 p = Ring + outward * WitnessRow + along * (i - (WitnessOrder.Length - 1) * 0.5f) * WitnessApart;
+                Vector3 at = new Vector3(p.x, 0f, p.y);
                 string id = WitnessOrder[i];
                 SpiritHuman w = Stand(id.Length > 0 ? CaptainLook(id) : Saevar(), at, new Vector3(Ring.x - at.x, 0f, Ring.y - at.z), 4f);
                 if (w == null) continue;
@@ -529,12 +566,14 @@ namespace IslandsOfValheim
             Vector3 at = new Vector3(Ring.x, 0f, Ring.y + 10.7f);
             spear.transform.localPosition = at;
             spear.transform.localRotation = Quaternion.identity;
-            // its long side, and its point: the end of it furthest from where it's held (its own middle, the hand)
+            // its long side, and its point: the end of it nearer where it's held (its own middle, the hand).
+            // (1.10.109 took the further end for the point, and the user's photos showed it standing point down:
+            // for this spear the further end is its shaft's foot.)
             Bounds own = OwnBounds(spear);
             Vector3 size = own.size;
             Vector3 axis = size.x >= size.y && size.x >= size.z ? Vector3.right : size.y >= size.z ? Vector3.up : Vector3.forward;
             float far = Vector3.Dot(own.max, axis), near = Vector3.Dot(own.min, axis);
-            Vector3 point = Mathf.Abs(far) >= Mathf.Abs(near) ? axis : -axis;
+            Vector3 point = Mathf.Abs(far) >= Mathf.Abs(near) ? -axis : axis;
             spear.transform.localRotation = Quaternion.FromToRotation(point, Vector3.up);
             // stood in the ground, a hand of it sunk
             Bounds b = WorldBounds(spear);
