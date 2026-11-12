@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.0
+
+Sævar's tale goes on, in Valhalla.
+
+- **Odin's call.** The morning after Sævar's tale ends, Hugin brings the Allfather's call, a light rises over the harbour, and a stone gate by Sævar's campfire wakes and takes you to Valhalla and back.
+- **Valhalla:** a rock floating over a sea of clouds in an endless golden dusk, with the Allfather's hall and its feast, the einherjar, Bragi the skald, the high seat Hliðskjálf, and Sævar with his people's ghosts.
+- **The tale, in five steps:**
+  - the einherjar's ring: three bouts, the last against their champion Starkaðr; nobody dies, the beaten kneel and yield;
+  - the four captains' wishes, each on their own islet of Sævar's tale;
+  - Rán's net in the Deep North waters, where the Brim Folk's fleet went down: break its knots, then its keeper, Hafgufa (a new boss);
+  - the Brim village, on an islet in sight of Sævar's harbour: cleared and built again with what its altar asks, with a house of your own and a yard to build on;
+  - Hafdís, once their finest shield-maiden, in an honour duel, and a farewell.
+- **At the end** the Allfather sits in his hall, and the Brim Folk come home to their village: at its tables, at their trades, on its pier, in its lanes. Sævar is there too, and by his old fire at the harbour.
+- **Rewards**, each written in your compendium: Starkaðr's Oath (he comes to your side when you're hard pressed, once a day), the Drowned's Debt (they mend your breaking ship, once a day), your house in the village, the Gifts of the Brim Folk (a longer rest in your house, Sævar's goods 20% cheaper) and the Allfather's Blessing (skills rise 10% faster, 25% less skill loss on death).
+- The Brim village has a white house on the map, like the harbour's anchor.
+- Existing worlds: the pass that adds missing islets runs once more, for the new islet of Rán's net; nothing already there is touched. The village and Valhalla come by themselves when the tale gets to them.
+- New texts in English and Turkish.
+
 ## 1.10.2
 
 - Fixed: fish caught on an islet's fishing ground never reached the mod. The game picks up a fish another way than the mod was watching, so Sigrún's fragment was never found in her fish, and the sodden pouches never came up. Both work again.
