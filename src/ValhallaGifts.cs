@@ -58,8 +58,8 @@ namespace IslandsOfValheim
             Player player = Player.m_localPlayer;
             if (player == null || player.IsDead() || EnvMan.instance == null || ZNet.instance == null) return;
             bool oath = Story.Key(ValhallaDuel.WonKey), debt = RanNet.Done;
-            Told(player, OathTold, oath, "$iov_oath_given", 9f, ref oathSeen);
-            Told(player, DebtTold, debt, "$iov_drowned_given", 16f, ref debtSeen); // (after Rán's last words)
+            Told(player, OathTold, oath, "$iov_oath_given", "$iov_oath_page", 9f, ref oathSeen);
+            Told(player, DebtTold, debt, "$iov_drowned_given", "$iov_debt_page", 16f, ref debtSeen); // (after Rán's last words)
             Oath(player);
             Debt(player);
         }
@@ -72,13 +72,17 @@ namespace IslandsOfValheim
         internal const string OathTold = "iovoathtold", DebtTold = "iovdebttold";
         float oathSeen = -1f, debtSeen = -1f;
 
-        static void Told(Player player, string key, bool have, string line, float after, ref float seen)
+        // (and written in the compendium, with what it does: the user looked for the rewards there, 1.10.124;
+        // given again if it's lost, as the tale's pages are)
+        static void Told(Player player, string key, bool have, string line, string page, float after, ref float seen)
         {
-            if (!have || player.HaveSeenTutorial(key)) { seen = -1f; return; }
+            if (have && player.HaveSeenTutorial(key)) { player.AddKnownText(page, page + "_text"); seen = -1f; return; }
+            if (!have) { seen = -1f; return; }
             if (seen < 0f) { seen = Time.time; return; }
             if (Time.time - seen < after || ValhallaDuel.Active) return;
             player.SetSeenTutorial(key);
             player.Message(MessageHud.MessageType.Center, line);
+            player.AddKnownText(page, page + "_text");
         }
 
         // ---- once a day ----

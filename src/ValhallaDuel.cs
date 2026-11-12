@@ -509,7 +509,13 @@ namespace IslandsOfValheim
             {
                 kneelPending = false;
                 Emote("emote_kneel");
+                // held there: nothing to push it about while it kneels (1.10.124: the champion knelt, and got up
+                // as the user moved off; a body nudged walks, and walking ends an emote)
+                Rigidbody rb = GetComponent<Rigidbody>();
+                if (rb != null) { rb.velocity = Vector3.zero; rb.constraints = RigidbodyConstraints.FreezeAll; } // (not kinematic: the game sets a body's velocity every step)
+                kneltAt = Time.time;
             }
+            KneelWatch();
             // (Hafdís kneels longer: her words first; through her farewell, if there's one: the ceremony takes her)
             if (ceremony) return;
             float stays = hafdis ? 9f : 3.5f;
@@ -523,7 +529,23 @@ namespace IslandsOfValheim
         }
 
         bool kneelPending;
-        float kneelAt;
+        float kneelAt, kneltAt = -1f;
+        int kneelState, lastState;
+
+        // (for the log: should it still get up, what it got up into, and its speed then)
+        void KneelWatch()
+        {
+            if (kneltAt < 0f) return;
+            Animator animator = GetComponentInChildren<Animator>();
+            if (animator == null) return;
+            int state = animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+            if (Time.time - kneltAt < 1.2f) { kneelState = lastState = state; return; }
+            if (state == lastState) return;
+            lastState = state;
+            if (state != kneelState)
+                Plugin.Debug("Duel: " + body.m_name + ", kneeling, changed pose (state " + state + ", walking " + animator.GetFloat("forward_speed").ToString("F2") + ", player " +
+                    (Player.m_localPlayer != null ? Vector3.Distance(Player.m_localPlayer.transform.position, transform.position).ToString("F1") + " m off" : "?") + ")");
+        }
 
         // A pose held by a switch (as the champion's challenge), let go.
         void Unset(string name)

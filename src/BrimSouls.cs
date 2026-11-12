@@ -82,6 +82,8 @@ namespace IslandsOfValheim
                 everyone.Add(person);
             }
             Plugin.Debug((village ? "Brim village: " : "Harbour: ") + made.Count + " of the Brim Folk at home (" + walkers.Count + " walking)");
+            // what their homecoming gives you, in the compendium (OdinBlessing; again, if it's been lost)
+            if (village && made.Count > 0 && player.HaveSeenTutorial(ArrivedKey)) player.AddKnownText("$iov_brimgifts_page", "$iov_brimgifts_page_text");
             // the first time you come to the village after the tale's end, a word of it
             if (village && made.Count > 0 && !player.HaveSeenTutorial(ArrivedKey))
             {
@@ -90,6 +92,7 @@ namespace IslandsOfValheim
                 // and what their homecoming gives you (OdinBlessing): the hearth of your house, Sævar's prices
                 player.Message(MessageHud.MessageType.TopLeft, "$iov_hearth_given");
                 player.Message(MessageHud.MessageType.TopLeft, "$iov_friend_given");
+                player.AddKnownText("$iov_brimgifts_page", "$iov_brimgifts_page_text");
             }
         }
 

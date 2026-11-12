@@ -187,6 +187,7 @@ namespace IslandsOfValheim
                     view.GetZDO().SetPosition(go.transform.position);
                     view.GetZDO().SetRotation(go.transform.rotation);
                     if (mark != null) view.GetZDO().Set(mark, true);
+                    if (go.GetComponent<Bed>() != null) view.GetZDO().Set(BedTurnedKey, true); // (laid the right way)
                     if (doors)
                     {
                         view.GetZDO().Set(DoorKey, true);
@@ -262,7 +263,45 @@ namespace IslandsOfValheim
                 if (!Home(__instance)) return;
                 Keep(__instance.gameObject);
                 homePieces.Add(__instance.transform);
+                TurnBed(__instance);
             }
+        }
+
+        // The house's beds, put in by 1.10.89-124 the wrong way round (their heads to the room, the user saw):
+        // turned about where they lie, once, by their owner (the ones put in since lie right: BedTurnedKey).
+        const string BedTurnedKey = "IoV_T4BedTurned";
+
+        // (and from the altar, now and then, for any its owner didn't own as it loaded)
+        internal static void TurnBeds()
+        {
+            homePieces.RemoveAll(t => t == null);
+            foreach (Transform t in homePieces)
+            {
+                WearNTear piece = t.GetComponent<WearNTear>();
+                ZNetView view = t.GetComponent<ZNetView>();
+                if (piece == null || view == null || !view.IsValid() || t.GetComponent<Bed>() == null || view.GetZDO().GetBool(BedTurnedKey)) continue;
+                if (!view.IsOwner()) view.ClaimOwnership();
+                TurnBed(piece);
+            }
+        }
+
+        static void TurnBed(WearNTear piece)
+        {
+            ZNetView view = piece.GetComponent<ZNetView>();
+            if (piece.GetComponent<Bed>() == null || view == null || !view.IsValid() || !view.IsOwner() || view.GetZDO().GetBool(BedTurnedKey)) return;
+            Bounds drawn = new Bounds();
+            bool any = false;
+            foreach (Renderer r in piece.GetComponentsInChildren<Renderer>())
+            {
+                if (r is ParticleSystemRenderer || !r.enabled) continue;
+                if (!any) { drawn = r.bounds; any = true; } else drawn.Encapsulate(r.bounds);
+            }
+            if (!any) return;
+            piece.transform.RotateAround(drawn.center, Vector3.up, 180f);
+            view.GetZDO().SetPosition(piece.transform.position);
+            view.GetZDO().SetRotation(piece.transform.rotation);
+            view.GetZDO().Set(BedTurnedKey, true);
+            Plugin.Debug("Brim village: a bed of the player's house turned the right way round");
         }
 
         // The pieces of the player's house in the Brim village loaded here (its beds, chests, fires): whether a
@@ -495,6 +534,7 @@ namespace IslandsOfValheim
                 foreach (Light l in GetComponentsInChildren<Light>(true)) l.enabled = show;
             }
             if (view == null || !view.IsValid() || !view.IsOwner()) return;
+            SpiritsIslet.TurnBeds();
             if (!view.GetZDO().GetBool(SpiritsIslet.DoorsKey))
             {
                 view.GetZDO().Set(SpiritsIslet.DoorsKey, true);

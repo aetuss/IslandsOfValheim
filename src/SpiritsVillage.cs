@@ -888,7 +888,7 @@ namespace IslandsOfValheim
             Vector3 bed = HomeSize("bed"), chest = HomeSize("piece_chest");
             float bedW = Mathf.Min(bed.x, bed.z), bedL = Mathf.Max(bed.x, bed.z);
             foreach (float s in new[] { -1f, 1f })
-                homeLocal.Add(new HomePiece { Prefab = new[] { "bed" }, At = new Vector3(s * (wallIn - bedW * 0.5f - 0.05f), 0f, backIn - bedL * 0.5f - 0.05f), AlongZ = true });
+                homeLocal.Add(new HomePiece { Prefab = new[] { "bed" }, At = new Vector3(s * (wallIn - bedW * 0.5f - 0.05f), 0f, backIn - bedL * 0.5f - 0.05f), AlongZ = true, Yaw = 180f }); // (its head to the back wall: 1.10.89-124's lay the wrong way round, the user saw)
             float chestDepth = chest.z > 0.05f ? chest.z : 0.8f;
             foreach (float z in new[] { 0.6f, -1.2f })
                 homeLocal.Add(new HomePiece { Prefab = new[] { "piece_chest", "piece_chest_wood" }, At = new Vector3(wallIn - chestDepth * 0.5f - 0.05f, 0f, z), Yaw = -90f });
