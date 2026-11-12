@@ -855,13 +855,26 @@ namespace IslandsOfValheim
         }
 
         // Moved out from a side wall (side 1 right, -1 left) until its inner side is a hand clear of the wall's
-        // outer face (1.10.94's piles reached into the houses).
+        // outer face (1.10.94's piles reached into the houses), and set down on the ground there: a house's
+        // floor is as high as the highest ground under it, and outside, where the ground falls away, 1.10.89-116
+        // left the piles, hives and barrels at the floor's height, in the air (the user's photo, 1.10.116).
         static void Out(GameObject go, float side, float wall)
         {
             if (go == null) return;
             Bounds b = LocalBounds(go);
             float inner = side > 0f ? b.min.x : -b.max.x;
             go.transform.localPosition += new Vector3(side * (wall + 0.12f - inner), 0f, 0f);
+            foreach (FramePose f in frames)
+            {
+                if (f.Frame != parent) continue;
+                Bounds nb = LocalBounds(go);
+                Vector3 w = f.At + Quaternion.Euler(0f, f.Yaw, 0f) * new Vector3(nb.center.x, 0f, nb.center.z);
+                float ground = GroundMin(w.x, w.z, 0.4f * Mathf.Max(nb.size.x, nb.size.z)) - 0.05f;
+                float drop = ground - f.At.y - nb.min.y;
+                go.transform.localPosition += Vector3.up * drop;
+                Plugin.Debug("Brim village: " + go.name + " outside a house set on the ground, " + drop.ToString("F2") + " m");
+                break;
+            }
         }
 
         // Where the real pieces of the player's house go, in the house's own space (turned into the islet's
