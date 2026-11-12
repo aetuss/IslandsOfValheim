@@ -1,6 +1,6 @@
 # IslandsOfValheim
 
-Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, a few large islets with a vanilla dungeon or a stronghold and life of their own, and a sea trader with a tale to tell, a tale that goes on to Valhalla. Works in new and existing worlds.
+Small islands out at sea with old ruins, dvergr outposts, guards and treasure, tougher the further you sail from the centre, a few large islets with a vanilla dungeon or a stronghold and life of their own, and a sea trader with a tale to tell, one that doesn't end where it seems to. Works in new and existing worlds.
 
 Needs [Jötunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/).
 
@@ -20,7 +20,6 @@ Valheim's ocean is mostly empty water between continents. This mod puts small is
 - **Fishing grounds** around about half the islets (see below).
 - **Large islets**, three of each kind, each of its own design, some guarded, some peaceful. Their ground is the game's own: dig, level and farm on it (see below).
 - **The sea trader**, the last of the people who built the islet ruins, keeps a harbour on one islet (see below).
-- **Valhalla.** When his tale is over, the Allfather calls you to his hall, high above the clouds, and the tale goes on there (from 2.0.0, see below).
 
 The further from the world centre, the tougher the islet:
 
@@ -144,31 +143,9 @@ Four of the tale's foes are bosses of their own, each with its own look, words a
 | Ormr | Deep North waters | The second keeper. He goes into a mist and comes out behind you, his crew's shades fight for him, and at the end the curse feeds him: what he deals you heals him. |
 | Hafdís | Deep North waters | The last keeper. Her feathers rain down where you're heading (a gold light marks the spot), the sea drags you to her, her claws reach whoever stands under her, and at the end she calls the storm. |
 
-## Valhalla
+## The tale goes on (2.0.0)
 
-Sævar's tale ends with him going into the light. It isn't the end of the Brim Folk's. The next morning Odin's raven Hugin brings his call, a light rises over Sævar's harbour, and the old stone gate beside his campfire wakes. Step through it.
-
-Valhalla is a rock floating over a sea of clouds, in an endless golden dusk: the Allfather's hall with its feast, the einherjar fighting and feasting, his high seat Hliðskjálf, Bragi the skald, and Sævar, at peace at last. His people are not: they died cursed, and the cursed dead don't come to Valhalla. Help him gather them, a step at a time, and the Brim Folk go home.
-
-- **The ring.** The einherjar want to see what kind of guest Odin has brought: three bouts in their ring, one against one, two at once, and last their champion, Starkaðr. Nobody dies in the ring: a beaten fighter kneels and yields, and so are you spared.
-- **The captains.** Ketill, Sigrún, Ormr and Grímr wait at the Brim Folk's table as pale ghosts, each held by something left undone on their own islet. Do it for them, and each becomes whole again.
-- **Rán's net.** Most of the Brim Folk drowned, and Rán keeps the drowned in her net, far out in the Deep North waters where the masts of their sunken fleet still stand out of the sea. Her beast Hafgufa keeps it. Break the net's glowing knots from your ship first, then the beast. It can break your ship there, but never sink it.
-- **The Brim village.** The Brim Folk's old village lies in ruins on an islet in sight of Sævar's harbour (a white house marks it on your map). Bring its altar what it asks and it's cleared, then built again, house by house, and the one beside the hall is yours, with its own beds, chests and fires, and a yard where you may build.
-- **Hafdís.** One more must find peace before the Brim Folk can go home: the first who carried the curse, once their finest shield-maiden. She will be tested once more, not as a warden of the curse but as a shield-maiden.
-
-Then the Allfather comes down to his hall, and the Brim Folk come home to their village: you'll find them at its tables, at their trades, on its pier and in its lanes, and Sævar too, by his old fire at the harbour and on the village pier.
-
-What you're given along the way, each written in your compendium:
-
-| When | Reward |
-|---|---|
-| You beat Starkaðr in the ring | **Starkaðr's Oath:** when your health falls below 25% with a foe near, he comes down in the light at your side and fights for a minute, or until no foes are left. Once a day. |
-| You tear Rán's net | **The Drowned's Debt:** when the ship you're on falls below 25% of her hull, the souls you freed rise from the sea and mend her to half. Once a day. |
-| The village stands again | Your house in the Brim village and its yard. |
-| The Brim Folk come home | **Gifts of the Brim Folk:** resting in your house, your rest lasts 50% longer; Sævar's goods cost 20% less. |
-| You speak with the Allfather in his hall | **The Allfather's Blessing:** all your skills rise 10% faster, and you lose 25% less of them when you die. |
-
-Valhalla and the village can't be built on (but for your yard). The Valhalla tale has only been tested in single player so far.
+Sævar's tale has a second part: a new place to reach, new tasks and foes, rewards, and more. It begins once his tale has ended.
 
 ## Dvergr outposts
 
@@ -181,7 +158,7 @@ Now and then you arrive in the middle of a fight: Seekers have come ashore and t
 Valheim decides where locations go when a world is created, and only builds them when someone first comes near.
 
 - **New world:** islets are there from the start.
-- **Existing world:** once per world, the server (or the host, or you in single player) adds the islets the world is missing, Sævar's harbour and the islets of his tale too. Most go where nobody has sailed yet and appear when someone gets there. Only if a kind's ring has no such sea left, a few are built in ocean you've already sailed, well away from anything players built, from ships and from players. It runs about ten seconds after the world loads and writes what it added to the log. `PlaceInExistingWorlds` turns it off, and `iov_placeislets` runs it again. With 2.0.0 it runs once more in worlds that had it before, to add the Valhalla tale's islet; nothing already there is touched. The Brim village and Valhalla come by themselves, when the tale gets to them.
+- **Existing world:** once per world, the server (or the host, or you in single player) adds the islets the world is missing, Sævar's harbour and the islets of his tale too. Most go where nobody has sailed yet and appear when someone gets there. Only if a kind's ring has no such sea left, a few are built in ocean you've already sailed, well away from anything players built, from ships and from players. It runs about ten seconds after the world loads and writes what it added to the log. `PlaceInExistingWorlds` turns it off, and `iov_placeislets` runs it again. With 2.0.0 it runs once more in worlds that had it before, to add the new islet of the tale's second part. Nothing already there is touched.
 ## Bigger worlds
 
 The distances above are for a vanilla-sized world. With [Expand World Size](https://thunderstore.io/c/valheim/p/JereKuusela/Expand_World_Size/) the rings grow with the world radius (that mod moves every location's distances itself), so a Meadows islet is still near the centre and Ashlands islets are still far out. The outer ring is split by a line running east-west through the world centre, the same way the game divides the Deep North from the Ashlands, so that stays true in any world size.
@@ -210,7 +187,7 @@ To change a text, or to add a language, put a file of your own in `BepInEx/confi
 
 ## Multiplayer
 
-**Note:** Multiplayer and dedicated servers haven't been tested yet. It's built to work there, but if something seems off, please report it on GitHub Issues.
+**Note:** Multiplayer and dedicated servers haven't been tested yet. It's built to work there, but if something seems off, please report it on GitHub Issues. The tale's second part has only been tested in single player so far.
 
 Install it on the server and on every player's game: the islands are part of the world, and everyone needs the mod to see them. Jötunn checks that everyone has the same version.
 
