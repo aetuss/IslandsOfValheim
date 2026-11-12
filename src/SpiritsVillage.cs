@@ -1332,8 +1332,10 @@ namespace IslandsOfValheim
                 roofFrame.transform.localPosition = new Vector3(at.x, 0f, at.y);
                 parent = keep;
                 // its fire in an iron basket (1.10.98's bonfire burned up into its roof and over the railing)
-                // its keeper at a corner of the gallery, looking out to sea (T5 done)
-                SoulAt(new Vector3(at.x + Mathf.Sign(at.x) * 2.45f, walk, at.y + Mathf.Sign(at.y) * 2.45f), new Vector3(at.x, 0f, at.y).sqrMagnitude > 1f ? new Vector3(at.x, 0f, at.y) : Vector3.forward);
+                // its keeper in the middle of the gallery's side away from the village (between the roof's posts,
+                // in front of the fire), looking straight out over its rail (T5 done; 1.10.113-114 had him in a
+                // corner, looking slantwise: the user marked the spot)
+                SoulAt(new Vector3(at.x, walk, at.y + Mathf.Sign(at.y) * 2.45f), new Vector3(0f, 0f, Mathf.Sign(at.y)));
                 GameObject fire = SpProp(new[] { "fire_pit_iron", "fire_pit" }, new Vector3(at.x, walk, at.y), 0f, false, -1, true);
                 if (fire != null)
                 {
