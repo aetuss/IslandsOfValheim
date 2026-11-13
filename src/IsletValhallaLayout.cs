@@ -849,9 +849,9 @@ namespace IslandsOfValheim
             // golden birches and a few oaks: round the Brim Folk's feast, the west and the rim
             Vector2[] trees =
             {
-                // (-29.5, 16.5: off the kitchen's north-west corner, clear of its roof; it stood at -24, 12, in the
-                // oven, then at -26, 13.5, where the roof's corner now is)
-                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-29.5f, 16.5f),
+                // (-29, 22: north of the gap between the kitchen's and the feast's roofs; it stood at -24, 12, in the
+                // oven, at -26, 13.5, where the kitchen roof's corner now is, and at -29.5, 16.5, in the feast roof's corner)
+                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-29f, 22f),
                 new Vector2(-58f, -14f), new Vector2(-36f, -22f), new Vector2(26f, 46f), new Vector2(50f, 34f), new Vector2(-22f, 50f),
                 new Vector2(70f, 8f),
             };
@@ -1040,8 +1040,9 @@ namespace IslandsOfValheim
             foreach (float dx in new[] { -9.5f, 9.5f })
                 foreach (float dz in new[] { -11.5f, 11.5f })
                     SkyProp("piece_groundtorch_wood", new Vector3(Feast.x + dx, 0f, Feast.y + dz), Vector3.zero);
-            // and over the tables an open shelter along them, three posts down each side (IsletValhallaPavilion)
-            Shelter(Feast, G(Feast.x, Feast.y), 6.8f, new[] { -9f, 0f, 9f }, 4, 3f);
+            // and over the tables an open shelter along them, a post at each corner (IsletValhallaPavilion; the
+            // middle ones, between the tables, the user had out)
+            Shelter(Feast, G(Feast.x, Feast.y), 6.8f, new[] { -9f, 9f }, 4, 3.4f);
         }
 
         // ---- Andhrímnir's kitchen, west of the hall's door ----
@@ -1130,7 +1131,8 @@ namespace IslandsOfValheim
             // (no braziers at its corners: the user had them out; the hearth, the pot's fire and the oven light it)
             // and over it all an open shelter, its ridge north to south, a post at each corner of the paving
             // (IsletValhallaPavilion)
-            Shelter(Kitchen, floor, 4.6f, new[] { -5f, 5f }, 3, 3f);
+            // (posts 3.6 m: the eaves at 2.2 m under the steep roof)
+            Shelter(Kitchen, floor, 4.6f, new[] { -5f, 5f }, 3, 3.6f);
         }
 
         // Bigger by so much, still standing where it stood (its foot on the same ground, its middle the same).

@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // user's garden pavilion copied (2.0.22 laid a four-sided hip roof of thatch tiles ring by ring by measured
     // sizes: its tiles sloped along the rows, stepped, with gaps, a hole at the top; the user: a reference is to
     // be taken from, not copied). Here: ashwood posts (the Ashlands' red wood) down both long sides, beams along
-    // their tops and tied across, a thatch roof sloping two ways to a thatch ridge, laid as the Brim village's
+    // their tops and tied across, a steep thatch roof sloping two ways to a thatch ridge, laid as the Brim village's
     // thatch roofs are (the hall's own way, by the pieces' snap points: IsletBuilder.Roof); and at each gable end
     // two boards along the roof's edges, crossed over the ridge, as on the old halls. Nothing of the hall's or
     // the high seat's (their darkwood).
@@ -47,7 +47,8 @@ namespace IslandsOfValheim
             string beam = Prefab(new[] { "Ashwood_beam_2m", "ashwood_beam_2m" }, "ashwood", "beam", "2m");
             if (pole == null) pole = "wood_pole2";
             if (beam == null) beam = "wood_beam";
-            const string Thatch = "wood_roof", ThatchCap = "wood_roof_top";
+            // (at 45°, as the Brim village's thatch: 2.0.23's at 26° looked squat to the user)
+            const string Thatch = "wood_roof_45", ThatchCap = "wood_roof_top_45";
             float top = floor + height;
             const float BeamThick = 0.26f, PostThick = 0.32f;
             float zMin = float.MaxValue, zMax = float.MinValue;
@@ -75,7 +76,7 @@ namespace IslandsOfValheim
             foreach (float zEnd in new[] { z0, z1 })
                 foreach (float side in new[] { -1f, 1f })
                 {
-                    Vector3 low = new Vector3(c.x + side * (outer + 0.2f), eave + over - 0.2f * slope, zEnd);
+                    Vector3 low = new Vector3(c.x + side * outer, eave + over, zEnd);
                     Vector3 high = new Vector3(c.x - side * past, eave + (outer + past) * slope + over, zEnd);
                     Stick(beam, low, high, BeamThick * 0.9f);
                 }
