@@ -36,14 +36,19 @@ namespace IslandsOfValheim
         const float ServeWalk = 1.3f, ServePause = 2.6f;
         static readonly Vector2 HallMiddle = new Vector2(0f, 22f);
 
+        static readonly string[] ValkyrieHair = { "Hair11", "Hair13", "Hair6" };
+
         static SpiritHuman.Look Valkyrie(int i)
         {
             Vector3[] hair = { new Vector3(0.88f, 0.76f, 0.5f), new Vector3(0.93f, 0.88f, 0.72f), new Vector3(0.75f, 0.55f, 0.3f) };
             return new SpiritHuman.Look
             {
-                Model = 1, Hair = WomenHair[(i * 2) % WomenHair.Length], HairColor = hair[i % hair.Length], SkinColor = Vector3.one * 0.97f,
+                // long hair, loose or braided (the game's Long Braid, Twin Braids, Long and Loose: 2.0.19's bun, curls
+                // and gathered braids looked like men to the user)
+                Model = 1, Hair = ValkyrieHair[i % ValkyrieHair.Length], HairColor = hair[i % hair.Length], SkinColor = Vector3.one * 0.97f,
                 // (a white linen cape: 2.0.19's feather one, the Fallen Valkyrie's, came black and to the floor)
-                Chest = "ArmorWolfChest", Legs = "ArmorWolfLegs", Shoulder = "CapeLinen",
+                // (in bronze: 2.0.19's wolf armour glittered green)
+                Chest = "ArmorBronzeChest", Legs = "ArmorBronzeLegs", Shoulder = "CapeLinen",
             };
         }
 
