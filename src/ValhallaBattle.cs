@@ -8,7 +8,7 @@ namespace IslandsOfValheim
     // another; at the evening meal all rise whole and drink together). On the meadow south-west of the yard
     // (IsletBuilder.Battlefield), four pairs fight from Valhalla's dawn to its sunset, by the world's clock so
     // every player sees the same: by turns one swings and the other takes it on his shield, as the ring's pair
-    // do; now and then one of a pair goes down and lies a while, his foe standing over him, then rises in a
+    // do; now and then one of a pair is beaten and down on his knee a while, his foe over him, then rises in a
     // soft gold glow and fights on. At sunset they fade away (to the feast in the hall); at dawn they come back.
     // Their old master stands at the field's north edge: talk to him.
     partial class ValhallaPeople
@@ -21,7 +21,7 @@ namespace IslandsOfValheim
             internal string[] arms;           // right, left of one; right, left of the other
             internal float period, offset;    // its round (fight, one falls, he rises), by the world's clock
             internal long last = long.MinValue;
-            internal bool down;
+            internal bool down, glowing;
             internal SpiritHuman fallen;
         }
 
@@ -106,24 +106,30 @@ namespace IslandsOfValheim
                 double clock = now + f.offset;
                 double t = clock % f.period;
                 long round = (long)(clock / f.period);
-                // each round: fighting, then one goes down (each round the other one), lies a while, and rises
+                // each round: fighting, then one is beaten (each round the other one) and goes down on his knee
+                // as the ring's yielded do, stays down a while, and rises: the gold glow swells first and he
+                // stands at its brightest. (2.0.11 laid him on his back, hands behind his head, the game's
+                // "rest": the user found it a day at the beach; and the glow came only as he stood, out of step.)
                 SpiritHuman loser = round % 2 == 0 ? f.one : f.other, winner = loser == f.one ? f.other : f.one;
-                bool lying = t >= 48.0 && t < 72.0;
+                const double DownAt = 48.0, UpAt = 68.0;
+                bool lying = t >= DownAt && t < UpAt;
                 if (lying && !f.down)
                 {
                     f.down = true;
+                    f.glowing = false;
                     f.fallen = loser;
                     loser.blocking = winner.blocking = false;
-                    loser.Trigger("emote_rest");
+                    loser.Trigger("emote_kneel");
+                }
+                if (lying && f.down && !f.glowing && t >= UpAt - GlowRise && f.fallen != null)
+                {
+                    f.glowing = true;
+                    StartCoroutine(Glow(f.fallen.transform.position));
                 }
                 else if (!lying && f.down)
                 {
                     f.down = false;
-                    if (f.fallen != null)
-                    {
-                        f.fallen.Trigger("emote_stop");
-                        StartCoroutine(Glow(f.fallen.transform.position));
-                    }
+                    if (f.fallen != null) f.fallen.Trigger("emote_stop");
                     f.fallen = null;
                 }
                 if (f.down) continue;
@@ -214,18 +220,21 @@ namespace IslandsOfValheim
             Destroy(person.gameObject);
         }
 
-        // A soft gold glow where one rises: a light that swells and fades (no beam: those are the Allfather's).
+        // A soft gold glow where one rises: a light that swells and fades (no beam: those are the Allfather's),
+        // at its brightest GlowRise seconds after it starts.
+        const float GlowRise = 1.3f;
+
         IEnumerator Glow(Vector3 at)
         {
             GameObject go = new GameObject("IoV_RiseGlow");
             go.transform.SetParent(transform, false); // (gone with Valhalla's people, if they go first)
-            go.transform.position = at + Vector3.up * 1.1f;
+            go.transform.position = at + Vector3.up * 0.9f;
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = new Color(1f, 0.82f, 0.45f);
             light.range = 4.5f;
             light.shadows = LightShadows.None;
-            const float Takes = 2.6f;
+            const float Takes = GlowRise * 2f;
             for (float t = 0f; t < Takes; t += Time.deltaTime)
             {
                 if (light == null) yield break;
