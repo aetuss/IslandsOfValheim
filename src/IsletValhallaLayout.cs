@@ -1051,14 +1051,24 @@ namespace IslandsOfValheim
                 Plugin.Debug("Valhalla: Eldhrímnir's fire " + SkyBounds(fire).size.ToString("F2") + " m, its top at " + SkyBounds(fire).max.y.ToString("F2") + "; the tripod's feet at " + SkyBounds(pot).min.y.ToString("F2"));
             if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m over its fire");
 
+            // the spit on a stone hearth, as the hall's are (2.0.3-2.0.5 had it over the raised iron fire basket)
             Vector3 s = f + new Vector3(0f, 0f, 3.4f);
-            SkyProp("fire_pit_iron", s, Vector3.zero);
+            GameObject hearth = SkyProp("hearth", s, Vector3.zero);
             List<Transform> slots = new List<Transform>();
             GameObject spit = SkyProp("piece_cookingstation_iron", s, Vector3.zero, false, go =>
             {
                 CookingStation c = go.GetComponent<CookingStation>();
                 if (c != null && c.m_slots != null) foreach (Transform slot in c.m_slots) if (slot != null) slots.Add(slot);
             });
+            if (spit != null && hearth != null)
+            {
+                Bounds hb = SkyBounds(hearth), sb = SkyBounds(spit);
+                if ((sb.size.x > sb.size.z) != (hb.size.x > hb.size.z))
+                {
+                    spit.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * spit.transform.localRotation;
+                    Put(spit, s, false);
+                }
+            }
             if (spit != null)
             {
                 // (its steam, on a spit with nothing cooking, hung over the hooks as still white tufts)
