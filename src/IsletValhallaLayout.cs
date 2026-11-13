@@ -27,8 +27,9 @@ namespace IslandsOfValheim
         internal static readonly Vector2 RingMasterAt = new Vector2(DuelRing.x + 11f, DuelRing.y - 15.5f);
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
         static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
-        // Andhrímnir's kitchen: west of the hall's door, between the hall and the Brim Folk's feast (Eldhrímnir there)
-        internal static readonly Vector2 Kitchen = new Vector2(-16f, 2f);
+        // Andhrímnir's kitchen: west of the hall's door, between the hall and the Brim Folk's feast (Eldhrímnir
+        // there); its paving 3.5 m clear of the hall guard's round (x -11.5: 2.0.4-2.0.6 had him walk through it)
+        internal static readonly Vector2 Kitchen = new Vector2(-20f, 2f);
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }
@@ -1022,12 +1023,11 @@ namespace IslandsOfValheim
         // ---- Andhrímnir's kitchen, west of the hall's door ----
 
         // A paved square of black marble (10 x 10 m). In its middle Eldhrímnir, the einherjar's great pot, a
-        // tall tripod over its fire (half again the game's size: the pot no one has seen the bottom of); north
-        // of it Sæhrímnir roasting whole on an iron spit over a fire of its own; west, behind the cook, a stone
-        // oven, a preparing table and a stack of wood; south a laid table and barrels; a chest; a brazier at
-        // each corner. Andhrímnir himself (ValhallaPeople) stands west of the pot, looking over it to the hall.
-        // (1.10/2.0.3's first kitchen was a pot, a spit and a table on the grass: the user found it too plain
-        // for Valhalla.)
+        // tripod over a fire on the ground; north of it Sæhrímnir roasting whole on an iron spit on a stone
+        // hearth; west, behind the cook, a stone oven and a preparing table; the wood in the south-west corner;
+        // south a laid table and barrels; a chest. Andhrímnir himself (ValhallaPeople) stands west of the pot,
+        // looking over it to the hall. (2.0.3's first kitchen was a pot, a spit and a table on the grass: the
+        // user found it too plain for Valhalla.)
         static void ValhallaKitchen()
         {
             Vector3 k = new Vector3(Kitchen.x, 0f, Kitchen.y);
@@ -1043,10 +1043,9 @@ namespace IslandsOfValheim
             // The pot is a tripod that hangs it: a fire on the ground under it, its legs on the paving round
             // it. (2.0.3 stood the tripod on the raised iron fire basket, its feet 0.7 m up in the air on the
             // basket's rim; a raised basket inside the legs doesn't fit either.)
+            // (the game's own size: half again as big stood twice the cook's height, 2.0.4-2.0.6)
             GameObject fire = SkyProp(PrefabManager.Instance.GetPrefab("fire_pit") != null ? "fire_pit" : "fire_pit_iron", f, Vector3.zero);
-            Grow(fire, 1.4f, f);
             GameObject pot = SkyProp("piece_cauldron", f, Vector3.zero);
-            Grow(pot, 1.5f, f);
             if (fire != null && pot != null)
                 Plugin.Debug("Valhalla: Eldhrímnir's fire " + SkyBounds(fire).size.ToString("F2") + " m, its top at " + SkyBounds(fire).max.y.ToString("F2") + "; the tripod's feet at " + SkyBounds(pot).min.y.ToString("F2"));
             if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m over its fire");
@@ -1078,16 +1077,22 @@ namespace IslandsOfValheim
 
             SkyProp("piece_oven", f + new Vector3(-3.9f, 0f, 2.2f), new Vector3(0f, 90f, 0f));
             SkyProp("piece_preptable", f + new Vector3(-3.9f, 0f, -1.4f), new Vector3(0f, 90f, 0f));
-            SkyProp("wood_stack", f + new Vector3(-3.6f, 0f, 4.3f), Vector3.zero);
+            // the wood in the south-west corner, all of it on the paving (2.0.4-2.0.6 had it by the oven, out
+            // over the paving's edge, a brazier on top of it)
+            GameObject wood = SkyProp("wood_stack", f + new Vector3(-3.6f, 0f, -3.9f), Vector3.zero);
+            if (wood != null)
+            {
+                Bounds wb = SkyBounds(wood);
+                float outX = Mathf.Max(0f, (k.x - 4.8f) - wb.min.x), outZ = Mathf.Max(0f, (k.z - 4.8f) - wb.min.z);
+                if (outX > 0f || outZ > 0f) wood.transform.localPosition += new Vector3(outX, 0f, outZ);
+            }
             SkyProp("piece_chest_wood", f + new Vector3(2.8f, 0f, 3.8f), new Vector3(0f, -90f, 0f));
             GameObject table = SkyProp("piece_table", f + new Vector3(0f, 0f, -3.2f), Vector3.zero);
             Laid(table, meals++);
             SkyProp("barrell", f + new Vector3(2.3f, 0f, -3.3f), Vector3.zero);
             SkyProp("barrell", f + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
             SkyProp("barrell", f + new Vector3(3.3f, 0f, -2.9f), new Vector3(0f, 75f, 0f));
-            foreach (float dx in new[] { -4.6f, 4.6f })
-                foreach (float dz in new[] { -4.6f, 4.6f })
-                    Lamp("piece_brazierfloor01", "piece_groundtorch", f + new Vector3(dx, 0f, dz));
+            // (no braziers at its corners: the user had them out; the hearth, the pot's fire and the oven light it)
         }
 
         // Bigger by so much, still standing where it stood (its foot on the same ground, its middle the same).
@@ -1156,7 +1161,7 @@ namespace IslandsOfValheim
             Plugin.Debug("Valhalla: Sæhrímnir on the spit (" + slots.Count + " places for meat, the bar at " + bar.ToString("F2") + "), " + b.size.ToString("F2") + " m, scale " + scale.ToString("F2"));
         }
 
-        static readonly Color Roasted = new Color(0.62f, 0.38f, 0.2f);
+        static readonly Color Roasted = new Color(0.85f, 0.56f, 0.32f); // (0.62/0.38/0.2 came out near black on its dark hide)
 
         // ---- the einherjar's yard, by the duel ring ----
 

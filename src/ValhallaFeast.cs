@@ -62,9 +62,10 @@ namespace IslandsOfValheim
     }
 
     // Sæhrímnir on its spit (IsletBuilder.RoastingBoar): once Valhalla stands, what's drawn of the boar is
-    // measured as the game draws it (its bones' doing) and moved so its middle is on the spit's bar; anything
-    // of it switched off is switched on. Logged, to see where it was. (Its field public: the location's copy
-    // keeps it.)
+    // measured as the game draws it (its bones' doing) and moved so its middle is on the spit's bar. Logged.
+    // (2.0.3's was drawn 50 m below the spit, so it wasn't seen. 2.0.4-2.0.6 also switched on what of it was
+    // off, 4 of its 6 parts: likely the game's other looks of a boar, drawn over each other, dark. Now only
+    // what the game itself shows.) (Its field public: the location's copy keeps it.)
     class RoastOnSpit : MonoBehaviour
     {
         public Vector3 bar; // the spit's bar, in this holder's space
@@ -75,19 +76,17 @@ namespace IslandsOfValheim
             if (boar == null) return;
             bool any = false;
             Bounds drawn = new Bounds();
-            int renderers = 0, off = 0;
-            foreach (Renderer r in boar.GetComponentsInChildren<Renderer>(true))
+            int shown = 0;
+            foreach (Renderer r in boar.GetComponentsInChildren<Renderer>(false))
             {
-                if (r is ParticleSystemRenderer) continue;
-                renderers++;
-                if (!r.gameObject.activeSelf) { r.gameObject.SetActive(true); off++; }
-                if (!r.enabled) { r.enabled = true; off++; }
+                if (r is ParticleSystemRenderer || !r.enabled) continue;
+                shown++;
                 if (!any) { drawn = r.bounds; any = true; }
                 else drawn.Encapsulate(r.bounds);
             }
             if (!any) { Plugin.Debug("Valhalla: Sæhrímnir has nothing to draw"); return; }
             Vector3 want = transform.TransformPoint(bar);
-            Plugin.Debug("Valhalla: Sæhrímnir drawn at " + drawn.center.ToString("F2") + ", " + drawn.size.ToString("F2") + " m (" + renderers + " parts, " + off + " switched on); the bar at " + want.ToString("F2"));
+            Plugin.Debug("Valhalla: Sæhrímnir drawn at " + drawn.center.ToString("F2") + ", " + drawn.size.ToString("F2") + " m (" + shown + " parts); the bar at " + want.ToString("F2"));
             boar.position += want - drawn.center;
         }
     }
