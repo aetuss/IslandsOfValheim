@@ -18,6 +18,7 @@ namespace IslandsOfValheim
         internal const string PrefabName = "IoV_Einherjar", ChampionPrefab = "IoV_EinherjarChampion";
         internal const string HafdisPrefab = "IoV_HafdisDuelist"; // T5: Hafdís as she was, a shield-maiden
         internal const string AllyPrefab = "IoV_StarkadrAlly";    // the champion's oath: at your side (ChampionOath)
+        internal const string BattlePrefab = "IoV_EinherjarBattle"; // the daily battle's (ValhallaBattle)
 
         internal static void Register()
         {
@@ -25,6 +26,26 @@ namespace IslandsOfValheim
             Make(ChampionPrefab, true, "$iov_starkadr");
             Make(HafdisPrefab, true, "$iov_hafdis");
             Make(AllyPrefab, false, "$iov_starkadr");
+            Make(BattlePrefab, false, "$iov_einherjar");
+            // the daily battle's: hunting no player, seeing only as far as the field (their one foe is on it), and
+            // drifting about their place when he's down
+            GameObject battler = PrefabManager.Instance.GetPrefab(BattlePrefab);
+            if (battler != null)
+            {
+                MonsterAI ai = battler.GetComponent<MonsterAI>();
+                ai.m_enableHuntPlayer = false;
+                ai.m_viewRange = ai.m_hearRange = ai.m_alertRange = 18f;
+                ai.m_maxChaseDistance = 18f;
+                ai.m_randomMoveRange = 2.5f;
+                ai.m_randomMoveInterval = 4f;
+                battler.GetComponent<EinherjarFighter>().battle = true;
+                Humanoid body = battler.GetComponent<Humanoid>();
+                bool falls = false;
+                if (body.m_deathEffects != null && body.m_deathEffects.m_effectPrefabs != null)
+                    foreach (EffectList.EffectData e in body.m_deathEffects.m_effectPrefabs)
+                        if (e != null && e.m_prefab != null && e.m_prefab.GetComponent<Ragdoll>() != null) falls = true;
+                Plugin.Log.LogInfo("Duel: " + BattlePrefab + (falls ? ", its body falls when it dies" : ": NO falling body in its death effects"));
+            }
             // on your side: the players' own (so he goes for whatever is your foe, and never for you or your
             // tamed beasts: BaseAI.IsEnemy), hunting no player
             GameObject ally = PrefabManager.Instance.GetPrefab(AllyPrefab);
@@ -146,7 +167,66 @@ namespace IslandsOfValheim
         {
             body = GetComponent<Character>();
             ai = GetComponent<MonsterAI>();
+            if (battle && body != null) Battle[body] = this;
         }
+
+        void OnDestroy() { if (body != null) Battle.Remove(body); }
+
+        // ---- the daily battle's (ValhallaBattle) ----
+
+        // the daily battle's own, by his body (public flag: the prefab's copies keep it)
+        internal static readonly Dictionary<Character, EinherjarFighter> Battle = new Dictionary<Character, EinherjarFighter>();
+        public bool battle;
+        internal bool leaving; // at sunset, fading away
+        const string SlotKey = "IoV_BattleSlot", BornKey = "IoV_BattleBorn";
+        int slot = -1;
+
+        // His place on the field (pair * 2 + side), kept with him so every game knows his foe.
+        internal int Slot
+        {
+            get
+            {
+                if (slot < 0)
+                {
+                    ZNetView nview = GetComponent<ZNetView>();
+                    if (nview != null && nview.IsValid()) slot = nview.GetZDO().GetInt(SlotKey, 0) - 1;
+                }
+                return slot;
+            }
+        }
+
+        internal void Place(int index)
+        {
+            slot = index;
+            ZNetView nview = GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid()) return;
+            nview.GetZDO().Set(SlotKey, index + 1);
+            nview.GetZDO().Set(BornKey, (float)ZNet.instance.GetTimeSeconds());
+        }
+
+        float hiddenUntil = -1f;
+
+        // Just made (not just come into view): the gold glow swells where he rises, and he's there at its
+        // brightest (unseen till then, his mind too).
+        void Rising()
+        {
+            ZNetView nview = GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid() || ZNet.instance == null) return;
+            float born = nview.GetZDO().GetFloat(BornKey, -1f);
+            if (born < 0f || ZNet.instance.GetTimeSeconds() - born > 2.0) return;
+            if (ValhallaPeople.Current != null) ValhallaPeople.Current.RiseGlow(transform.position);
+            hiddenUntil = Time.time + ValhallaPeople.GlowRise;
+            Hidden(true);
+        }
+
+        void Hidden(bool on)
+        {
+            foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) if (r != null) r.forceRenderingOff = on;
+            if (ai != null && nview2 != null && nview2.IsOwner()) ai.enabled = !on;
+            if (body != null && on) body.SetMoveDir(Vector3.zero);
+        }
+
+        ZNetView nview2 { get { return GetComponent<ZNetView>(); } }
 
         // The player's body starts out waking up, sitting on the ground (the player's own script lets it get
         // up; this one has no such script): up at once.
@@ -156,6 +236,7 @@ namespace IslandsOfValheim
             if (animator != null) animator.SetBool("wakeup", false);
             Looks();
             Invoke("Looks", 0.5f); // (and again, after the game's own setting up of a creature's looks)
+            if (battle) Rising();
         }
 
         // The body and hair asked for, set on it as the game sets a player's (a creature's are otherwise its
@@ -500,6 +581,13 @@ namespace IslandsOfValheim
         // at its brightest it's gone).
         void Update()
         {
+            if (hiddenUntil > 0f)
+            {
+                // (his gear comes onto him a moment after he's made: kept unseen with him)
+                bool still = Time.time < hiddenUntil;
+                if (!still) hiddenUntil = -1f;
+                Hidden(still);
+            }
             if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
             if (!yielded && body != null && waiting) { Wait(); return; }
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
@@ -588,6 +676,7 @@ namespace IslandsOfValheim
             static bool Prefix(Character __0, ref bool __result)
             {
                 EinherjarFighter f = __0 != null ? __0.GetComponent<EinherjarFighter>() : null;
+                if (f != null && f.battle) { __result = false; return false; } // (the daily battle's: no bars at all)
                 if (f == null || !f.yielded) return true;
                 __result = false;
                 return false;
@@ -603,6 +692,7 @@ namespace IslandsOfValheim
             {
                 if (__instance.IsDead() || __instance.GetHealth() > 0f) return true;
                 EinherjarFighter fighter = __instance.GetComponent<EinherjarFighter>();
+                if (fighter != null && fighter.battle) return true; // (the daily battle's die, and rise again)
                 if (fighter != null)
                 {
                     __instance.SetHealth(1f);

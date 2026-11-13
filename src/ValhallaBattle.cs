@@ -1,32 +1,38 @@
 using System.Collections;
 using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 
 namespace IslandsOfValheim
 {
     // The einherjar's daily battle (Gylfaginning: every day they arm themselves, go out and fight and fell one
-    // another; at the evening meal all rise whole and drink together). On the meadow south-west of the yard
-    // (IsletBuilder.Battlefield), four pairs fight from Valhalla's dawn to its sunset, by the world's clock so
-    // every player sees the same: by turns one swings and the other takes it on his shield, as the ring's pair
-    // do; now and then one of a pair is beaten and down on his knee a while, his foe over him, then rises in a
-    // soft gold glow and fights on. At sunset they fade away (to the feast in the hall); at dawn they come back.
-    // Their old master stands at the field's north edge: talk to him.
+    // another; at the evening meal all rise whole and drink together). On the meadow west of the yard
+    // (IsletBuilder.Battlefield), from Valhalla's dawn to its sunset, four pairs fight for real: the ring's own
+    // fighters (the player's body with a creature's mind, EinherjarFighter), each with his one foe, moving about
+    // the field and trading real blows. One whose health runs out dies as anyone does (the body falls), and a
+    // while later rises where he began, in a soft gold glow, and goes back at his foe. At sunset they fade away
+    // (to the feast in the hall); at dawn they come back. Their old master stands at the field's north edge.
+    //
+    // (2.0.11-2.0.13 were the town's people acting it out by the clock, one swinging, one guarding, a loser
+    // kneeling: the user asked for a real fight, as the ring's, moving about, dying and coming back.)
+    //
+    // They are networked creatures, made (and unmade at sunset) by one game: of the players near the field, the
+    // one who joined first (the lowest user id), so two never make the same man; any other sees that one's.
+    // They touch nobody but their own foe, and nothing but their foe touches them (BattleRules).
     partial class ValhallaPeople
     {
-        class Fighter
+        class Slot
         {
-            internal SpiritHuman one, other;
-            internal SpiritHuman.Look lookOne, lookOther;
-            internal Vector3 atOne, atOther;
-            internal string[] arms;           // right, left of one; right, left of the other
-            internal float period, offset;    // its round (fight, one falls, he rises), by the world's clock
-            internal long last = long.MinValue;
-            internal bool down, glowing;
-            internal SpiritHuman fallen;
+            internal int index;               // pair index * 2 + side
+            internal SpiritHuman.Look look;
+            internal string right, left;
+            internal Vector3 home;            // where he starts and rises, in the rock's space
+            internal float missingSince = -1f;
         }
 
-        readonly List<Fighter> battle = new List<Fighter>();
+        readonly List<Slot> battle = new List<Slot>();
         bool battleOn;
+        float nextBattleTick;
 
         static readonly string[][] BattleArms =
         {
@@ -35,6 +41,10 @@ namespace IslandsOfValheim
             new[] { "AxeIron", "ShieldWood", "SwordSilver", "ShieldSilver" },
             new[] { "MaceBronze", "ShieldBanded", "SwordIron", "ShieldWood" },
         };
+
+        const float RiseAfter = 10f;     // dead this long, he rises again
+        const float FieldReach = 11f;    // past this from the field's middle, he gives up his chase and comes back
+        const float BattleHealth = 250f;
 
         // Fighting from Valhalla's dawn to its sunset (the sun's place: 0.25 sunrise, 0.745 the sunset begins).
         internal static bool BattleTime()
@@ -45,7 +55,7 @@ namespace IslandsOfValheim
             return t >= 0.25f && t < 0.745f;
         }
 
-        // The pairs and their master; n: the next einherjar's face. Gives back the next.
+        // The pairs' places and looks, and their master; n: the next einherjar's face. Gives back the next.
         int Battlefield(int n)
         {
             Vector2 c = IsletBuilder.Battlefield;
@@ -53,17 +63,16 @@ namespace IslandsOfValheim
             for (int i = 0; i < spots.Length; i++)
             {
                 Vector2 p = c + spots[i];
-                Fighter f = new Fighter
+                string[] arms = BattleArms[i % BattleArms.Length];
+                for (int side = 0; side < 2; side++)
                 {
-                    lookOne = Warrior(n++, true), lookOther = Warrior(n++, true),
-                    atOne = new Vector3(p.x - 1.3f, 0f, p.y), atOther = new Vector3(p.x + 1.3f, 0f, p.y),
-                    arms = BattleArms[i % BattleArms.Length],
-                    period = 80f + i * 9f, offset = i * 23f,
-                };
-                battle.Add(f);
+                    Vector3 home = new Vector3(p.x + (side == 0 ? -1.5f : 1.5f), 0f, p.y);
+                    home.y = Ground(home.x, home.z, 4f);
+                    battle.Add(new Slot { index = i * 2 + side, look = Warrior(n++, true), right = arms[side * 2], left = arms[side * 2 + 1], home = home });
+                }
             }
             battleOn = BattleTime();
-            if (battleOn) foreach (Fighter f in battle) Arm(f);
+            nextBattleTick = 0f;
             // (his spear on his back, as a player's put away: held, the game's spear stance carried it level at
             // his hip, odd on one standing and watching)
             SpiritHuman master = Stand(BattleMaster(), new Vector3(c.x, 0f, c.y + 8.5f), Vector3.back, 4f);
@@ -84,13 +93,27 @@ namespace IslandsOfValheim
             };
         }
 
-        void Arm(Fighter f)
+        Vector3 FieldWorld()
         {
-            f.one = Stand(f.lookOne, f.atOne, Vector3.right, 4f, f.arms[0], f.arms[1]);
-            f.other = Stand(f.lookOther, f.atOther, Vector3.left, 4f, f.arms[2], f.arms[3]);
-            f.down = false;
-            f.fallen = null;
-            f.last = long.MinValue;
+            Vector2 c = IsletBuilder.Battlefield;
+            return transform.TransformPoint(new Vector3(c.x, IsletBuilder.SkyGround(c.x, c.y), c.y));
+        }
+
+        // This game makes and unmakes them: of the players near the field, the one who joined first.
+        bool BattleRunner()
+        {
+            Player me = Player.m_localPlayer;
+            if (me == null || ZNetScene.instance == null) return false;
+            Vector3 field = FieldWorld();
+            if (Vector3.Distance(me.transform.position, field) > 120f) return false;
+            long mine = me.GetZDOID().UserID;
+            foreach (Player p in Player.GetAllPlayers())
+            {
+                if (p == null || p == me) continue;
+                if (Vector3.Distance(p.transform.position, field) > 120f) continue;
+                if (p.GetZDOID().UserID < mine) return false;
+            }
+            return true;
         }
 
         void Battles(double now)
@@ -101,75 +124,102 @@ namespace IslandsOfValheim
             {
                 battleOn = day;
                 bool seen = Near(IsletBuilder.Battlefield, 80f);
-                foreach (Fighter f in battle) StartCoroutine(day ? Arrive(f, seen) : Leave(f, seen));
+                if (!day) foreach (EinherjarFighter f in new List<EinherjarFighter>(EinherjarFighter.Battle.Values)) StartCoroutine(Leave(f, seen));
+                foreach (Slot s in battle) s.missingSince = -1000f; // (at dawn, all at once)
                 Plugin.Debug("Valhalla: the daily battle " + (day ? "begins" : "ends: to the feast"));
             }
-            if (!battleOn) return;
-            foreach (Fighter f in battle)
+            if (Time.time < nextBattleTick) return;
+            nextBattleTick = Time.time + 0.5f;
+            if (!BattleRunner()) return;
+            // who's on the field, by his place (and any second one for a place, from two games at once: gone)
+            EinherjarFighter[] by = new EinherjarFighter[battle.Count];
+            foreach (EinherjarFighter f in new List<EinherjarFighter>(EinherjarFighter.Battle.Values))
             {
-                if (f.one == null || f.other == null) continue;
-                double clock = now + f.offset;
-                double t = clock % f.period;
-                long round = (long)(clock / f.period);
-                // each round: fighting, then one is beaten (each round the other one) and goes down on his knee
-                // as the ring's yielded do, stays down a while, and rises: the gold glow swells first and he
-                // stands at its brightest. (2.0.11 laid him on his back, hands behind his head, the game's
-                // "rest": the user found it a day at the beach; and the glow came only as he stood, out of step.)
-                SpiritHuman loser = round % 2 == 0 ? f.one : f.other, winner = loser == f.one ? f.other : f.one;
-                const double DownAt = 48.0, UpAt = 68.0;
-                bool lying = t >= DownAt && t < UpAt;
-                if (lying && !f.down)
-                {
-                    f.down = true;
-                    f.glowing = false;
-                    f.fallen = loser;
-                    loser.blocking = winner.blocking = false;
-                    loser.Trigger("emote_kneel");
-                }
-                if (lying && f.down && !f.glowing && t >= UpAt - GlowRise && f.fallen != null)
-                {
-                    f.glowing = true;
-                    StartCoroutine(Glow(f.fallen.transform.position));
-                }
-                else if (!lying && f.down)
-                {
-                    f.down = false;
-                    if (f.fallen != null) f.fallen.Trigger("emote_stop");
-                    f.fallen = null;
-                }
-                if (f.down) continue;
-                // A real exchange: by turns (3.5 s) one attacks with three swings and the other takes them on his
-                // shield. In the round's last 14 s its loser gives way: his foe attacks two turns of three, the
-                // last two of those swings get through (he reels from each), and just before he goes down comes
-                // one last blow. (2.0.11-2.0.12: they only took turns, one swinging and one guarding, to the end:
-                // the user asked how anyone lost that.)
-                bool late = t >= DownAt - 14.0, last = t >= DownAt - 1.0;
-                long turnOf = (long)(t / 3.5);
-                bool winnerAttacks = last || (late ? turnOf % 3 != 2 : (turnOf + round) % 2 == 0);
-                SpiritHuman swinger = winnerAttacks ? winner : loser, guard = winnerAttacks ? loser : winner;
-                int k = (int)(t - turnOf * 3.5);
-                bool through = last || (late && winnerAttacks && k >= 1);
-                guard.blocking = !through;
-                swinger.blocking = false;
-                long slot = (long)(clock / 1.0);
-                if (slot != f.last)
-                {
-                    f.last = slot;
-                    if (last) { winner.Strike(0, null); StartCoroutine(Reel(loser, 0.4f)); }
-                    else if (k >= 0 && k < 3)
-                    {
-                        if (through) { swinger.Strike(k, null); StartCoroutine(Reel(guard, 0.4f)); }
-                        else swinger.Strike(k, guard);
-                    }
-                }
+                if (f == null || f.leaving) continue;
+                int i = f.Slot;
+                Character body = f.GetComponent<Character>();
+                if (i < 0 || i >= by.Length || body == null || body.IsDead()) continue;
+                if (!battleOn || by[i] != null) { Unmake(f); continue; }
+                by[i] = f;
+                Leash(f, body);
+            }
+            if (!battleOn) return;
+            foreach (Slot s in battle)
+            {
+                if (by[s.index] != null) { s.missingSince = -1f; continue; }
+                if (s.missingSince == -1f) { s.missingSince = Time.time; continue; }
+                if (Time.time - s.missingSince < RiseAfter) continue;
+                s.missingSince = -1f;
+                Rise(s);
             }
         }
 
-        // Struck: he reels from the blow as it lands (the game's stagger).
-        static IEnumerator Reel(SpiritHuman who, float after)
+        // Too far off chasing his foe: he lets him go and comes back to his place (his foe comes too, and on it goes).
+        void Leash(EinherjarFighter f, Character body)
         {
-            yield return new WaitForSeconds(after);
-            if (who != null) who.Trigger("stagger");
+            ZNetView nview = f.GetComponent<ZNetView>();
+            if (nview == null || !nview.IsOwner()) return;
+            Vector3 at = transform.InverseTransformPoint(body.transform.position);
+            Vector2 c = IsletBuilder.Battlefield;
+            if (new Vector2(at.x - c.x, at.z - c.y).magnitude < FieldReach) return;
+            MonsterAI ai = body.GetComponent<MonsterAI>();
+            if (ai == null) return;
+            Traverse t = Traverse.Create(ai);
+            t.Field("m_targetCreature").SetValue(null);
+            t.Method("SetAlerted", new[] { typeof(bool) }).GetValue(false);
+        }
+
+        // One back on the field: made where he began, dressed as he was; the glow comes on every game that sees
+        // him come (EinherjarFighter.Rising).
+        void Rise(Slot s)
+        {
+            GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(EinherjarFighter.BattlePrefab) : null;
+            Humanoid template = prefab != null ? prefab.GetComponent<Humanoid>() : null;
+            if (template == null || ObjectDB.instance == null) { Plugin.Log.LogWarning("Valhalla: no " + EinherjarFighter.BattlePrefab); return; }
+            List<GameObject> items = new List<GameObject>();
+            foreach (string name in new[] { s.right, s.left, s.look.Helmet, s.look.Chest, s.look.Legs, s.look.Shoulder })
+            {
+                GameObject item = string.IsNullOrEmpty(name) ? null : ObjectDB.instance.GetItemPrefab(name);
+                if (item != null) items.Add(item);
+            }
+            template.m_defaultItems = items.ToArray();
+            Traverse.Create(template).Field("m_hairItem").SetValue(s.look.Hair ?? "");
+            Traverse.Create(template).Field("m_beardItem").SetValue(s.look.Beard ?? "");
+            Vector3 at = transform.TransformPoint(s.home);
+            Vector3 face = transform.rotation * (s.index % 2 == 0 ? Vector3.right : Vector3.left);
+            GameObject go = Instantiate(prefab, at + Vector3.up * 0.3f, Quaternion.LookRotation(face));
+            template.m_defaultItems = new GameObject[0];
+            Character body = go.GetComponent<Character>();
+            body.SetMaxHealth(BattleHealth);
+            body.SetHealth(BattleHealth);
+            EinherjarFighter me = go.GetComponent<EinherjarFighter>();
+            if (me != null)
+            {
+                me.modelWanted = s.look.Model;
+                me.hairWanted = s.look.Hair ?? "";
+                me.beardWanted = s.look.Beard ?? "";
+                me.Place(s.index);
+                me.QuickerSoon(1.2f, 1.6f);
+            }
+            VisEquipment vis = go.GetComponent<VisEquipment>();
+            if (vis != null)
+            {
+                vis.SetModel(s.look.Model);
+                vis.SetHairColor(s.look.HairColor);
+                vis.SetSkinColor(s.look.SkinColor);
+            }
+            MonsterAI ai = go.GetComponent<MonsterAI>();
+            if (ai != null) Traverse.Create(ai).Method("SetPatrolPoint", new[] { typeof(Vector3) }).GetValue(at);
+            Plugin.Debug("Valhalla: battle place " + s.index + " rises (" + s.right + ", " + s.left + ")");
+        }
+
+        void Unmake(EinherjarFighter f)
+        {
+            if (f == null) return;
+            ZNetView nview = f.GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid() || ZNetScene.instance == null) return;
+            if (!nview.IsOwner()) nview.ClaimOwnership();
+            ZNetScene.instance.Destroy(f.gameObject);
         }
 
         bool Near(Vector2 place, float within)
@@ -180,72 +230,49 @@ namespace IslandsOfValheim
             return new Vector2(you.x - place.x, you.z - place.y).magnitude < within;
         }
 
-        // Sunset: each fades away where he stands (a pale copy of him in his place, and that fading out); far off,
-        // just gone.
-        IEnumerator Leave(Fighter f, bool seen)
+        // Sunset: each fades away where he stands (a pale copy of him in his place, on every game that sees it,
+        // and that fading out; the man himself unmade by the game that made him); far off, just gone.
+        IEnumerator Leave(EinherjarFighter f, bool seen)
         {
-            SpiritHuman[] two = { f.one, f.other };
-            SpiritHuman.Look[] looks = { f.lookOne, f.lookOther };
-            f.one = f.other = null;
-            f.down = false;
-            f.fallen = null;
-            List<SpiritHuman> pale = new List<SpiritHuman>();
-            for (int i = 0; i < 2; i++)
+            if (f == null) yield break;
+            f.leaving = true;
+            int i = f.Slot;
+            Slot s = i >= 0 && i < battle.Count ? battle.Find(x => x.index == i) : null;
+            SpiritHuman ghost = null;
+            if (seen && s != null)
             {
-                if (two[i] == null) continue;
-                if (seen)
-                {
-                    SpiritHuman ghost = SpiritHuman.MakeLocal(looks[i], SpiritHuman.Stand, "", SpiritHuman.GhostSoft, transform,
-                        two[i].transform.position, two[i].transform.rotation, f.arms[i * 2], f.arms[i * 2 + 1]);
-                    if (ghost != null) { pale.Add(ghost); made.Add(ghost.gameObject); }
-                }
+                ghost = SpiritHuman.MakeLocal(s.look, SpiritHuman.Stand, "", SpiritHuman.GhostSoft, transform, f.transform.position, f.transform.rotation, s.right, s.left);
+                if (ghost != null) made.Add(ghost.gameObject);
             }
             // (a ghost is only seen once it's dressed, a second on: the man stays until then)
-            if (pale.Count > 0) yield return new WaitForSeconds(1.2f);
-            foreach (SpiritHuman man in two) Gone(man);
-            if (pale.Count == 0) yield break;
+            if (ghost != null) yield return new WaitForSeconds(1.2f);
+            if (f != null && BattleRunner()) Unmake(f);
+            if (ghost == null) yield break;
             List<Material> mats = new List<Material>();
             List<Color> from = new List<Color>();
-            foreach (SpiritHuman g in pale)
-                foreach (Renderer r in g.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (r == null || r is ParticleSystemRenderer) continue;
-                    foreach (Material m in r.sharedMaterials)
-                        if (m != null && m.HasProperty("_Color") && m.renderQueue >= 3000) { mats.Add(m); from.Add(m.color); }
-                }
+            foreach (Renderer r in ghost.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r is ParticleSystemRenderer) continue;
+                foreach (Material m in r.sharedMaterials)
+                    if (m != null && m.HasProperty("_Color") && m.renderQueue >= 3000) { mats.Add(m); from.Add(m.color); }
+            }
             const float Takes = 3f;
             for (float t = 0f; t < Takes; t += Time.deltaTime)
             {
                 float k = Mathf.SmoothStep(0f, 1f, t / Takes);
-                for (int i = 0; i < mats.Count; i++)
-                    if (mats[i] != null) { Color c = from[i]; c.a *= 1f - k; mats[i].color = c; }
-                foreach (SpiritHuman g in pale) if (g != null) foreach (Light l in g.GetComponentsInChildren<Light>(true)) l.intensity *= 0.97f;
+                for (int m = 0; m < mats.Count; m++)
+                    if (mats[m] != null) { Color c = from[m]; c.a *= 1f - k; mats[m].color = c; }
+                if (ghost != null) foreach (Light l in ghost.GetComponentsInChildren<Light>(true)) l.intensity *= 0.97f;
                 yield return null;
             }
-            foreach (SpiritHuman g in pale) Gone(g);
-        }
-
-        // Dawn: back on the field, each with the gold glow of one who rises (unseen far off).
-        IEnumerator Arrive(Fighter f, bool seen)
-        {
-            Arm(f);
-            if (seen && f.one != null) StartCoroutine(Glow(f.one.transform.position));
-            if (seen && f.other != null) StartCoroutine(Glow(f.other.transform.position));
-            yield break;
-        }
-
-        void Gone(SpiritHuman person)
-        {
-            if (person == null) return;
-            made.Remove(person.gameObject);
-            everyone.Remove(person);
-            foreach (Actor a in actors) if (a.who == person) a.who = null;
-            Destroy(person.gameObject);
+            if (ghost != null) { made.Remove(ghost.gameObject); everyone.Remove(ghost); Destroy(ghost.gameObject); }
         }
 
         // A soft gold glow where one rises: a light that swells and fades (no beam: those are the Allfather's),
         // at its brightest GlowRise seconds after it starts.
-        const float GlowRise = 1.3f;
+        internal const float GlowRise = 1.3f;
+
+        internal void RiseGlow(Vector3 at) { StartCoroutine(Glow(at)); }
 
         IEnumerator Glow(Vector3 at)
         {
@@ -265,6 +292,67 @@ namespace IslandsOfValheim
                 yield return null;
             }
             Destroy(go);
+        }
+    }
+
+    // The battle's rules: each fights his own foe only (the other of his pair) and harms nobody else; nothing
+    // but his foe harms him (not you, not a fall); a blow takes about the same off him whatever the weapon and
+    // armour (so a fight lasts about as long each time); no bar over their heads; and they really die (the
+    // ring's own never do: NoDeathInTheRing) and fall as the game's bodies fall, looking as they did.
+    static class BattleRules
+    {
+        const float Blow = 22f; // health a landed blow takes, about
+
+        [HarmonyPatch(typeof(BaseAI), "IsEnemy", new[] { typeof(Character), typeof(Character) })]
+        static class Foes
+        {
+            static bool Prefix(Character __0, Character __1, ref bool __result)
+            {
+                if (EinherjarFighter.Battle.Count == 0 || __0 == null || __1 == null) return true;
+                EinherjarFighter a, b;
+                bool inA = EinherjarFighter.Battle.TryGetValue(__0, out a), inB = EinherjarFighter.Battle.TryGetValue(__1, out b);
+                if (!inA && !inB) return true;
+                __result = inA && inB && a != null && b != null && !a.leaving && !b.leaving &&
+                    a.Slot >= 0 && b.Slot >= 0 && a.Slot / 2 == b.Slot / 2 && a.Slot != b.Slot;
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(Character), "Damage")]
+        static class Blows
+        {
+            static bool Prefix(Character __instance, HitData __0)
+            {
+                if (EinherjarFighter.Battle.Count == 0 || __0 == null || !EinherjarFighter.Battle.ContainsKey(__instance)) return true;
+                Character by = __0.GetAttacker();
+                if (by == null || !EinherjarFighter.Battle.ContainsKey(by)) return false;
+                float total = __0.GetTotalDamage();
+                if (total <= 0f) return true;
+                // what it must be before his armour so about Blow is left after it (the game: under twice the
+                // armour, damage² / (4 armour); over it, damage - armour)
+                float want = Blow * Random.Range(0.75f, 1.25f);
+                float armour = Mathf.Max(0f, __instance.GetBodyArmor());
+                float raw = armour <= want ? want + armour : Mathf.Sqrt(4f * want * armour);
+                __0.m_damage.Modify(raw / total);
+                return true;
+            }
+        }
+
+        // The body that falls: as he looked (the game dresses it, but leaves its build and colours the default).
+        [HarmonyPatch(typeof(Humanoid), "OnRagdollCreated")]
+        static class Fallen
+        {
+            static void Postfix(Humanoid __instance, Ragdoll __0)
+            {
+                if (__0 == null || !EinherjarFighter.Battle.ContainsKey(__instance)) return;
+                VisEquipment mine = __instance.GetComponent<VisEquipment>(), its = __0.GetComponent<VisEquipment>();
+                if (mine == null || its == null) return;
+                Traverse t = Traverse.Create(mine);
+                its.SetModel(mine.GetModelIndex());
+                its.SetHairColor(t.Field("m_hairColor").GetValue<Vector3>());
+                its.SetSkinColor(t.Field("m_skinColor").GetValue<Vector3>());
+                Plugin.Debug("Valhalla: battle place " + EinherjarFighter.Battle[__instance].Slot + " falls");
+            }
         }
     }
 }
