@@ -1077,7 +1077,18 @@ namespace IslandsOfValheim
                 RoastingBoar(spit, slots);
             }
 
-            SkyProp("piece_oven", f + new Vector3(-3.9f, 0f, 2.2f), new Vector3(0f, 90f, 0f));
+            GameObject oven = SkyProp("piece_oven", f + new Vector3(-3.9f, 0f, 2.2f), new Vector3(0f, 90f, 0f));
+            if (oven != null)
+                // a little less smoke from its chimney (the user: the column was a bit much)
+                foreach (ParticleSystem p in oven.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    if (p.name.IndexOf("smoke", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    ParticleSystem.EmissionModule emission = p.emission;
+                    emission.rateOverTimeMultiplier *= 0.65f;
+                    ParticleSystem.MainModule main = p.main;
+                    main.startSizeMultiplier *= 0.85f;
+                    Plugin.Debug("Valhalla: the oven's " + p.name + " thinned");
+                }
             SkyProp("piece_preptable", f + new Vector3(-3.9f, 0f, -0.6f), new Vector3(0f, 90f, 0f)); // (at -1.4 it ran into the wood)
             // the wood in the south-west corner, all of it on the paving (2.0.4-2.0.6 had it by the oven, out
             // over the paving's edge, a brazier on top of it)
