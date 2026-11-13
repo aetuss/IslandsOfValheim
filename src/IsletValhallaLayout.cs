@@ -43,7 +43,7 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, DuelRing, DuelRadius + 3f));
             pad = Mathf.Max(pad, CirclePad(x, z, Feast, 11f));
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
-            pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 5f));
+            pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 7.5f));
             pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
         }
@@ -1021,19 +1021,32 @@ namespace IslandsOfValheim
 
         // ---- Andhrímnir's kitchen, west of the hall's door ----
 
-        // Eldhrímnir, the einherjar's great pot, on its fire; north of it Sæhrímnir roasting whole on an iron
-        // spit over a fire of its own; south of it a laid table and barrels; torches either side. Andhrímnir
-        // himself (ValhallaPeople) stands west of the pot, looking over it towards the hall.
+        // A paved square of black marble (10 x 10 m). In its middle Eldhrímnir, the einherjar's great pot, a
+        // tall tripod over its fire (half again the game's size: the pot no one has seen the bottom of); north
+        // of it Sæhrímnir roasting whole on an iron spit over a fire of its own; west, behind the cook, a stone
+        // oven, a preparing table and a stack of wood; south a laid table and barrels; a chest; a brazier at
+        // each corner. Andhrímnir himself (ValhallaPeople) stands west of the pot, looking over it to the hall.
+        // (1.10/2.0.3's first kitchen was a pot, a spit and a table on the grass: the user found it too plain
+        // for Valhalla.)
         static void ValhallaKitchen()
         {
             Vector3 k = new Vector3(Kitchen.x, 0f, Kitchen.y);
-            GameObject fire = SkyProp("fire_pit_iron", k, Vector3.zero);
-            float fireTop = fire != null ? SkyBounds(fire).max.y : 0.3f;
-            // the pot set down over the fire, its feet among the coals (its own legs, if it has them)
-            GameObject pot = SkyProp("piece_cauldron", new Vector3(k.x, Mathf.Max(0f, fireTop - 0.35f), k.z), Vector3.zero);
-            if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m, its foot at " + SkyBounds(pot).min.y.ToString("F2") + ", over a fire " + fireTop.ToString("F2") + " m high");
+            float floor = 0f;
+            for (float x = -4f; x <= 4.01f; x += 2f)
+                for (float z = -4f; z <= 4.01f; z += 2f)
+                {
+                    GameObject tile = SkyProp("blackmarble_tile_floor_2x2", k + new Vector3(x, 0f, z), Vector3.zero);
+                    if (tile != null) floor = Mathf.Max(floor, SkyBounds(tile).max.y);
+                }
+            Vector3 f = new Vector3(k.x, floor, k.z);
 
-            Vector3 s = k + new Vector3(0f, 0f, 3.4f);
+            GameObject fire = SkyProp("fire_pit_iron", f, Vector3.zero);
+            Grow(fire, 1.3f, f);
+            GameObject pot = SkyProp("piece_cauldron", f, Vector3.zero);
+            Grow(pot, 1.5f, f);
+            if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m over its fire");
+
+            Vector3 s = f + new Vector3(0f, 0f, 3.4f);
             SkyProp("fire_pit_iron", s, Vector3.zero);
             List<Transform> slots = new List<Transform>();
             GameObject spit = SkyProp("piece_cookingstation_iron", s, Vector3.zero, false, go =>
@@ -1041,14 +1054,33 @@ namespace IslandsOfValheim
                 CookingStation c = go.GetComponent<CookingStation>();
                 if (c != null && c.m_slots != null) foreach (Transform slot in c.m_slots) if (slot != null) slots.Add(slot);
             });
-            if (spit != null) RoastingBoar(spit, slots);
+            if (spit != null)
+            {
+                // (its steam, on a spit with nothing cooking, hung over the hooks as still white tufts)
+                foreach (ParticleSystem p in spit.GetComponentsInChildren<ParticleSystem>(true)) p.gameObject.SetActive(false);
+                RoastingBoar(spit, slots);
+            }
 
-            GameObject table = SkyProp("piece_table", k + new Vector3(0f, 0f, -3.2f), Vector3.zero);
+            SkyProp("piece_oven", f + new Vector3(-3.9f, 0f, 2.2f), new Vector3(0f, 90f, 0f));
+            SkyProp("piece_preptable", f + new Vector3(-3.9f, 0f, -1.4f), new Vector3(0f, 90f, 0f));
+            SkyProp("wood_stack", f + new Vector3(-3.6f, 0f, 4.3f), Vector3.zero);
+            SkyProp("piece_chest_wood", f + new Vector3(2.8f, 0f, 3.8f), new Vector3(0f, -90f, 0f));
+            GameObject table = SkyProp("piece_table", f + new Vector3(0f, 0f, -3.2f), Vector3.zero);
             Laid(table, meals++);
-            SkyProp("barrell", k + new Vector3(2.3f, 0f, -3.3f), Vector3.zero);
-            SkyProp("barrell", k + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
-            foreach (float dx in new[] { -2.9f, 2.9f })
-                Lamp("piece_groundtorch_wood", "piece_groundtorch", k + new Vector3(dx, 0f, 1.7f));
+            SkyProp("barrell", f + new Vector3(2.3f, 0f, -3.3f), Vector3.zero);
+            SkyProp("barrell", f + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
+            SkyProp("barrell", f + new Vector3(3.3f, 0f, -2.9f), new Vector3(0f, 75f, 0f));
+            foreach (float dx in new[] { -4.6f, 4.6f })
+                foreach (float dz in new[] { -4.6f, 4.6f })
+                    Lamp("piece_brazierfloor01", "piece_groundtorch", f + new Vector3(dx, 0f, dz));
+        }
+
+        // Bigger by so much, still standing where it stood (its foot on the same ground, its middle the same).
+        static void Grow(GameObject go, float by, Vector3 at)
+        {
+            if (go == null) return;
+            go.transform.localScale *= by;
+            Put(go, at, false);
         }
 
         // Sæhrímnir: a still copy of the game's boar, roasted brown, lying on its side along the spit, the bar
@@ -1101,6 +1133,10 @@ namespace IslandsOfValheim
             boar.transform.localRotation = Quaternion.Euler(0f, alongX ? 90f : 0f, 0f) * Quaternion.Euler(0f, 0f, 90f);
             Bounds b = DrawnBounds(holder.transform);
             boar.transform.localPosition = bar - b.center;
+            // (a creature's skinned body is drawn where its bones put it, which the mesh's own measure here
+            // needn't match: 2.0.3's boar was built on the spit and wasn't seen there. So it's measured again
+            // as drawn once Valhalla stands, and moved onto the bar: RoastOnSpit.)
+            holder.AddComponent<RoastOnSpit>().bar = bar;
             built++;
             Plugin.Debug("Valhalla: Sæhrímnir on the spit (" + slots.Count + " places for meat, the bar at " + bar.ToString("F2") + "), " + b.size.ToString("F2") + " m, scale " + scale.ToString("F2"));
         }
