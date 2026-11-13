@@ -177,8 +177,12 @@ namespace IslandsOfValheim
         // the daily battle's own, by his body (public flag: the prefab's copies keep it)
         internal static readonly Dictionary<Character, EinherjarFighter> Battle = new Dictionary<Character, EinherjarFighter>();
         public bool battle;
-        internal bool leaving; // at sunset, fading away
-        const string SlotKey = "IoV_BattleSlot", BornKey = "IoV_BattleBorn";
+        internal bool gone;              // at sunset: unseen, and no one's foe (a walker of the town's in his place)
+        internal float returningUntil;   // too far off the field: back to his place, no one's foe till then
+        internal const string SlotKey = "IoV_BattleSlot";
+        const string BornKey = "IoV_BattleBorn", GearKey = "IoV_BattleGear", HairKey = "IoV_BattleHair", BeardKey = "IoV_BattleBeard",
+            ModelKey = "IoV_BattleModel", QuietKey = "IoV_BattleQuiet";
+        internal const float GlowRise = 1.3f; // the gold glow of one rising: at its brightest this long after it starts
         int slot = -1;
 
         // His place on the field (pair * 2 + side), kept with him so every game knows his foe.
@@ -195,27 +199,68 @@ namespace IslandsOfValheim
             }
         }
 
-        internal void Place(int index)
+        // His place, gear (right, left, helmet, chest, legs, cape), hair, beard and build, kept with him (so any
+        // game that makes him, now or when he comes back into view, makes him the same: Dress); quiet: he walked
+        // onto the field (no rising glow).
+        internal void Place(int index, string gear, string hair, string beard, int model, bool quiet)
         {
             slot = index;
+            modelWanted = model;
+            hairWanted = hair;
+            beardWanted = beard;
             ZNetView nview = GetComponent<ZNetView>();
             if (nview == null || !nview.IsValid()) return;
-            nview.GetZDO().Set(SlotKey, index + 1);
-            nview.GetZDO().Set(BornKey, (float)ZNet.instance.GetTimeSeconds());
+            ZDO zdo = nview.GetZDO();
+            zdo.Set(SlotKey, index + 1);
+            zdo.Set(BornKey, (float)ZNet.instance.GetTimeSeconds());
+            zdo.Set(GearKey, gear);
+            zdo.Set(HairKey, hair);
+            zdo.Set(BeardKey, beard);
+            zdo.Set(ModelKey, model + 1);
+            zdo.Set(QuietKey, quiet);
+        }
+
+        // Given his gear, hair and beard as the game gives a creature its own (just before it does: GiveDefaultItems).
+        internal void Dress(Humanoid me)
+        {
+            ZNetView nview = GetComponent<ZNetView>();
+            if (nview == null || !nview.IsValid() || ObjectDB.instance == null) return;
+            ZDO zdo = nview.GetZDO();
+            string gear = zdo.GetString(GearKey, "");
+            if (gear.Length == 0) return;
+            List<GameObject> items = new List<GameObject>();
+            foreach (string name in gear.Split(','))
+            {
+                GameObject item = name.Length > 0 ? ObjectDB.instance.GetItemPrefab(name) : null;
+                if (item != null) items.Add(item);
+            }
+            me.m_defaultItems = items.ToArray();
+            hairWanted = zdo.GetString(HairKey, "");
+            beardWanted = zdo.GetString(BeardKey, "");
+            modelWanted = zdo.GetInt(ModelKey, 0) - 1;
+            Traverse.Create(me).Field("m_hairItem").SetValue(hairWanted);
+            Traverse.Create(me).Field("m_beardItem").SetValue(beardWanted);
         }
 
         float hiddenUntil = -1f;
 
-        // Just made (not just come into view): the gold glow swells where he rises, and he's there at its
-        // brightest (unseen till then, his mind too).
+        // Just made (not just come into view, nor walked there): the gold glow swells where he rises, and he's
+        // there at its brightest (unseen till then, his mind too).
         void Rising()
         {
             ZNetView nview = GetComponent<ZNetView>();
             if (nview == null || !nview.IsValid() || ZNet.instance == null) return;
             float born = nview.GetZDO().GetFloat(BornKey, -1f);
-            if (born < 0f || ZNet.instance.GetTimeSeconds() - born > 2.0) return;
+            if (born < 0f || ZNet.instance.GetTimeSeconds() - born > 2.0 || nview.GetZDO().GetBool(QuietKey, false)) return;
             if (ValhallaPeople.Current != null) ValhallaPeople.Current.RiseGlow(transform.position);
-            hiddenUntil = Time.time + ValhallaPeople.GlowRise;
+            hiddenUntil = Time.time + GlowRise;
+            Hidden(true);
+        }
+
+        // Sunset: unseen at once on this game, and kept so (his gear comes and goes with him).
+        internal void Vanish()
+        {
+            gone = true;
             Hidden(true);
         }
 
@@ -236,7 +281,12 @@ namespace IslandsOfValheim
             if (animator != null) animator.SetBool("wakeup", false);
             Looks();
             Invoke("Looks", 0.5f); // (and again, after the game's own setting up of a creature's looks)
-            if (battle) Rising();
+            if (battle)
+            {
+                Rising();
+                // (out of sight, his body's pose not worked out: eight of them fighting cost frames for nothing)
+                if (animator != null) animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            }
         }
 
         // The body and hair asked for, set on it as the game sets a player's (a creature's are otherwise its
@@ -581,6 +631,7 @@ namespace IslandsOfValheim
         // at its brightest it's gone).
         void Update()
         {
+            if (gone) { Hidden(true); return; }
             if (hiddenUntil > 0f)
             {
                 // (his gear comes onto him a moment after he's made: kept unseen with him)
