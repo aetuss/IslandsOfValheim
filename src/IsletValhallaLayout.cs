@@ -831,8 +831,9 @@ namespace IslandsOfValheim
             // golden birches and a few oaks: round the Brim Folk's feast, the west and the rim
             Vector2[] trees =
             {
-                // (-26, 13.5: by the kitchen's north-west corner, clear of its oven; it stood at -24, 12, in the oven)
-                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-26f, 13.5f),
+                // (-29.5, 16.5: off the kitchen's north-west corner, clear of its roof; it stood at -24, 12, in the
+                // oven, then at -26, 13.5, where the roof's corner now is)
+                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-29.5f, 16.5f),
                 new Vector2(-58f, -14f), new Vector2(-36f, -22f), new Vector2(26f, 46f), new Vector2(50f, 34f), new Vector2(-22f, 50f),
                 new Vector2(70f, 8f),
             };
@@ -1017,10 +1018,12 @@ namespace IslandsOfValheim
                     Laid(t, meals++);
                 }
             SkyProp("fire_pit_iron", new Vector3(Feast.x, 0f, Feast.y), Vector3.zero);
-            // torches round the tables
-            foreach (float dx in new[] { -8f, 8f })
-                foreach (float dz in new[] { -10f, 10f })
+            // torches round the tables, out past the pavilion's eaves (at 8, 10 they stood under its corners)
+            foreach (float dx in new[] { -9.5f, 9.5f })
+                foreach (float dz in new[] { -11.5f, 11.5f })
                     SkyProp("piece_groundtorch_wood", new Vector3(Feast.x + dx, 0f, Feast.y + dz), Vector3.zero);
+            // and over the tables an open pavilion, three posts down each long side (IsletValhallaPavilion)
+            Pavilion(Feast, G(Feast.x, Feast.y), 4, 5, new[] { new Vector2(-6.6f, -8.6f), new Vector2(6.6f, -8.6f), new Vector2(6.6f, 0f), new Vector2(6.6f, 8.6f), new Vector2(-6.6f, 8.6f), new Vector2(-6.6f, 0f) }, 3f);
         }
 
         // ---- Andhrímnir's kitchen, west of the hall's door ----
@@ -1107,6 +1110,8 @@ namespace IslandsOfValheim
             SkyProp("barrell", f + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
             SkyProp("barrell", f + new Vector3(3.3f, 0f, -2.9f), new Vector3(0f, 75f, 0f));
             // (no braziers at its corners: the user had them out; the hearth, the pot's fire and the oven light it)
+            // and over it all an open pavilion, a post at each corner of the paving (IsletValhallaPavilion)
+            Pavilion(Kitchen, floor, 3, 3, new[] { new Vector2(-4.6f, -4.6f), new Vector2(4.6f, -4.6f), new Vector2(4.6f, 4.6f), new Vector2(-4.6f, 4.6f) }, 3f);
         }
 
         // Bigger by so much, still standing where it stood (its foot on the same ground, its middle the same).
