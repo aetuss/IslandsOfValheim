@@ -830,7 +830,8 @@ namespace IslandsOfValheim
             // golden birches and a few oaks: round the Brim Folk's feast, the west and the rim
             Vector2[] trees =
             {
-                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-24f, 12f),
+                // (-26, 13.5: by the kitchen's north-west corner, clear of its oven; it stood at -24, 12, in the oven)
+                new Vector2(-56f, 22f), new Vector2(-47f, 32f), new Vector2(-30f, 28f), new Vector2(-62f, 4f), new Vector2(-26f, 13.5f),
                 new Vector2(-58f, -14f), new Vector2(-36f, -22f), new Vector2(26f, 46f), new Vector2(50f, 34f), new Vector2(-22f, 50f),
                 new Vector2(70f, 8f),
             };
@@ -1077,7 +1078,7 @@ namespace IslandsOfValheim
             }
 
             SkyProp("piece_oven", f + new Vector3(-3.9f, 0f, 2.2f), new Vector3(0f, 90f, 0f));
-            SkyProp("piece_preptable", f + new Vector3(-3.9f, 0f, -1.4f), new Vector3(0f, 90f, 0f));
+            SkyProp("piece_preptable", f + new Vector3(-3.9f, 0f, -0.6f), new Vector3(0f, 90f, 0f)); // (at -1.4 it ran into the wood)
             // the wood in the south-west corner, all of it on the paving (2.0.4-2.0.6 had it by the oven, out
             // over the paving's edge, a brazier on top of it)
             GameObject wood = SkyProp("wood_stack", f + new Vector3(-3.6f, 0f, -3.9f), Vector3.zero);
