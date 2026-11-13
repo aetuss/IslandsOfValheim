@@ -160,9 +160,10 @@ namespace IslandsOfValheim
                         SkySeat("piece_bench01", new Vector3(side * 4.4f + off, floorTop, z), new Vector3(-Mathf.Sign(off), 0f, 0f));
                     Laid(t, meals++);
                 }
-            // on each fire an iron spit, its meat roasting
+            // on each fire an iron spit, its meat roasting; each turned along the hall (across it, the spit's ends
+            // reached into the aisles the valkyries walk: the user saw them walk through)
             foreach (float z in new[] { HallStart + 9f, HallStart + 17f, HallStart + 25f })
-                Spit(SkyProp("hearth", new Vector3(0f, floorTop, z), Vector3.zero), floorTop, meals++);
+                Spit(SkyProp("hearth", new Vector3(0f, floorTop, z), new Vector3(0f, 90f, 0f)), floorTop, meals++);
             // Braziers hung on chains from the beams, between the pillars (on the floor if the hanging kind's missing).
             foreach (float x in new[] { -HallHalfWidth, HallHalfWidth })
                 for (float z = HallStart + 2f; z <= HallEnd - 6f; z += 8f)

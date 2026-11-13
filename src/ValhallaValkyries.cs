@@ -17,6 +17,7 @@ namespace IslandsOfValheim
             internal int side;             // -1 west, 1 east (the outer one: by turns)
             internal bool outer;           // the aisle between the outer benches and the wall, or the inner one
             internal float offset;
+            internal double round = ServeRound;  // her round's length (the outer one's goes round the hall: longer)
             internal long builtFor = long.MinValue, served = -1;
             internal readonly List<Vector2> points = new List<Vector2>();
             internal readonly List<float> pauses = new List<float>();
@@ -31,6 +32,7 @@ namespace IslandsOfValheim
         readonly List<KeyValuePair<Vector2, SpiritHuman>> drinkers = new List<KeyValuePair<Vector2, SpiritHuman>>();
 
         const double ServeRound = 60.0;  // one round: fill her cup at the barrels, three served, back again
+        const double OuterRound = 85.0;  // the outer one's: up one side, across behind the last tables, down the other
         const float ServeWalk = 1.3f, ServePause = 2.6f;
         static readonly Vector2 HallMiddle = new Vector2(0f, 22f);
 
@@ -40,7 +42,8 @@ namespace IslandsOfValheim
             return new SpiritHuman.Look
             {
                 Model = 1, Hair = WomenHair[(i * 2) % WomenHair.Length], HairColor = hair[i % hair.Length], SkinColor = Vector3.one * 0.97f,
-                Chest = "ArmorWolfChest", Legs = "ArmorWolfLegs", Shoulder = "CapeFeather",
+                // (a white linen cape: 2.0.19's feather one, the Fallen Valkyrie's, came black and to the floor)
+                Chest = "ArmorWolfChest", Legs = "ArmorWolfLegs", Shoulder = "CapeLinen",
             };
         }
 
@@ -59,7 +62,7 @@ namespace IslandsOfValheim
             servers.Clear();
             for (int i = 0; i < 3; i++)
             {
-                Server s = new Server { index = i, side = i == 0 ? -1 : 1, outer = i == 2, offset = i * 20f };
+                Server s = new Server { index = i, side = i == 0 ? -1 : 1, outer = i == 2, offset = i * 20f, round = i == 2 ? OuterRound : ServeRound };
                 Build(s, Round(s, Now()));
                 Vector2 start = s.points[0];
                 s.who = Stand(Valkyrie(i), new Vector3(start.x, 0f, start.y), new Vector3(s.faces[0].x, 0f, s.faces[0].y), 4f, "Tankard");
@@ -82,7 +85,7 @@ namespace IslandsOfValheim
 
         static double Now() { return ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time; }
 
-        static long Round(Server s, double now) { return (long)System.Math.Floor((now + s.offset) / ServeRound); }
+        static long Round(Server s, double now) { return (long)System.Math.Floor((now + s.offset) / s.round); }
 
         // One round of hers: from the barrels into her aisle, by up to three (a different few each round) in turn
         // up the hall, back down the aisle, and to the barrels again; waiting at the barrels whatever's left of
@@ -114,15 +117,28 @@ namespace IslandsOfValheim
                 Add(s, entry, 0f, Vector2.zero, null);
                 foreach (KeyValuePair<Vector2, SpiritHuman> d in chosen)
                     Add(s, new Vector2(aisle, d.Key.y), ServePause, new Vector2(Mathf.Sign(d.Key.x - aisle), 0f), d.Value);
-                Add(s, entry, 0f, Vector2.zero, null);
-                Add(s, barrels, 0f, new Vector2(side, 0f), null);
+                if (s.outer)
+                {
+                    // (the other side's barrels are her next round's start: up her side, across behind the last
+                    // tables, down the other; 2.0.19 went back to her own side's and the next round began at the
+                    // other's: the user saw her jump across the hall)
+                    Add(s, new Vector2(aisle, 33f), 0f, Vector2.zero, null);
+                    Add(s, new Vector2(-aisle, 33f), 0f, Vector2.zero, null);
+                    Add(s, new Vector2(-aisle, entry.y), 0f, Vector2.zero, null);
+                    Add(s, new Vector2(-barrels.x, barrels.y), 0f, new Vector2(-side, 0f), null);
+                }
+                else
+                {
+                    Add(s, entry, 0f, Vector2.zero, null);
+                    Add(s, barrels, 0f, new Vector2(side, 0f), null);
+                }
                 float busy = 0f;
                 for (int i = 0; i < s.points.Count; i++)
                 {
                     busy += s.pauses[i];
                     if (i + 1 < s.points.Count) busy += Vector2.Distance(s.points[i], s.points[i + 1]) / ServeWalk;
                 }
-                float left = (float)ServeRound - busy;
+                float left = (float)s.round - busy;
                 if (left >= 2f || chosen.Count == 0) { s.pauses[0] = Mathf.Max(0f, left); break; }
                 chosen.RemoveAt(chosen.Count - 1);
             }
@@ -141,7 +157,7 @@ namespace IslandsOfValheim
                 if (s.who == null) continue;
                 long round = Round(s, now);
                 if (round != s.builtFor) Build(s, round);
-                float u = (float)(now + s.offset - round * ServeRound);
+                float u = (float)(now + s.offset - round * s.round);
                 Vector2 at = s.points[0], heading = Vector2.zero, face = s.faces[0];
                 for (int i = 0; i < s.points.Count; i++)
                 {
