@@ -18,7 +18,7 @@ namespace IslandsOfValheim
         internal const string PrefabName = "IoV_Einherjar", ChampionPrefab = "IoV_EinherjarChampion";
         internal const string HafdisPrefab = "IoV_HafdisDuelist"; // T5: Hafdís as she was, a shield-maiden
         internal const string AllyPrefab = "IoV_StarkadrAlly";    // the champion's oath: at your side (ChampionOath)
-        internal const string BattlePrefab = "IoV_EinherjarBattle"; // the daily battle's (ValhallaBattle)
+        internal const string BattlePrefab = "IoV_EinherjarBattle"; // the ring's bouts between einherjar (ValhallaBattle)
 
         internal static void Register()
         {
@@ -27,8 +27,8 @@ namespace IslandsOfValheim
             Make(HafdisPrefab, true, "$iov_hafdis");
             Make(AllyPrefab, false, "$iov_starkadr");
             Make(BattlePrefab, false, "$iov_einherjar");
-            // the daily battle's: hunting no player, seeing only as far as the field (their one foe is on it), and
-            // drifting about their place when he's down
+            // the ring's bouts': hunting no player, seeing only as far as the ring (their one foe is in it), and
+            // drifting about its middle when they're not at it
             GameObject battler = PrefabManager.Instance.GetPrefab(BattlePrefab);
             if (battler != null)
             {
@@ -172,60 +172,58 @@ namespace IslandsOfValheim
 
         void OnDestroy() { if (body != null) Battle.Remove(body); }
 
-        // ---- the daily battle's (ValhallaBattle) ----
+        // ---- the ring's bouts between einherjar (ValhallaBattle) ----
 
-        // the daily battle's own, by his body (public flag: the prefab's copies keep it)
+        // the bouts' own, by his body (public flag: the prefab's copies keep it)
         internal static readonly Dictionary<Character, EinherjarFighter> Battle = new Dictionary<Character, EinherjarFighter>();
         public bool battle;
-        internal bool gone;              // at sunset: unseen, and no one's foe (a walker of the town's in his place)
-        internal float returningUntil;   // too far off the field: back to his place, no one's foe till then
-        internal const string SlotKey = "IoV_BattleSlot";
-        const string BornKey = "IoV_BattleBorn", GearKey = "IoV_BattleGear", HairKey = "IoV_BattleHair", BeardKey = "IoV_BattleBeard",
-            ModelKey = "IoV_BattleModel", QuietKey = "IoV_BattleQuiet";
-        internal const float GlowRise = 1.3f; // the gold glow of one rising: at its brightest this long after it starts
+        internal bool gone;              // the bout over: unseen, and no one's foe (the watcher he was walks back)
+        internal float returningUntil;   // driven out of the ring: back to the middle, no one's foe till then
+        const string SlotKey = "IoV_BattleSlot", BoutKey = "IoV_Bout", OverKey = "IoV_BoutOver", GearKey = "IoV_BattleGear",
+            HairKey = "IoV_BattleHair", BeardKey = "IoV_BattleBeard", ModelKey = "IoV_BattleModel";
         int slot = -1;
+        long bout = -1;
 
-        // His place on the field (pair * 2 + side), kept with him so every game knows his foe.
-        internal int Slot
+        ZDO Kept { get { ZNetView nview = GetComponent<ZNetView>(); return nview != null && nview.IsValid() ? nview.GetZDO() : null; } }
+
+        // Which watcher he is, and in which bout, kept with him so every game knows.
+        internal int Slot { get { if (slot < 0 && Kept != null) slot = Kept.GetInt(SlotKey, 0) - 1; return slot; } }
+        internal long Bout { get { if (bout < 0 && Kept != null) bout = Kept.GetLong(BoutKey, 0L) - 1L; return bout; } }
+
+        // When he yielded (the world's clock), or -1 (every game: the two walk back a while after).
+        internal double OverAt { get { return Kept != null ? Kept.GetFloat(OverKey, -1f) : -1.0; } }
+
+        // The other in his bout, and not beaten (nor either of them leaving, nor driven off and coming back).
+        internal bool Foes(EinherjarFighter other)
         {
-            get
-            {
-                if (slot < 0)
-                {
-                    ZNetView nview = GetComponent<ZNetView>();
-                    if (nview != null && nview.IsValid()) slot = nview.GetZDO().GetInt(SlotKey, 0) - 1;
-                }
-                return slot;
-            }
+            return other != this && !gone && !other.gone && !yielded && !other.yielded && Time.time >= returningUntil && Time.time >= other.returningUntil &&
+                Bout >= 0 && Bout == other.Bout && Slot >= 0 && other.Slot >= 0 && Slot != other.Slot;
         }
 
-        // His place, gear (right, left, helmet, chest, legs, cape), hair, beard and build, kept with him (so any
-        // game that makes him, now or when he comes back into view, makes him the same: Dress); quiet: he walked
-        // onto the field (no rising glow).
-        internal void Place(int index, string gear, string hair, string beard, int model, bool quiet)
+        // His place, bout, gear (right, left, helmet, chest, legs, cape), hair, beard and build, kept with him (so
+        // any game that makes him, now or when he comes back into view, makes him the same: Dress).
+        internal void Place(int index, long of, string gear, string hair, string beard, int model)
         {
             slot = index;
+            bout = of;
             modelWanted = model;
             hairWanted = hair;
             beardWanted = beard;
-            ZNetView nview = GetComponent<ZNetView>();
-            if (nview == null || !nview.IsValid()) return;
-            ZDO zdo = nview.GetZDO();
+            ZDO zdo = Kept;
+            if (zdo == null) return;
             zdo.Set(SlotKey, index + 1);
-            zdo.Set(BornKey, (float)ZNet.instance.GetTimeSeconds());
+            zdo.Set(BoutKey, of + 1L);
             zdo.Set(GearKey, gear);
             zdo.Set(HairKey, hair);
             zdo.Set(BeardKey, beard);
             zdo.Set(ModelKey, model + 1);
-            zdo.Set(QuietKey, quiet);
         }
 
         // Given his gear, hair and beard as the game gives a creature its own (just before it does: GiveDefaultItems).
         internal void Dress(Humanoid me)
         {
-            ZNetView nview = GetComponent<ZNetView>();
-            if (nview == null || !nview.IsValid() || ObjectDB.instance == null) return;
-            ZDO zdo = nview.GetZDO();
+            ZDO zdo = Kept;
+            if (zdo == null || ObjectDB.instance == null) return;
             string gear = zdo.GetString(GearKey, "");
             if (gear.Length == 0) return;
             List<GameObject> items = new List<GameObject>();
@@ -242,22 +240,7 @@ namespace IslandsOfValheim
             Traverse.Create(me).Field("m_beardItem").SetValue(beardWanted);
         }
 
-        float hiddenUntil = -1f;
-
-        // Just made (not just come into view, nor walked there): the gold glow swells where he rises, and he's
-        // there at its brightest (unseen till then, his mind too).
-        void Rising()
-        {
-            ZNetView nview = GetComponent<ZNetView>();
-            if (nview == null || !nview.IsValid() || ZNet.instance == null) return;
-            float born = nview.GetZDO().GetFloat(BornKey, -1f);
-            if (born < 0f || ZNet.instance.GetTimeSeconds() - born > 2.0 || nview.GetZDO().GetBool(QuietKey, false)) return;
-            if (ValhallaPeople.Current != null) ValhallaPeople.Current.RiseGlow(transform.position);
-            hiddenUntil = Time.time + GlowRise;
-            Hidden(true);
-        }
-
-        // Sunset: unseen at once on this game, and kept so (his gear comes and goes with him).
+        // The bout over: unseen at once on this game, and kept so (the watcher he was walks back from here).
         internal void Vanish()
         {
             gone = true;
@@ -267,11 +250,50 @@ namespace IslandsOfValheim
         void Hidden(bool on)
         {
             foreach (Renderer r in GetComponentsInChildren<Renderer>(true)) if (r != null) r.forceRenderingOff = on;
-            if (ai != null && nview2 != null && nview2.IsOwner()) ai.enabled = !on;
+            ZNetView nview = GetComponent<ZNetView>();
+            if (ai != null && nview != null && nview.IsOwner()) ai.enabled = !on;
             if (body != null && on) body.SetMoveDir(Vector3.zero);
         }
 
-        ZNetView nview2 { get { return GetComponent<ZNetView>(); } }
+        // ---- his guard: the game's own block (Humanoid.UpdateBlock, BlockAttack: the shield's power, its sound
+        // and sparks, and a parry if it's up just in time). A creature's mind never raises it: as his foe starts a
+        // blow close by, more often than not he gets his shield up, and holds it while the blow comes. ----
+
+        const float GuardChance = 0.55f, GuardHold = 0.9f, GuardReach = 4f;
+        static readonly System.Reflection.FieldInfo raised = AccessTools.Field(typeof(Character), "m_blocking");
+        void Raise(bool up) { if (raised != null && (bool)raised.GetValue(body) != up) raised.SetValue(body, up); }
+        float guardUntil = -1f;
+        bool foeSwinging;
+        Character foe;
+
+        void Guard()
+        {
+            ZNetView nview = GetComponent<ZNetView>();
+            if (nview == null || !nview.IsOwner() || body == null) return;
+            if (foe == null || foe.IsDead())
+            {
+                foe = null;
+                foreach (KeyValuePair<Character, EinherjarFighter> e in Battle)
+                    if (e.Value != null && e.Value != this && e.Value.Bout == Bout && e.Value.Slot != Slot) foe = e.Key;
+            }
+            EinherjarFighter his = foe != null && Battle.ContainsKey(foe) ? Battle[foe] : null;
+            if (his != null && his.yielded)
+            {
+                // he's won: he stands, his foe kneeling before him
+                Raise(false);
+                if (ai != null && ai.enabled) ai.enabled = false;
+                body.SetMoveDir(Vector3.zero);
+                Vector3 face = foe.transform.position - transform.position;
+                face.y = 0f;
+                if (face.sqrMagnitude > 0.01f) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), Time.deltaTime * 3f);
+                return;
+            }
+            bool swinging = foe != null && foe.InAttack();
+            if (swinging && !foeSwinging && Vector3.Distance(foe.transform.position, transform.position) < GuardReach)
+                guardUntil = Random.value < GuardChance ? Time.time + GuardHold : -1f;
+            foeSwinging = swinging;
+            Raise(Time.time < guardUntil && !body.InAttack());
+        }
 
         // The player's body starts out waking up, sitting on the ground (the player's own script lets it get
         // up; this one has no such script): up at once.
@@ -281,12 +303,8 @@ namespace IslandsOfValheim
             if (animator != null) animator.SetBool("wakeup", false);
             Looks();
             Invoke("Looks", 0.5f); // (and again, after the game's own setting up of a creature's looks)
-            if (battle)
-            {
-                Rising();
-                // (out of sight, his body's pose not worked out: eight of them fighting cost frames for nothing)
-                if (animator != null) animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-            }
+            // (out of sight, his body's pose not worked out: frames for nothing)
+            if (battle && animator != null) animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
         }
 
         // The body and hair asked for, set on it as the game sets a player's (a creature's are otherwise its
@@ -399,6 +417,9 @@ namespace IslandsOfValheim
             }
             if (echoGlow != null) Destroy(echoGlow.gameObject);
             if (hafdis) body.m_boss = false;
+            // (a bout in the ring: when, kept with him, so every game has them walk back a while after)
+            ZNetView kept = GetComponent<ZNetView>();
+            if (battle && kept != null && kept.IsValid() && kept.IsOwner() && ZNet.instance != null) kept.GetZDO().Set(OverKey, (float)ZNet.instance.GetTimeSeconds());
             ClearBar(); // (the bout's over: no bar over a farewell; NoBarOnceYielded keeps it gone)
             if (kneel)
             {
@@ -419,7 +440,7 @@ namespace IslandsOfValheim
                 // (Update).
                 kneelPending = true;
                 kneelAt = Time.time + (laid ? 0.45f : 0f);
-                if (Chat.instance != null) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
+                if (Chat.instance != null && !battle) Chat.instance.SetNpcText(gameObject, Vector3.up * 2.2f, 20f, hafdis ? 7f : 4f, "", hafdis ? "$iov_t5_yield" : ally ? "$iov_oath_fallen" : "$iov_duel_yield", false);
             }
         }
 
@@ -632,13 +653,7 @@ namespace IslandsOfValheim
         void Update()
         {
             if (gone) { Hidden(true); return; }
-            if (hiddenUntil > 0f)
-            {
-                // (his gear comes onto him a moment after he's made: kept unseen with him)
-                bool still = Time.time < hiddenUntil;
-                if (!still) hiddenUntil = -1f;
-                Hidden(still);
-            }
+            if (battle && !yielded && body != null) { Guard(); return; } // (a bout in the ring: ValhallaBattle)
             if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
             if (!yielded && body != null && waiting) { Wait(); return; }
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
@@ -660,6 +675,7 @@ namespace IslandsOfValheim
                 kneltAt = Time.time;
             }
             KneelWatch();
+            if (battle) return; // (a bout's beaten: he kneels till he and the other walk back, as the watchers they were)
             // (Hafdís kneels longer: her words first; through her farewell, if there's one: the ceremony takes her)
             if (ceremony) return;
             float stays = hafdis ? 9f : 3.5f;
@@ -727,7 +743,7 @@ namespace IslandsOfValheim
             static bool Prefix(Character __0, ref bool __result)
             {
                 EinherjarFighter f = __0 != null ? __0.GetComponent<EinherjarFighter>() : null;
-                if (f != null && f.battle) { __result = false; return false; } // (the daily battle's: no bars at all)
+                if (f != null && f.battle) { __result = false; return false; } // (the ring's bouts: no bars at all)
                 if (f == null || !f.yielded) return true;
                 __result = false;
                 return false;
@@ -743,7 +759,6 @@ namespace IslandsOfValheim
             {
                 if (__instance.IsDead() || __instance.GetHealth() > 0f) return true;
                 EinherjarFighter fighter = __instance.GetComponent<EinherjarFighter>();
-                if (fighter != null && fighter.battle) return true; // (the daily battle's die, and rise again)
                 if (fighter != null)
                 {
                     __instance.SetHealth(1f);

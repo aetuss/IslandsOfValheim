@@ -31,10 +31,6 @@ namespace IslandsOfValheim
         // there); its paving 3.5 m clear of the hall guard's round (x -11.5: 2.0.4-2.0.6 had him walk through it),
         // its south edge in line with the hall's front (2.0.7's stood half out in front of the hall: the user)
         internal static readonly Vector2 Kitchen = new Vector2(-20f, 7f);
-        // The einherjar's daily battle (ValhallaPeople): the open meadow just west of the yard, in line with it
-        // (where the user marked it; 2.0.11-2.0.12 had it 20 m further south), east of the way's birches at x
-        // 7.5; kept level and treeless.
-        internal static readonly Vector2 Battlefield = new Vector2(20f, -18.5f);
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }
@@ -50,21 +46,8 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, Feast, 11f));
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
             pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 7.5f));
-            pad = Mathf.Max(pad, CirclePad(x, z, Battlefield, 9f));
-            // the einherjar's track from the field to the hall's steps, walked at sunset and dawn (ValhallaBattle)
-            Vector2 elder = Battlefield + new Vector2(0f, 8.5f), bend = new Vector2(9f, -4f), steps = new Vector2(0f, 0.5f);
-            pad = Mathf.Max(pad, SegmentPad(x, z, elder, bend, 1.2f));
-            pad = Mathf.Max(pad, SegmentPad(x, z, bend, steps, 1.2f));
             pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
-        }
-
-        static float SegmentPad(float x, float z, Vector2 a, Vector2 b, float radius)
-        {
-            Vector2 p = new Vector2(x, z), ab = b - a;
-            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
-            float d = Mathf.Max(0f, (p - (a + ab * t)).magnitude - radius);
-            return 1f - Mathf.SmoothStep(0f, 1f, d / 6f);
         }
 
         static float CirclePad(float x, float z, Vector2 centre, float radius)

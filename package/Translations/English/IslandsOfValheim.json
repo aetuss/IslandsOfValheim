@@ -548,10 +548,5 @@
   "iov_cook_give": "Here you are, wanderer. The best cut of Sæhrímnir is yours.",
   "iov_cook_later": "You've had your share today, wanderer. Come back tomorrow.",
   "iov_saehrimnir": "Sæhrímnir's meat",
-  "iov_saehrimnir_desc": "Valhalla's boar Sæhrímnir is cooked every day and rises again every night. A plate from the Einherjar's table.",
-  "iov_battlemaster": "Elder of the Einherjar",
-  "iov_battle_talk1": "We fight every morning and drink together every night. The one who killed me yesterday will fill my cup tonight.",
-  "iov_battle_talk2": "Dying? Here, death is no different from an afternoon nap.",
-  "iov_battle_talk3": "When the last battle comes, we must be ready. That's why we fight every day.",
-  "iov_battle_evening": "That's enough for today, wanderer. Swords to their sheaths, cups to our hands!"
+  "iov_saehrimnir_desc": "Valhalla's boar Sæhrímnir is cooked every day and rises again every night. A plate from the Einherjar's table."
 }

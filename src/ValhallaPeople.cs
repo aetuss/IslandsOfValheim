@@ -74,10 +74,7 @@ namespace IslandsOfValheim
             captains.Clear();
             captainSeats.Clear();
             edgeHafdis = null;
-            battle.Clear();
-            ringPair = null;
-            ringCleared = false;
-            ringHomeKnown[0] = ringHomeKnown[1] = false;
+            ClearBouts();
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -146,23 +143,21 @@ namespace IslandsOfValheim
             // The yard: two at the dummies, weapon and shield in hand, swinging at them.
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x - 2f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "SwordIron", "ShieldBanded"), Trainer, 0f);
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x + 6f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "AxeBronze", "ShieldWood"), Trainer, 2.3f);
-            // The ring: two fighting in it (by turns one swings, the other takes it on his shield), and three
-            // watching from its edge, cheering now and then.
-            // (the square shield, held, lay flat like a tray, and with none his guard looked like a bare arm:
-            // a round one, as the trainers' stand right)
-            SpiritHuman one = Stand(Warrior(n++, true), new Vector3(Ring.x - 1.3f, 0f, Ring.y), Vector3.right, 4f, "SwordBronze", "ShieldBanded");
-            SpiritHuman other = Stand(Warrior(n++, true), new Vector3(Ring.x + 1.3f, 0f, Ring.y), Vector3.left, 4f, "MaceIron", "ShieldSilver");
-            if (one != null && other != null) { ringPair = new Actor { who = one, partner = other, kind = Duel }; actors.Add(ringPair); }
-            // One watching in every gap between the ring's columns (the two gaps the sparring pair walk out to
-            // are kept for them), a little behind the blue fires.
+            // The ring: one watching in every gap between its columns (a little behind the blue fire, where a gap
+            // has one), cheering now and then; and by turns two of those in the gaps with no fire walk in and
+            // fight a bout for real (ValhallaBattle).
+            // (no square shields: held, one lay flat like a tray)
             int w = 0;
-            foreach (float deg in new[] { 18f, 54f, 90f, 162f, 198f, 234f, 270f, 306f })
+            foreach (float deg in new[] { 18f, 54f, 90f, 126f, 162f, 198f, 234f, 270f, 306f, 342f })
             {
                 float a = deg * Mathf.Deg2Rad;
                 Vector3 at = new Vector3(Ring.x + Mathf.Cos(a) * 13f, 0f, Ring.y + Mathf.Sin(a) * 13f);
-                SpiritHuman watcher = Stand(Warrior(n++, w % 3 != 1), at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f,
-                    Watching[w % Watching.Length], WatchingShields[(w * 3) % WatchingShields.Length]);
+                SpiritHuman.Look look = Warrior(n++, w % 3 != 1);
+                string right = Watching[w % Watching.Length], left = WatchingShields[(w * 3) % WatchingShields.Length];
+                SpiritHuman watcher = Stand(look, at, new Vector3(Ring.x, 0f, Ring.y) - at, 4f, right, left);
                 Act(watcher, Watcher, deg * 0.05f);
+                // (the fires stand in every other gap from 18°: those gaps' watchers stay put)
+                if (Mathf.RoundToInt(deg - 18f) % 72 != 0) BoutSeat(watcher, look, right, left, new Vector2(at.x, at.z));
                 w++;
                 if (count++ % 3 == 2) yield return null;
             }
@@ -170,9 +165,6 @@ namespace IslandsOfValheim
             // einherjar
             Vector2 m = IsletBuilder.RingMasterAt;
             Speaks(Stand(RingMaster(), new Vector3(m.x, 0f, m.y), new Vector3(Ring.x - m.x, 0f, Ring.y - m.y), 4f, "Battleaxe"), ValhallaSpeaker.RingMaster, 2.7f);
-            yield return null;
-            // The daily battle on the meadow south-west of the yard (ValhallaBattle)
-            n = Battlefield(n);
             yield return null;
 
             // Those who walk.
@@ -998,56 +990,6 @@ namespace IslandsOfValheim
         readonly List<Actor> actors = new List<Actor>();
         readonly List<SpiritHuman> everyone = new List<SpiritHuman>();
 
-        // ---- the ring, while you duel in it ----
-
-        Actor ringPair;                       // the two who spar in the ring
-        readonly Vector3[] ringHome = new Vector3[2];
-        readonly Quaternion[] ringTurn = new Quaternion[2];
-        readonly bool[] ringHomeKnown = new bool[2];
-        bool ringCleared;
-
-        // The two sparring walk out to the ring's edge (through gaps between its columns, clear of its fires)
-        // and watch with the rest; afterwards they walk back and take up their bout again.
-        internal void RingCleared(bool clear)
-        {
-            if (ringPair == null || clear == ringCleared) return;
-            ringCleared = clear;
-            SpiritHuman[] two = { ringPair.who, ringPair.partner };
-            float[] degrees = { 126f, 342f };
-            ringPair.kind = Watcher; // (no more swings, walking out or in)
-            int going = 0;
-            for (int i = 0; i < 2; i++)
-            {
-                if (two[i] == null) continue;
-                two[i].blocking = false;
-                Vector3 to;
-                Quaternion end;
-                // (their own places in the ring, noted once only: a bout begun again while they were still on
-                // their way back took wherever they were then for home, and they sparred there, at the edge)
-                moves.RemoveAll(o => o.who == two[i]);
-                if (!ringHomeKnown[i])
-                {
-                    ringHome[i] = transform.InverseTransformPoint(two[i].transform.position);
-                    ringTurn[i] = two[i].transform.rotation;
-                    ringHomeKnown[i] = true;
-                }
-                if (clear)
-                {
-                    float a = degrees[i] * Mathf.Deg2Rad;
-                    to = new Vector3(Ring.x + Mathf.Cos(a) * 12.6f, 0f, Ring.y + Mathf.Sin(a) * 12.6f);
-                    end = transform.rotation * Quaternion.LookRotation(new Vector3(Ring.x - to.x, 0f, Ring.y - to.z).normalized);
-                }
-                else
-                {
-                    to = ringHome[i];
-                    end = ringTurn[i];
-                }
-                going++;
-                moves.Add(new Move { who = two[i], to = to, end = end, back = !clear });
-            }
-            if (!clear && going == 0) ringPair.kind = Duel;
-        }
-
         class Move { internal SpiritHuman who; internal Vector3 to; internal Quaternion end; internal bool back; }
         readonly List<Move> moves = new List<Move>();
         const float StrollSpeed = 1.5f;
@@ -1067,8 +1009,6 @@ namespace IslandsOfValheim
                     m.who.walking = 0f;
                     m.who.transform.rotation = m.end;
                     moves.RemoveAt(i);
-                    // both back in the ring: their bout goes on
-                    if (m.back && ringPair != null && !moves.Exists(o => o.back)) ringPair.kind = Duel;
                     continue;
                 }
                 Vector3 step = at + d / left * Mathf.Min(left, StrollSpeed * dt);
@@ -1086,7 +1026,7 @@ namespace IslandsOfValheim
             foreach (Actor a in actors)
             {
                 // about half of them, each in his own time, once to three times
-                if (a.kind != Watcher || a.who == null) continue;
+                if (a.kind != Watcher || a.who == null || a.who.Unseen) continue; // (not one in the ring himself)
                 if (Random.value < 0.5f && Utils.DistanceXZ(a.who.transform.position, ring) < 16f) a.who.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
                 if (a.partner != null && Random.value < 0.5f && Utils.DistanceXZ(a.partner.transform.position, ring) < 16f) a.partner.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
             }

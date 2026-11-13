@@ -338,6 +338,22 @@ namespace IslandsOfValheim
         float born = -1f, scanned;
         int detail = -1;
         internal bool keepMoving; // a walker: its legs keep going further off
+        bool unseen;
+
+        // Not drawn a while (another stands in his place: a watcher become a fighter in the ring's bout), kept as
+        // he is (switched off, his animator would start again from the top, sitting up from the ground).
+        internal bool Unseen
+        {
+            get { return unseen; }
+            set
+            {
+                if (unseen == value) return;
+                unseen = value;
+                foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
+                    if (r != null && !(r is ParticleSystemRenderer)) r.forceRenderingOff = value || detail == 3;
+                foreach (Collider c in GetComponentsInChildren<Collider>(true)) if (c != null) c.enabled = !value;
+            }
+        }
 
         // Near: everything. Further: no shadows, capes not blown about. Far: its pose held still (the animator
         // off). Very far: not drawn at all. Ghosts (now a score of them at the Brim Folk's feast) alike, and
@@ -363,7 +379,7 @@ namespace IslandsOfValheim
             foreach (Renderer r in parts)
             {
                 if (r == null) continue;
-                r.forceRenderingOff = want == 3;
+                r.forceRenderingOff = want == 3 || unseen;
                 r.shadowCastingMode = want == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;
             }
             foreach (Cloth c in capes) if (c != null) c.enabled = want == 0;
