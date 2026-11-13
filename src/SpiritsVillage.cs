@@ -547,11 +547,7 @@ namespace IslandsOfValheim
                                     hallSeat++;
                                     if (keptEnd && b != null && SeatZ(b, along) < SeatZ(b, -along)) continue;
                                     SoulSpot soul = SoulOn(b, along, true, hallSouls % 3 == 1 ? "Tankard" : "");
-                                    if (soul != null && hallSouls++ == 0)
-                                    {
-                                        soul.talks = true;
-                                        soul.lines = new[] { "$iov_brimsoul_talk3", "$iov_brimsoul_talk6" };
-                                    }
+                                    if (soul != null && hallSouls++ == 0) Talks(soul, "$iov_brimsoul_talk3", "$iov_brimsoul_hall1", "$iov_brimsoul_talk6");
                                 }
                             }
                     }
@@ -615,7 +611,9 @@ namespace IslandsOfValheim
                         if (anvil != null)
                         {
                             Bounds ab = LocalBounds(anvil);
-                            SoulAt(new Vector3(ab.max.x + 0.6f, 0f, ab.center.z), Vector3.left, "Hammer", 1.4f).chest = "ArmorLeatherChest";
+                            SoulSpot smith = SoulAt(new Vector3(ab.max.x + 0.6f, 0f, ab.center.z), Vector3.left, "Hammer", 1.4f);
+                            smith.chest = "ArmorLeatherChest";
+                            Talks(smith, "$iov_brimsoul_smith1", "$iov_brimsoul_smith2", "$iov_brimsoul_smith3");
                         }
                     }
                     P(new[] { "piece_workbench" }, side - 1f, 1f, -90f, 'z', side, back, 'R');
@@ -635,7 +633,9 @@ namespace IslandsOfValheim
                         if (wheel != null)
                         {
                             Bounds wb = LocalBounds(wheel);
-                            SoulAt(new Vector3(wb.min.x - 0.5f, 0f, wb.center.z), Vector3.right).index = 101;
+                            SoulSpot weaver = SoulAt(new Vector3(wb.min.x - 0.5f, 0f, wb.center.z), Vector3.right);
+                            weaver.index = 101;
+                            Talks(weaver, "$iov_brimsoul_weaver1", "$iov_brimsoul_weaver2", "$iov_brimsoul_weaver3");
                         }
                     }
                     P(chest, -side + 0.5f, 0f, 90f, ' ', side, back, 'L');
@@ -673,7 +673,9 @@ namespace IslandsOfValheim
                     {
                         GameObject t = P(table, -side + 1f, 1.2f, 0f, 'z', side, back, 'L');
                         SpLaid(t, 13);
-                        if (t != null) SoulOn(SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left), 0f, true, "Tankard"); // (tasting his own: T5 done)
+                        if (t != null) // (tasting his own: T5 done)
+                            Talks(SoulOn(SpSeat(bench, new Vector3(LocalBounds(t).max.x + 0.55f, 0f, LocalBounds(t).center.z), Vector3.left), 0f, true, "Tankard"),
+                                "$iov_brimsoul_brewer1", "$iov_brimsoul_brewer2", "$iov_brimsoul_brewer3");
                     }
                     P(bed, side - 1f, 2f, 0f, 'z', side, back, 'R');
                     P(chest, side - 0.5f, -1.2f, -90f, ' ', side, back, 'R');
@@ -1254,7 +1256,7 @@ namespace IslandsOfValheim
                     q.y = Height(q.x, q.z);
                     GameObject bench = SpSeat(new[] { "piece_bench01" }, q, -q.normalized);
                     // (the folk at home, T5 done: on three of them by the fire, two on one; one to talk to)
-                    if (i == 0) { SoulSpot s = SoulOn(bench, 0f, false); if (s != null) { s.talks = true; s.lines = new[] { "$iov_brimsoul_talk5", "$iov_brimsoul_talk2" }; } }
+                    if (i == 0) Talks(SoulOn(bench, 0f, false), "$iov_brimsoul_talk5", "$iov_brimsoul_square1", "$iov_brimsoul_talk2");
                     if (i == 3) SoulOn(bench, 0f, false, "Tankard");
                     if (i == 6) { SoulOn(bench, -0.55f, false); SoulOn(bench, 0.55f, false); }
                 }
@@ -1348,7 +1350,8 @@ namespace IslandsOfValheim
                 // its keeper in the middle of the gallery's side away from the village (between the roof's posts,
                 // in front of the fire), looking straight out over its rail (T5 done; 1.10.113-114 had him in a
                 // corner, looking slantwise: the user marked the spot)
-                SoulAt(new Vector3(at.x, walk, at.y + Mathf.Sign(at.y) * 2.45f), new Vector3(0f, 0f, Mathf.Sign(at.y)));
+                Talks(SoulAt(new Vector3(at.x, walk, at.y + Mathf.Sign(at.y) * 2.45f), new Vector3(0f, 0f, Mathf.Sign(at.y))),
+                    "$iov_brimsoul_keeper1", "$iov_brimsoul_keeper2", "$iov_brimsoul_keeper3");
                 GameObject fire = SpProp(new[] { "fire_pit_iron", "fire_pit" }, new Vector3(at.x, walk, at.y), 0f, false, -1, true);
                 if (fire != null)
                 {
@@ -1413,7 +1416,8 @@ namespace IslandsOfValheim
             // (no fence round it: the user, 1.10.101)
             // one at work in it, hoe in hand (T5 done)
             parent = stageGroups[2];
-            SoulAt(new Vector3(at.x + 1.5f, Height(at.x + 1.5f, at.y - 0.5f), at.y - 0.5f), Vector3.left, "Hoe", 2.4f);
+            Talks(SoulAt(new Vector3(at.x + 1.5f, Height(at.x + 1.5f, at.y - 0.5f), at.y - 0.5f), Vector3.left, "Hoe", 2.4f),
+                "$iov_brimsoul_field1", "$iov_brimsoul_field2", "$iov_brimsoul_field3");
         }
 
         // A dark beam from one point to another, sloping as they do, stretched to fit, its middle on the line
@@ -1494,7 +1498,8 @@ namespace IslandsOfValheim
             // the path's side: the user marked the far side)
             parent = stageGroups[2];
             Vector2 by = at - (from - at).normalized * 2.3f;
-            SoulAt(new Vector3(by.x, Height(by.x, by.y), by.y), new Vector3(at.x - by.x, 0f, at.y - by.y));
+            Talks(SoulAt(new Vector3(by.x, Height(by.x, by.y), by.y), new Vector3(at.x - by.x, 0f, at.y - by.y)),
+                "$iov_brimsoul_mourner1", "$iov_brimsoul_mourner2", "$iov_brimsoul_mourner3");
         }
 
         // (No well, cart or evening fire about the village: the user had the well taken away in 1.10.99, the
@@ -1723,9 +1728,8 @@ namespace IslandsOfValheim
                 // The folk at home (T5 done): one fishing off the pier's end, on the side away from the ship (to
                 // talk to), another off the landing; and Sævar on the landing, looking at his ship.
                 Vector2 rod = u * (end - 2.6f) - side * 0.6f;
-                SoulSpot fisher = SoulAt(new Vector3(rod.x, deck, rod.y), new Vector3(-side.x, 0f, -side.y), "FishingRod");
-                fisher.talks = true;
-                fisher.lines = new[] { "$iov_brimsoul_talk1", "$iov_brimsoul_talk4" };
+                Talks(SoulAt(new Vector3(rod.x, deck, rod.y), new Vector3(-side.x, 0f, -side.y), "FishingRod"),
+                    "$iov_brimsoul_talk1", "$iov_brimsoul_fisher1", "$iov_brimsoul_talk4", "$iov_brimsoul_fisher2");
                 Vector2 look = u * shipAt + side * off;
                 if (land > 0f)
                 {
@@ -2031,6 +2035,14 @@ namespace IslandsOfValheim
             s.along = along;
             s.holds = holds;
             return s;
+        }
+
+        // One of them to talk to, with their own lines (said by turns): of their trade, their place.
+        static void Talks(SoulSpot s, params string[] lines)
+        {
+            if (s == null) return;
+            s.talks = true;
+            s.lines = lines;
         }
 
         // Standing at a place of the current parent, looking a way; at work, a swing every so often.

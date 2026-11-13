@@ -437,13 +437,14 @@ namespace IslandsOfValheim
         // Once the net is torn: the village (a page and the chart) the first time; then a reminder (the chart
         // again if it's been lost); once it stands again, his thanks.
         static int doneTurn;
+        static readonly string[] DoneTalk = { "$iov_valsaevar_done", "$iov_valsaevar_done2", "$iov_valsaevar_done3" };
 
         internal static string SaevarLine(Player player)
         {
             // once it stands again: to Hafdís at the rock's edge (T5); once she has yielded, not yet the end
             // (and the tale done, by turns: his people going home, and where else you'll find him now, his spirit
             // at home in three places: here, by his harbour's old fire, on his village's pier)
-            if (Stage >= 2) return Story.Key(ValhallaPeople.DoneKey) ? (doneTurn++ % 2 == 0 ? "$iov_valsaevar_done" : "$iov_valsaevar_done2") : Story.Key(ValhallaDuel.HafdisWonKey) ? "$iov_valsaevar_t5won" : "$iov_valsaevar_t5";
+            if (Stage >= 2) return Story.Key(ValhallaPeople.DoneKey) ? DoneTalk[doneTurn++ % DoneTalk.Length] : Story.Key(ValhallaDuel.HafdisWonKey) ? "$iov_valsaevar_t5won" : "$iov_valsaevar_t5";
             if (!player.HaveSeenTutorial(ToldKey))
             {
                 player.SetSeenTutorial(ToldKey);

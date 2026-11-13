@@ -16,9 +16,14 @@ namespace IslandsOfValheim
         // his harbour's old fire and on his village's pier
         internal const int BrimSoul = 8, BrimElder = 9, SaevarHarbour = 10, SaevarVillage = 11;
         static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
-        static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3", "$iov_brimelder_home" };
-        static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour2" };
-        static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village2", "$iov_saevar_home" };
+        static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3", "$iov_brimelder_home", "$iov_brimelder_talk4", "$iov_brimelder_talk5", "$iov_brimelder_talk6" };
+        static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour3", "$iov_saevar_harbour2", "$iov_saevar_harbour4" };
+        static readonly string[] VillageTalk = { "$iov_saevar_village1", "$iov_saevar_village3", "$iov_saevar_village2", "$iov_saevar_home", "$iov_saevar_village4" };
+        // The Brim Folk at home now and then say a word of the hour, the weather or how you look (Aside), and
+        // very rarely something odd.
+        static readonly string[] NightTalk = { "$iov_ctx_night1", "$iov_ctx_night2" };
+        static readonly string[] StormTalk = { "$iov_ctx_storm1", "$iov_ctx_storm2" };
+        static readonly string[] RareTalk = { "$iov_rare1", "$iov_rare2", "$iov_rare3" };
         static int saevarTurn; // (his lines by turns, not at random: both heard in two talks)
         internal string[] lines; // one of the folk's own (else the folk's at random)
         int ownTurn;
@@ -28,7 +33,17 @@ namespace IslandsOfValheim
         // Hliðskjálf's seat (world), and when its guards last spoke up about it
         internal static Vector3 highSeat;
         static float warnedAt = -100f;
-        static readonly string[] GuardTalk = { "$iov_guard_talk1", "$iov_guard_talk2" };
+        static readonly string[] GuardTalk = { "$iov_guard_talk1", "$iov_guard_talk2", "$iov_guard_talk3", "$iov_guard_talk4", "$iov_guard_talk5" };
+        static readonly string[] RingAgain = { "$iov_ringmaster_again", "$iov_ringmaster_again2", "$iov_ringmaster_again3" };
+        // The freed captains at the table now and then talk among themselves: the first says his part, the
+        // other answers.
+        static readonly string[][] Banter =
+        {
+            new[] { TaleCaptains.Ormr, "$iov_banter1_a", TaleCaptains.Grimr, "$iov_banter1_b" },
+            new[] { TaleCaptains.Grimr, "$iov_banter2_a", TaleCaptains.Ormr, "$iov_banter2_b" },
+            new[] { TaleCaptains.Ketill, "$iov_banter3_a", TaleCaptains.Sigrun, "$iov_banter3_b" },
+            new[] { TaleCaptains.Sigrun, "$iov_banter4_a", TaleCaptains.Ketill, "$iov_banter4_b" },
+        };
 
         internal int who;
         internal float height = 2.2f; // over its feet (lower for one sitting)
@@ -37,7 +52,7 @@ namespace IslandsOfValheim
 
         static bool Welcomed { get { return Story.Key(WelcomedKey); } }
 
-        static readonly string[] BragiTalk = { "$iov_bragi_talk1", "$iov_bragi_talk2", "$iov_bragi_talk3" };
+        static readonly string[] BragiTalk = { "$iov_bragi_talk1", "$iov_bragi_talk2", "$iov_bragi_talk3", "$iov_bragi_talk4", "$iov_bragi_talk5", "$iov_bragi_talk6" };
 
         string Name
         {
@@ -55,11 +70,15 @@ namespace IslandsOfValheim
         // The tale done (Hafdís at peace): the Allfather sits in his hall, and speaks.
         static bool TaleDone { get { return Story.Key(ValhallaPeople.DoneKey); } }
         internal const string OdinSpokeKey = "iovodinspoke"; // (the player's own: his first words heard)
-        static readonly string[] OdinTalk = { "$iov_odin_talk1", "$iov_odin_talk2", "$iov_odin_talk3" };
+        static readonly string[] OdinTalk = { "$iov_odin_talk1", "$iov_odin_talk2", "$iov_odin_talk3", "$iov_odin_talk4", "$iov_odin_talk5", "$iov_odin_talk6" };
 
         public string GetHoverText()
         {
             if (who == Odin && !TaleDone) return Localization.instance.Localize(Name);
+            // Bragi, once you've been welcomed: your saga too (the alt use key, as the game's item stands use it)
+            if (who == Bragi && Welcomed)
+                return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact\n[<color=yellow><b>" +
+                    (ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace") + " + $KEY_Use</b></color>] $iov_saga_ask");
             if (who == RingMaster)
                 return Localization.instance.Localize(Name + (ValhallaDuel.Active ? "" : "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_duel_challenge"));
             return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
@@ -84,6 +103,7 @@ namespace IslandsOfValheim
             }
             if (who == Captain)
             {
+                if (TaleCaptains.Freed(captain) && Random.value < 0.35f && Banters()) return true;
                 string free;
                 string line = TaleCaptains.Talk(player, captain, out free);
                 // (the ghost says it; freed himself, he goes on saying it once he's whole)
@@ -96,7 +116,7 @@ namespace IslandsOfValheim
                 // Sævar sends you here; then the ring is yours whenever you like (again after you've won)
                 if (ValhallaDuel.Active || ValhallaDuel.Current == null) return false;
                 if (!Welcomed) { Say("$iov_ringmaster_wait"); return true; }
-                Say(Story.Key(ValhallaDuel.WonKey) ? "$iov_ringmaster_again" : "$iov_ringmaster_start");
+                Say(Story.Key(ValhallaDuel.WonKey) ? RingAgain[Random.Range(0, RingAgain.Length)] : "$iov_ringmaster_start");
                 ValhallaDuel.Current.Begin();
                 return true;
             }
@@ -118,9 +138,15 @@ namespace IslandsOfValheim
                 if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true, 5f); // (her words read first)
                 return true;
             }
+            if (who == BrimSoul || who == BrimElder || who == SaevarHarbour || who == SaevarVillage)
+            {
+                string aside = Aside(player);
+                if (aside != null) { Say(aside); return true; }
+            }
             if (who == BrimSoul)
             {
-                // each their own few lines, of their own place (the hall, the square, the pier), by turns
+                // each their own few lines, of their own place and trade (the hall, the square, the pier, the
+                // forge, the loom ...), by turns
                 if (lines != null && lines.Length > 0) Say(lines[ownTurn++ % lines.Length]);
                 else Say(SoulTalk[Random.Range(0, SoulTalk.Length)]);
                 return true;
@@ -139,6 +165,15 @@ namespace IslandsOfValheim
             }
             if (who == Bragi)
             {
+                // (not a word between the lines of a saga he's singing)
+                if (BragiSaga.Singing) return true;
+                // the alt use key: your saga (BragiSaga), once you've been welcomed
+                if (alt && Welcomed)
+                {
+                    BragiSaga.Sing(this, player);
+                    greeted = true;
+                    return true;
+                }
                 // (once the einherjar have taken you in, now and then he sings of it)
                 bool won = Story.Key(ValhallaDuel.WonKey);
                 Say(!Welcomed ? "$iov_bragi_greet" : won && Random.value < 0.5f ? "$iov_bragi_won" : BragiTalk[Random.Range(0, BragiTalk.Length)]);
@@ -162,6 +197,50 @@ namespace IslandsOfValheim
         }
 
         public bool UseItem(Humanoid user, ItemDrop.ItemData item) { return false; }
+
+        // Now and then (about one talk in three, when something fits) a word of the night, the morning, the
+        // weather, or of you soaked or hurt; and about one talk in fifty, something odd. Else null.
+        static string Aside(Player player)
+        {
+            if (Random.value < 0.02f) return RareTalk[Random.Range(0, RareTalk.Length)];
+            if (Random.value >= 0.3f) return null;
+            System.Collections.Generic.List<string> fits = new System.Collections.Generic.List<string>();
+            EnvMan env = EnvMan.instance;
+            if (env != null && EnvMan.IsNight()) fits.AddRange(NightTalk);
+            else if (env != null && EnvMan.IsDaylight() && env.GetDayFraction() < 0.36f) fits.Add("$iov_ctx_morning");
+            if (env != null && EnvMan.IsWet()) fits.AddRange(StormTalk);
+            if (player.GetSEMan().HaveStatusEffect(SEMan.s_statusEffectWet)) fits.Add("$iov_ctx_wet");
+            if (player.GetHealthPercentage() < 0.3f) fits.Add("$iov_ctx_hurt");
+            return fits.Count > 0 ? fits[Random.Range(0, fits.Count)] : null;
+        }
+
+        // A freed captain and a freed one of the other two talking at the table (only if both are here and freed).
+        bool Banters()
+        {
+            System.Collections.Generic.List<string[]> mine = new System.Collections.Generic.List<string[]>();
+            foreach (string[] pair in Banter)
+                if ((pair[0] == captain || pair[2] == captain) && TaleCaptains.Freed(pair[0]) && TaleCaptains.Freed(pair[2])) mine.Add(pair);
+            if (mine.Count == 0) return false;
+            string[] chosen = mine[Random.Range(0, mine.Count)];
+            ValhallaSpeaker first = CaptainSpeaker(chosen[0]), second = CaptainSpeaker(chosen[2]);
+            if (first == null || second == null) return false;
+            first.Say(chosen[1], 6f);
+            second.StartCoroutine(SayLater(second, chosen[3], 3.5f));
+            return true;
+        }
+
+        static ValhallaSpeaker CaptainSpeaker(string id)
+        {
+            foreach (ValhallaSpeaker s in all)
+                if (s != null && s.who == Captain && s.captain == id) return s;
+            return null;
+        }
+
+        static System.Collections.IEnumerator SayLater(ValhallaSpeaker who, string line, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (who != null) who.Say(line, 7f);
+        }
 
         // Bragi greets whoever first comes near the throne (once a visit), if they haven't been welcomed yet.
         void Update()

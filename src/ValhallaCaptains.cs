@@ -55,18 +55,21 @@ namespace IslandsOfValheim
         internal static bool Begun { get { return Story.Key(ValhallaDuel.WonKey); } }
 
         // What each says (each its own text, so the build can check they're all there).
-        internal class Lines { internal string Name, Wish, Page, PageText, Remind, Free, Thanks; }
+        internal class Lines { internal string Name, Wish, Page, PageText, Remind, Free; internal string[] Freed; }
 
         internal static Lines Of(string id)
         {
             switch (id)
             {
-                case Ketill: return new Lines { Name = "$iov_ketill", Wish = "$iov_t2_ketill_wish", Page = "$iov_t2_ketill_page", PageText = "$iov_t2_ketill_page_text", Remind = "$iov_t2_ketill_remind", Free = "$iov_t2_ketill_free", Thanks = "$iov_t2_ketill_thanks" };
-                case Sigrun: return new Lines { Name = "$iov_sigrun", Wish = "$iov_t2_sigrun_wish", Page = "$iov_t2_sigrun_page", PageText = "$iov_t2_sigrun_page_text", Remind = "$iov_t2_sigrun_remind", Free = "$iov_t2_sigrun_free", Thanks = "$iov_t2_sigrun_thanks" };
-                case Ormr: return new Lines { Name = "$iov_ormr", Wish = "$iov_t2_ormr_wish", Page = "$iov_t2_ormr_page", PageText = "$iov_t2_ormr_page_text", Remind = "$iov_t2_ormr_remind", Free = "$iov_t2_ormr_free", Thanks = "$iov_t2_ormr_thanks" };
-                default: return new Lines { Name = "$iov_grimr", Wish = "$iov_t2_grimr_wish", Page = "$iov_t2_grimr_page", PageText = "$iov_t2_grimr_page_text", Remind = "$iov_t2_grimr_remind", Free = "$iov_t2_grimr_free", Thanks = "$iov_t2_grimr_thanks" };
+                case Ketill: return new Lines { Name = "$iov_ketill", Wish = "$iov_t2_ketill_wish", Page = "$iov_t2_ketill_page", PageText = "$iov_t2_ketill_page_text", Remind = "$iov_t2_ketill_remind", Free = "$iov_t2_ketill_free", Freed = new[] { "$iov_t2_ketill_thanks", "$iov_t2_ketill_talk1", "$iov_t2_ketill_talk2" } };
+                case Sigrun: return new Lines { Name = "$iov_sigrun", Wish = "$iov_t2_sigrun_wish", Page = "$iov_t2_sigrun_page", PageText = "$iov_t2_sigrun_page_text", Remind = "$iov_t2_sigrun_remind", Free = "$iov_t2_sigrun_free", Freed = new[] { "$iov_t2_sigrun_thanks", "$iov_t2_sigrun_talk1", "$iov_t2_sigrun_talk2" } };
+                case Ormr: return new Lines { Name = "$iov_ormr", Wish = "$iov_t2_ormr_wish", Page = "$iov_t2_ormr_page", PageText = "$iov_t2_ormr_page_text", Remind = "$iov_t2_ormr_remind", Free = "$iov_t2_ormr_free", Freed = new[] { "$iov_t2_ormr_thanks", "$iov_t2_ormr_talk1", "$iov_t2_ormr_talk2" } };
+                default: return new Lines { Name = "$iov_grimr", Wish = "$iov_t2_grimr_wish", Page = "$iov_t2_grimr_page", PageText = "$iov_t2_grimr_page_text", Remind = "$iov_t2_grimr_remind", Free = "$iov_t2_grimr_free", Freed = new[] { "$iov_t2_grimr_thanks", "$iov_t2_grimr_talk1", "$iov_t2_grimr_talk2" } };
             }
         }
+
+        // (a freed one's lines by turns, each captain his own)
+        static readonly System.Collections.Generic.Dictionary<string, int> turns = new System.Collections.Generic.Dictionary<string, int>();
 
         // Talking to a captain at the table: his wish (and its page) the first time, after that a reminder; once
         // it's done, he's freed; freed, his thanks. Ormr, his words found, sends you to his son; Grímr, hearing
@@ -80,7 +83,13 @@ namespace IslandsOfValheim
                 free = Ormr;
                 return "$iov_t2_grimr_hears";
             }
-            if (Freed(id)) return lines.Thanks;
+            if (Freed(id))
+            {
+                int turn;
+                turns.TryGetValue(id, out turn);
+                turns[id] = turn + 1;
+                return lines.Freed[turn % lines.Freed.Length];
+            }
             if (Found(id))
             {
                 if (id == Ormr) return "$iov_t2_ormr_tellhim";
