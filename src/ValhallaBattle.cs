@@ -271,7 +271,6 @@ namespace IslandsOfValheim
                 return;
             }
             if (theirs.Count != 2) return;
-            Leash(theirs[0], theirs[1]);
             bool over = theirs[0].yielded || theirs[1].yielded;
             if (!over && b == bout && phase >= ForceAt)
             {
@@ -279,24 +278,6 @@ namespace IslandsOfValheim
                 EinherjarFighter worse = one != null && other != null && one.GetHealth() > other.GetHealth() ? theirs[1] : theirs[0];
                 worse.Yield(true);
                 Plugin.Debug("Valhalla: the bout's gone on long, " + worse.Slot + " yields");
-            }
-        }
-
-        // Too far off (driven out of the ring): both let go and come back to the middle, no foes a few seconds
-        // (so they don't turn straight round again, round and round at the edge), then on it goes.
-        void Leash(EinherjarFighter a, EinherjarFighter b)
-        {
-            Vector3 ring = RingWorld(transform);
-            if (Utils.DistanceXZ(a.transform.position, ring) < RingReach && Utils.DistanceXZ(b.transform.position, ring) < RingReach) return;
-            foreach (EinherjarFighter f in new[] { a, b })
-            {
-                f.returningUntil = Time.time + 4f;
-                ZNetView nview = f.GetComponent<ZNetView>();
-                MonsterAI ai = f.GetComponent<MonsterAI>();
-                if (nview == null || !nview.IsOwner() || ai == null) continue;
-                Traverse t = Traverse.Create(ai);
-                t.Field("m_targetCreature").SetValue(null);
-                t.Method("SetAlerted", new[] { typeof(bool) }).GetValue(false);
             }
         }
 
@@ -318,7 +299,7 @@ namespace IslandsOfValheim
             {
                 string gear = string.Join(",", new[] { s.right, s.left, s.look.Helmet, s.look.Chest, s.look.Legs, s.look.Shoulder });
                 me.Place(s.index, bout, gear, s.look.Hair ?? "", s.look.Beard ?? "", s.look.Model);
-                me.QuickerSoon(1.2f, 1.6f);
+                me.centre = RingWorld(transform);
             }
             VisEquipment vis = go.GetComponent<VisEquipment>();
             if (vis != null)
@@ -363,7 +344,7 @@ namespace IslandsOfValheim
     // them metres, and they came back oddly); no bar over their heads; dressed from what's kept with them.
     static class BattleRules
     {
-        const float Blow = 22f;    // health a landed blow takes, about
+        const float Blow = 26f;    // health a landed blow takes, about
         const float Push = 0.15f;  // of a blow's push
 
         [HarmonyPatch(typeof(BaseAI), "IsEnemy", new[] { typeof(Character), typeof(Character) })]
@@ -399,6 +380,17 @@ namespace IslandsOfValheim
                 __0.m_damage.Modify(raw / total);
                 if (Random.value < 0.35f && ValhallaPeople.Current != null) ValhallaPeople.Current.Cheer();
                 return true;
+            }
+        }
+
+        // Facing his foe whichever way he steps (as a player with his shield up does), so he sidesteps round him and
+        // backs off, not turning his back to walk (EinherjarFighter.Spar).
+        [HarmonyPatch(typeof(Character), "AlwaysRotateCamera")]
+        static class Facing
+        {
+            static void Postfix(Character __instance, ref bool __result)
+            {
+                if (!__result && EinherjarFighter.Battle.Count > 0 && EinherjarFighter.Battle.ContainsKey(__instance)) __result = true;
             }
         }
 

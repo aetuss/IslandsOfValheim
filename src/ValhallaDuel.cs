@@ -255,44 +255,116 @@ namespace IslandsOfValheim
             if (body != null && on) body.SetMoveDir(Vector3.zero);
         }
 
-        // ---- his guard: the game's own block (Humanoid.UpdateBlock, BlockAttack: the shield's power, its sound
-        // and sparks, and a parry if it's up just in time). A creature's mind never raises it: as his foe starts a
-        // blow close by, more often than not he gets his shield up, and holds it while the blow comes. ----
+        // ---- how he fights a bout: as two men do, not as a creature's mind does ----
+        // (2.0.16 left it to the game's creature mind: they walked into each other and hacked away chest to chest,
+        // the winner standing at the kneeling one's feet; the user asked for two men really fighting.)
+        //
+        // His mind is off; he's moved here, every frame, by the game that made him (the moves, the blows and the
+        // block are the game's own: SetMoveDir, StartAttack, the block of Humanoid.UpdateBlock and BlockAttack):
+        //   circling: facing his foe, a step or two apart, sidestepping round him one way or the other, now and then
+        //     changing; drawn back to the ring's middle if he strays;
+        //   closing: when it's his turn (his foe not at it himself), a few quick steps in, and the blow;
+        //   striking: one to three blows of his weapon's chain while his foe's still in reach;
+        //   backing: a step back out of reach, and round again.
+        // As his foe starts a blow close by, more often than not he has his shield up in time (a parry if just
+        // in time: the game's). Won, he steps back from the kneeling one and stands.
 
-        const float GuardChance = 0.55f, GuardHold = 0.9f, GuardReach = 4f;
+        const int Circling = 0, Closing = 1, Striking = 2, Backing = 3;
+        const float HoldAt = 2.7f, StrikeAt = 1.85f, GuardChance = 0.55f, GuardHold = 0.9f, GuardReach = 3.6f;
         static readonly System.Reflection.FieldInfo raised = AccessTools.Field(typeof(Character), "m_blocking");
-        void Raise(bool up) { if (raised != null && (bool)raised.GetValue(body) != up) raised.SetValue(body, up); }
-        float guardUntil = -1f;
+        internal Vector3 centre;         // the ring's middle
+        int mode;
+        float modeUntil, nextStrikeAt = -1f, side = 1f, sideUntil, guardUntil = -1f;
+        int swingsLeft;
         bool foeSwinging;
         Character foe;
 
-        void Guard()
+        void Raise(bool up) { if (raised != null && (bool)raised.GetValue(body) != up) raised.SetValue(body, up); }
+
+        // at it himself (his foe waits his turn)
+        internal bool Busy { get { return mode == Closing || mode == Striking || (body != null && body.InAttack()); } }
+
+        void Spar()
         {
             ZNetView nview = GetComponent<ZNetView>();
             if (nview == null || !nview.IsOwner() || body == null) return;
+            if (ai != null && ai.enabled) ai.enabled = false;
+            Humanoid me = body as Humanoid;
+            if (nextStrikeAt < 0f)
+            {
+                nextStrikeAt = Time.time + Random.Range(0.8f, 2.6f);
+                // his weapon in hand (the game gives a creature its shield and armour on, but leaves the weapon
+                // for its mind to take up: his is off)
+                if (me != null && Traverse.Create(me).Field("m_rightItem").GetValue() == null)
+                    foreach (ItemDrop.ItemData item in me.GetInventory().GetAllItems())
+                        if (item != null && item.IsWeapon()) { me.EquipItem(item, false); break; }
+            }
             if (foe == null || foe.IsDead())
             {
                 foe = null;
                 foreach (KeyValuePair<Character, EinherjarFighter> e in Battle)
-                    if (e.Value != null && e.Value != this && e.Value.Bout == Bout && e.Value.Slot != Slot) foe = e.Key;
+                    if (e.Value != null && e.Value != this && !e.Value.gone && e.Value.Bout == Bout && e.Value.Slot != Slot) foe = e.Key;
             }
-            EinherjarFighter his = foe != null && Battle.ContainsKey(foe) ? Battle[foe] : null;
+            if (foe == null) { body.SetMoveDir(Vector3.zero); Raise(false); return; }
+            EinherjarFighter his = Battle.ContainsKey(foe) ? Battle[foe] : null;
+            Vector3 to = foe.transform.position - transform.position;
+            to.y = 0f;
+            float d = to.magnitude;
+            Vector3 dir = d > 0.01f ? to / d : transform.forward;
+            body.SetLookDir(dir, 0f);
+            body.SetWalk(true);
             if (his != null && his.yielded)
             {
-                // he's won: he stands, his foe kneeling before him
+                // won: a step back from him, and stand
                 Raise(false);
-                if (ai != null && ai.enabled) ai.enabled = false;
-                body.SetMoveDir(Vector3.zero);
-                Vector3 face = foe.transform.position - transform.position;
-                face.y = 0f;
-                if (face.sqrMagnitude > 0.01f) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(face), Time.deltaTime * 3f);
+                body.SetMoveDir(d < HoldAt && !body.InAttack() ? -dir * 0.7f : Vector3.zero);
                 return;
             }
-            bool swinging = foe != null && foe.InAttack();
-            if (swinging && !foeSwinging && Vector3.Distance(foe.transform.position, transform.position) < GuardReach)
-                guardUntil = Random.value < GuardChance ? Time.time + GuardHold : -1f;
+            // his guard, as the other's blow starts
+            bool swinging = foe.InAttack();
+            if (swinging && !foeSwinging && d < GuardReach) guardUntil = Random.value < GuardChance ? Time.time + GuardHold : -1f;
             foeSwinging = swinging;
-            Raise(Time.time < guardUntil && !body.InAttack());
+            if (body.InAttack() || body.IsStaggering()) { body.SetMoveDir(Vector3.zero); Raise(false); return; }
+            bool guarding = Time.time < guardUntil;
+            Raise(guarding);
+            if (mode == Striking)
+            {
+                // a blow just done: another of the chain if he's still close, else back off
+                if (swingsLeft > 0 && !guarding && d < StrikeAt + 0.6f && me != null && me.StartAttack(foe, false)) { swingsLeft--; body.SetMoveDir(Vector3.zero); return; }
+                mode = Backing;
+                modeUntil = Time.time + Random.Range(0.6f, 1.1f);
+            }
+            Vector3 move = Vector3.zero;
+            switch (mode)
+            {
+                case Circling:
+                {
+                    if (Time.time > sideUntil) { side = Random.value < 0.5f ? -1f : 1f; sideUntil = Time.time + Random.Range(1.5f, 3.5f); }
+                    move = dir * Mathf.Clamp((d - HoldAt) * 1.2f, -1f, 1f) + Vector3.Cross(Vector3.up, dir) * side * 0.55f;
+                    Vector3 home = centre - transform.position;
+                    home.y = 0f;
+                    if (centre != Vector3.zero && home.magnitude > 3.5f) move += home.normalized * 0.5f;
+                    if (Time.time >= nextStrikeAt && !guarding && (his == null || !his.Busy)) { mode = Closing; modeUntil = Time.time + 2.5f; }
+                    break;
+                }
+                case Closing:
+                    if (d <= StrikeAt)
+                    {
+                        body.SetMoveDir(Vector3.zero);
+                        if (me != null && me.StartAttack(foe, false)) { mode = Striking; swingsLeft = Random.Range(0, 3); }
+                        else { mode = Backing; modeUntil = Time.time + 0.8f; }
+                        return;
+                    }
+                    move = dir;
+                    body.SetWalk(false);
+                    if (Time.time > modeUntil || guarding) { mode = Circling; nextStrikeAt = Time.time + Random.Range(0.8f, 1.6f); }
+                    break;
+                case Backing:
+                    if (d < HoldAt) move = -dir * 0.8f;
+                    if (Time.time > modeUntil || d >= HoldAt) { mode = Circling; nextStrikeAt = Time.time + Random.Range(1.4f, 3.2f); }
+                    break;
+            }
+            body.SetMoveDir(move.sqrMagnitude > 1f ? move.normalized : move);
         }
 
         // The player's body starts out waking up, sitting on the ground (the player's own script lets it get
@@ -653,7 +725,7 @@ namespace IslandsOfValheim
         void Update()
         {
             if (gone) { Hidden(true); return; }
-            if (battle && !yielded && body != null) { Guard(); return; } // (a bout in the ring: ValhallaBattle)
+            if (battle && !yielded && body != null) { Spar(); return; } // (a bout in the ring: ValhallaBattle)
             if (!yielded && body != null && slamDamage > 0f) { Champion(); return; }
             if (!yielded && body != null && waiting) { Wait(); return; }
             if (!yielded && body != null && hafdis) { Hafdis(); return; }
