@@ -31,9 +31,10 @@ namespace IslandsOfValheim
         // there); its paving 3.5 m clear of the hall guard's round (x -11.5: 2.0.4-2.0.6 had him walk through it),
         // its south edge in line with the hall's front (2.0.7's stood half out in front of the hall: the user)
         internal static readonly Vector2 Kitchen = new Vector2(-20f, 7f);
-        // The einherjar's daily battle (ValhallaPeople): the open meadow south-west of the yard, east of the way
-        // (clear of the way's birches at x 7.5, the yard's grove and the walkers' rounds); kept level and treeless.
-        internal static readonly Vector2 Battlefield = new Vector2(18f, -38f);
+        // The einherjar's daily battle (ValhallaPeople): the open meadow just west of the yard, in line with it
+        // (where the user marked it; 2.0.11-2.0.12 had it 20 m further south), east of the way's birches at x
+        // 7.5; kept level and treeless.
+        internal static readonly Vector2 Battlefield = new Vector2(20f, -18.5f);
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }

@@ -64,12 +64,17 @@ namespace IslandsOfValheim
             }
             battleOn = BattleTime();
             if (battleOn) foreach (Fighter f in battle) Arm(f);
-            Speaks(Stand(BattleMaster(), new Vector3(c.x, 0f, c.y + 8.5f), Vector3.back, 4f, "SpearElderbark"), ValhallaSpeaker.BattleMaster, 2.3f);
+            // (his spear on his back, as a player's put away: held, the game's spear stance carried it level at
+            // his hip, odd on one standing and watching)
+            SpiritHuman master = Stand(BattleMaster(), new Vector3(c.x, 0f, c.y + 8.5f), Vector3.back, 4f);
+            VisEquipment gear = master != null ? master.GetComponent<VisEquipment>() : null;
+            if (gear != null) gear.SetRightBackItem("SpearElderbark".GetStableHashCode(), 1);
+            Speaks(master, ValhallaSpeaker.BattleMaster, 2.3f);
             Plugin.Debug("Valhalla: the daily battle, 4 pairs at " + c + (battleOn ? ", fighting" : ", gone to the feast"));
             return n;
         }
 
-        // The old master of the field: grey, in a bronze-age chain shirt, a cape of wolf.
+        // The elder of the einherjar, at the field's edge: grey, in bronze, a cape of deer hide.
         static SpiritHuman.Look BattleMaster()
         {
             return new SpiritHuman.Look
@@ -133,20 +138,38 @@ namespace IslandsOfValheim
                     f.fallen = null;
                 }
                 if (f.down) continue;
-                // as the ring's pair: 3.5 s each, one swings three times, the other holds up his shield
+                // A real exchange: by turns (3.5 s) one attacks with three swings and the other takes them on his
+                // shield. In the round's last 14 s its loser gives way: his foe attacks two turns of three, the
+                // last two of those swings get through (he reels from each), and just before he goes down comes
+                // one last blow. (2.0.11-2.0.12: they only took turns, one swinging and one guarding, to the end:
+                // the user asked how anyone lost that.)
+                bool late = t >= DownAt - 14.0, last = t >= DownAt - 1.0;
                 long turnOf = (long)(t / 3.5);
-                bool firstSwings = turnOf % 2 == 0;
-                SpiritHuman swinger = firstSwings ? f.one : f.other, guard = firstSwings ? f.other : f.one;
-                guard.blocking = true;
+                bool winnerAttacks = last || (late ? turnOf % 3 != 2 : (turnOf + round) % 2 == 0);
+                SpiritHuman swinger = winnerAttacks ? winner : loser, guard = winnerAttacks ? loser : winner;
+                int k = (int)(t - turnOf * 3.5);
+                bool through = last || (late && winnerAttacks && k >= 1);
+                guard.blocking = !through;
                 swinger.blocking = false;
                 long slot = (long)(clock / 1.0);
                 if (slot != f.last)
                 {
-                    int k = (int)((long)t - turnOf * 3.5);
-                    if (k >= 0 && k < 3) swinger.Strike(k, guard);
                     f.last = slot;
+                    if (last) { winner.Strike(0, null); StartCoroutine(Reel(loser, 0.4f)); }
+                    else if (k >= 0 && k < 3)
+                    {
+                        if (through) { swinger.Strike(k, null); StartCoroutine(Reel(guard, 0.4f)); }
+                        else swinger.Strike(k, guard);
+                    }
                 }
             }
+        }
+
+        // Struck: he reels from the blow as it lands (the game's stagger).
+        static IEnumerator Reel(SpiritHuman who, float after)
+        {
+            yield return new WaitForSeconds(after);
+            if (who != null) who.Trigger("stagger");
         }
 
         bool Near(Vector2 place, float within)
