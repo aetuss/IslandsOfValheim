@@ -28,8 +28,9 @@ namespace IslandsOfValheim
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
         static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
         // Andhrímnir's kitchen: west of the hall's door, between the hall and the Brim Folk's feast (Eldhrímnir
-        // there); its paving 3.5 m clear of the hall guard's round (x -11.5: 2.0.4-2.0.6 had him walk through it)
-        internal static readonly Vector2 Kitchen = new Vector2(-20f, 2f);
+        // there); its paving 3.5 m clear of the hall guard's round (x -11.5: 2.0.4-2.0.6 had him walk through it),
+        // its south edge in line with the hall's front (2.0.7's stood half out in front of the hall: the user)
+        internal static readonly Vector2 Kitchen = new Vector2(-20f, 7f);
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }
