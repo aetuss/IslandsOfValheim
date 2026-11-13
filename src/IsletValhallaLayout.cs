@@ -1040,10 +1040,15 @@ namespace IslandsOfValheim
                 }
             Vector3 f = new Vector3(k.x, floor, k.z);
 
-            GameObject fire = SkyProp("fire_pit_iron", f, Vector3.zero);
-            Grow(fire, 1.3f, f);
+            // The pot is a tripod that hangs it: a fire on the ground under it, its legs on the paving round
+            // it. (2.0.3 stood the tripod on the raised iron fire basket, its feet 0.7 m up in the air on the
+            // basket's rim; a raised basket inside the legs doesn't fit either.)
+            GameObject fire = SkyProp(PrefabManager.Instance.GetPrefab("fire_pit") != null ? "fire_pit" : "fire_pit_iron", f, Vector3.zero);
+            Grow(fire, 1.4f, f);
             GameObject pot = SkyProp("piece_cauldron", f, Vector3.zero);
             Grow(pot, 1.5f, f);
+            if (fire != null && pot != null)
+                Plugin.Debug("Valhalla: Eldhrímnir's fire " + SkyBounds(fire).size.ToString("F2") + " m, its top at " + SkyBounds(fire).max.y.ToString("F2") + "; the tripod's feet at " + SkyBounds(pot).min.y.ToString("F2"));
             if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m over its fire");
 
             Vector3 s = f + new Vector3(0f, 0f, 3.4f);
