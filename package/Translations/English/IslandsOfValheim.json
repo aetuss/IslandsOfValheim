@@ -539,5 +539,14 @@
   "iov_rare3": "I've never met anyone who's seen Moder. Is she really that big?",
   "iov_trader_talk8": "A Brim greets the waves before setting sail. You should too.",
   "iov_trader_talk9": "Ravens see everything, but gulls hear everything.",
-  "iov_trader_talk10": "Before a storm, the gulls go quiet. Listen to them."
+  "iov_trader_talk10": "Before a storm, the gulls go quiet. Listen to them.",
+  "iov_cook": "Andhrímnir",
+  "iov_cook_ask": "Ask for a plate",
+  "iov_cook_talk1": "Sæhrímnir is cooked every day and rises again every night. And every morning, I begin again.",
+  "iov_cook_talk2": "No one has ever seen the bottom of Eldhrímnir, however much the Einherjar eat.",
+  "iov_cook_talk3": "The Allfather doesn't eat; he only drinks mead. He gives his meat to his wolves, and I don't take offence.",
+  "iov_cook_give": "Here you are, wanderer. The best cut of Sæhrímnir is yours.",
+  "iov_cook_later": "You've had your share today, wanderer. Come back tomorrow.",
+  "iov_saehrimnir": "Sæhrímnir's meat",
+  "iov_saehrimnir_desc": "Valhalla's boar Sæhrímnir is cooked every day and rises again every night. A plate from the Einherjar's table."
 }

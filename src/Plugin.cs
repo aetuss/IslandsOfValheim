@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "2.0.2";
+        public const string Version = "2.0.3";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -87,6 +87,7 @@ namespace IslandsOfValheim
             RanNet.Register(); // Hafgufa, Rán's knots, the drowned and the graveyard's marker (Valhalla arc, T3)
             SpiritsIslet.Register(); // the Brim village's altar (Valhalla arc, T4)
             ValhallaGifts.Register(); // the rewards' resting icons (Valhalla arc)
+            ValhallaFeast.Register(); // Sæhrímnir's meat, Andhrímnir's plate for each of you once a day (Valhalla)
         }
 
         void OnVanillaLocations()

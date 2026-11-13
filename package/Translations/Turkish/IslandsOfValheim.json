@@ -539,5 +539,14 @@
   "iov_rare3": "Moder'i görmüş biriyle hiç konuşmadım. Gerçekten o kadar büyük mü?",
   "iov_trader_talk8": "Bir Brim, denize açılmadan önce dalgalara selam verir. Sen de ver.",
   "iov_trader_talk9": "Kuzgunlar her şeyi görür, ama martılar her şeyi duyar.",
-  "iov_trader_talk10": "Fırtınadan önce martılar susar. Onları dinle."
+  "iov_trader_talk10": "Fırtınadan önce martılar susar. Onları dinle.",
+  "iov_cook": "Andhrímnir",
+  "iov_cook_ask": "Bir tabak iste",
+  "iov_cook_talk1": "Sæhrímnir her gün pişer, her gece yeniden dirilir. Ben de her sabah yeniden başlarım.",
+  "iov_cook_talk2": "Eldhrímnir'in dibi hiç görünmez, Einherjar ne kadar yerse yesin.",
+  "iov_cook_talk3": "Tanrıbaba yemez, yalnızca şarap içer. Etini kurtlarına verir; ben de alınmam.",
+  "iov_cook_give": "Al bakalım, yolgezer. Sæhrímnir'in en iyi yeri senin.",
+  "iov_cook_later": "Bugünkü payını aldın, yolgezer. Yarın yine gel.",
+  "iov_saehrimnir": "Sæhrímnir'in eti",
+  "iov_saehrimnir_desc": "Valhalla'nın domuzu Sæhrímnir her gün pişer, her gece yeniden dirilir. Einherjar'ın sofrasından bir tabak."
 }

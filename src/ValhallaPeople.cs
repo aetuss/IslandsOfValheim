@@ -101,6 +101,10 @@ namespace IslandsOfValheim
             // at its head, between the two rows, looking out towards the way you come by.
             Speaks(Stand(Saevar(), new Vector3(Feast.x, 0f, Feast.y - 10f), new Vector3(1f, 0f, -0.6f), 3f), ValhallaSpeaker.Saevar, 2.2f);
             CaptainsAtTable();
+            // Andhrímnir, the einherjar's cook, at Eldhrímnir west of the hall's door, a knife in hand, looking over
+            // his pot towards the hall (a plate of Sæhrímnir for each of you once a day: ValhallaFeast)
+            Vector2 kitchen = IsletBuilder.Kitchen;
+            Speaks(Stand(Cook(), new Vector3(kitchen.x - 1.7f, 0f, kitchen.y), Vector3.right, 3f, "KnifeFlint"), ValhallaSpeaker.Cook, 2.2f);
             yield return null;
             count += SoulsAtTheFeast();
             HafdisAtTheEdge();
@@ -371,6 +375,12 @@ namespace IslandsOfValheim
         static SpiritHuman.Look Odin()
         {
             return new SpiritHuman.Look { Hair = "Hair8", Beard = "Beard11", HairColor = new Vector3(0.72f, 0.72f, 0.74f), Helmet = "HelmetOdin", Chest = "ArmorMageChest", Legs = "ArmorMageLegs", Shoulder = "CapeOdin" };
+        }
+
+        // Andhrímnir: a big red beard, plain working clothes.
+        static SpiritHuman.Look Cook()
+        {
+            return new SpiritHuman.Look { Hair = "Hair5", Beard = "Beard7", HairColor = new Vector3(0.55f, 0.3f, 0.16f), SkinColor = Vector3.one * 0.95f, Chest = "ArmorRagsChest", Legs = "ArmorRagsLegs" };
         }
 
         static SpiritHuman.Look Bragi()

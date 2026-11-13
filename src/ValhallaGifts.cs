@@ -89,13 +89,13 @@ namespace IslandsOfValheim
 
         static int Today() { return EnvMan.instance.GetDay(); }
 
-        static bool UsedToday(Player player, string key)
+        internal static bool UsedToday(Player player, string key)
         {
             string day;
             return player.m_customData.TryGetValue(key, out day) && day == Today().ToString();
         }
 
-        static void Use(Player player, string key) { player.m_customData[key] = Today().ToString(); }
+        internal static void Use(Player player, string key) { player.m_customData[key] = Today().ToString(); }
 
         // Its icon while it's at work, for so long (taken away sooner if it's over sooner: Ended).
         internal static void Showing(Player player, int hash, float seconds)

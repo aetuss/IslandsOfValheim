@@ -27,6 +27,8 @@ namespace IslandsOfValheim
         internal static readonly Vector2 RingMasterAt = new Vector2(DuelRing.x + 11f, DuelRing.y - 15.5f);
         static readonly Vector2 Feast = new Vector2(-42f, 8f);
         static readonly Vector2 Yard = new Vector2(40f, -18.5f); // south of the ring, in line with it, 6 m off its fires
+        // Andhrímnir's kitchen: west of the hall's door, between the hall and the Brim Folk's feast (Eldhrímnir there)
+        internal static readonly Vector2 Kitchen = new Vector2(-16f, 2f);
         internal static float LookoutZ { get { return Mathf.Min(60f, RockEdge(Mathf.PI * 0.5f) - 14f); } }
         // Valhalla's gate: 6 m behind the landing's middle, at least 7 m in from the rim.
         internal static float ValhallaGateZ { get { return -Mathf.Min(-ValhallaArrival.z + 6f, RockEdge(-Mathf.PI * 0.5f) - 7f); } }
@@ -41,6 +43,7 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, DuelRing, DuelRadius + 3f));
             pad = Mathf.Max(pad, CirclePad(x, z, Feast, 11f));
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
+            pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 5f));
             pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
         }
@@ -68,6 +71,7 @@ namespace IslandsOfValheim
             Ring();
             Lookout();
             BrimFeast();
+            ValhallaKitchen();
             EinherjarYard();
             MemorialPath();
             Meadow();
@@ -1014,6 +1018,94 @@ namespace IslandsOfValheim
                 foreach (float dz in new[] { -10f, 10f })
                     SkyProp("piece_groundtorch_wood", new Vector3(Feast.x + dx, 0f, Feast.y + dz), Vector3.zero);
         }
+
+        // ---- Andhrímnir's kitchen, west of the hall's door ----
+
+        // Eldhrímnir, the einherjar's great pot, on its fire; north of it Sæhrímnir roasting whole on an iron
+        // spit over a fire of its own; south of it a laid table and barrels; torches either side. Andhrímnir
+        // himself (ValhallaPeople) stands west of the pot, looking over it towards the hall.
+        static void ValhallaKitchen()
+        {
+            Vector3 k = new Vector3(Kitchen.x, 0f, Kitchen.y);
+            GameObject fire = SkyProp("fire_pit_iron", k, Vector3.zero);
+            float fireTop = fire != null ? SkyBounds(fire).max.y : 0.3f;
+            // the pot set down over the fire, its feet among the coals (its own legs, if it has them)
+            GameObject pot = SkyProp("piece_cauldron", new Vector3(k.x, Mathf.Max(0f, fireTop - 0.35f), k.z), Vector3.zero);
+            if (pot != null) Plugin.Debug("Valhalla: Eldhrímnir " + SkyBounds(pot).size.ToString("F2") + " m, its foot at " + SkyBounds(pot).min.y.ToString("F2") + ", over a fire " + fireTop.ToString("F2") + " m high");
+
+            Vector3 s = k + new Vector3(0f, 0f, 3.4f);
+            SkyProp("fire_pit_iron", s, Vector3.zero);
+            List<Transform> slots = new List<Transform>();
+            GameObject spit = SkyProp("piece_cookingstation_iron", s, Vector3.zero, false, go =>
+            {
+                CookingStation c = go.GetComponent<CookingStation>();
+                if (c != null && c.m_slots != null) foreach (Transform slot in c.m_slots) if (slot != null) slots.Add(slot);
+            });
+            if (spit != null) RoastingBoar(spit, slots);
+
+            GameObject table = SkyProp("piece_table", k + new Vector3(0f, 0f, -3.2f), Vector3.zero);
+            Laid(table, meals++);
+            SkyProp("barrell", k + new Vector3(2.3f, 0f, -3.3f), Vector3.zero);
+            SkyProp("barrell", k + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
+            foreach (float dx in new[] { -2.9f, 2.9f })
+                Lamp("piece_groundtorch_wood", "piece_groundtorch", k + new Vector3(dx, 0f, 1.7f));
+        }
+
+        // Sæhrímnir: a still copy of the game's boar, roasted brown, lying on its side along the spit, the bar
+        // through its middle (where the spit's places for meat are), as long as the spit's span.
+        static void RoastingBoar(GameObject spit, List<Transform> slots)
+        {
+            GameObject prefab = PrefabManager.Instance.GetPrefab("Boar");
+            if (prefab == null) { Plugin.Debug("Valhalla: no boar for the spit"); return; }
+            Bounds sb = SkyBounds(spit);
+            Vector3 bar;
+            if (slots.Count > 0)
+            {
+                bar = Vector3.zero;
+                foreach (Transform slot in slots) bar += root.transform.InverseTransformPoint(slot.position);
+                bar /= slots.Count;
+                bar.y -= SkyHeight;
+            }
+            else bar = new Vector3(sb.center.x, sb.min.y + sb.size.y * 0.7f, sb.center.z);
+
+            GameObject holder = new GameObject("IoV_Saehrimnir");
+            holder.transform.SetParent(parent, false);
+            GameObject boar = Object.Instantiate(prefab, holder.transform, false);
+            boar.name = "Saehrimnir";
+            Strip(boar);
+            foreach (Animator a in boar.GetComponentsInChildren<Animator>(true)) Object.DestroyImmediate(a);
+            foreach (Collider c in boar.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+            foreach (ParticleSystem p in boar.GetComponentsInChildren<ParticleSystem>(true))
+                if (p.gameObject != boar) p.gameObject.SetActive(false);
+            foreach (Renderer r in boar.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                Material[] own = r.sharedMaterials;
+                for (int i = 0; i < own.Length; i++)
+                {
+                    if (own[i] == null) continue;
+                    Material m = new Material(own[i]);
+                    m.name = own[i].name + " (roasted)";
+                    if (m.HasProperty("_Color")) m.SetColor("_Color", Roasted);
+                    if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", Color.black);
+                    own[i] = m;
+                }
+                r.sharedMaterials = own;
+            }
+            // as long as the spit is wide, lying on its side along it
+            Bounds rest = DrawnBounds(holder.transform);
+            float span = Mathf.Max(sb.size.x, sb.size.z);
+            float scale = Mathf.Clamp(span * 0.85f / Mathf.Max(0.1f, rest.size.z), 0.6f, 1.6f);
+            boar.transform.localScale = prefab.transform.localScale * scale;
+            bool alongX = sb.size.x >= sb.size.z;
+            boar.transform.localRotation = Quaternion.Euler(0f, alongX ? 90f : 0f, 0f) * Quaternion.Euler(0f, 0f, 90f);
+            Bounds b = DrawnBounds(holder.transform);
+            boar.transform.localPosition = bar - b.center;
+            built++;
+            Plugin.Debug("Valhalla: Sæhrímnir on the spit (" + slots.Count + " places for meat, the bar at " + bar.ToString("F2") + "), " + b.size.ToString("F2") + " m, scale " + scale.ToString("F2"));
+        }
+
+        static readonly Color Roasted = new Color(0.62f, 0.38f, 0.2f);
 
         // ---- the einherjar's yard, by the duel ring ----
 

@@ -15,6 +15,9 @@ namespace IslandsOfValheim
         // the Brim Folk at home, once the tale is done (BrimSouls): one of them, their elder, and Sævar's spirit at
         // his harbour's old fire and on his village's pier
         internal const int BrimSoul = 8, BrimElder = 9, SaevarHarbour = 10, SaevarVillage = 11;
+        // Andhrímnir, the einherjar's cook (his plate of Sæhrímnir: ValhallaFeast)
+        internal const int Cook = 12;
+        static readonly string[] CookTalk = { "$iov_cook_talk1", "$iov_cook_talk2", "$iov_cook_talk3" };
         static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
         static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3", "$iov_brimelder_home", "$iov_brimelder_talk4", "$iov_brimelder_talk5", "$iov_brimelder_talk6" };
         static readonly string[] HarbourTalk = { "$iov_saevar_harbour1", "$iov_saevar_harbour3", "$iov_saevar_harbour2", "$iov_saevar_harbour4" };
@@ -62,6 +65,7 @@ namespace IslandsOfValheim
                 if (who == Hafdis) return "$iov_hafdis";
                 if (who == BrimSoul) return "$iov_brimsoul";
                 if (who == BrimElder) return "$iov_brimelder";
+                if (who == Cook) return "$iov_cook";
                 if (who == SaevarHarbour || who == SaevarVillage) return SeaTrader.NameToken;
                 return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
             }
@@ -75,10 +79,11 @@ namespace IslandsOfValheim
         public string GetHoverText()
         {
             if (who == Odin && !TaleDone) return Localization.instance.Localize(Name);
-            // Bragi, once you've been welcomed: your saga too (the alt use key, as the game's item stands use it)
-            if (who == Bragi && Welcomed)
+            // Bragi, once you've been welcomed: your saga too; Andhrímnir: a plate (the alt use key, as the game's
+            // item stands use it)
+            if ((who == Bragi && Welcomed) || who == Cook)
                 return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact\n[<color=yellow><b>" +
-                    (ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace") + " + $KEY_Use</b></color>] $iov_saga_ask");
+                    (ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace") + " + $KEY_Use</b></color>] " + (who == Cook ? "$iov_cook_ask" : "$iov_saga_ask"));
             if (who == RingMaster)
                 return Localization.instance.Localize(Name + (ValhallaDuel.Active ? "" : "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_duel_challenge"));
             return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
@@ -99,6 +104,12 @@ namespace IslandsOfValheim
                 if (!player.HaveSeenTutorial(OdinSpokeKey)) { player.SetSeenTutorial(OdinSpokeKey); Say("$iov_odin_done"); }
                 else if (!OdinBlessing.Has(player)) OdinBlessing.Give(player, this); // (then, his blessing)
                 else Say(Random.value < 0.3f ? "$iov_odin_done" : OdinTalk[Random.Range(0, OdinTalk.Length)]);
+                return true;
+            }
+            if (who == Cook)
+            {
+                if (alt) ValhallaFeast.Serve(player, this);
+                else Say(CookTalk[Random.Range(0, CookTalk.Length)]);
                 return true;
             }
             if (who == Captain)

@@ -311,10 +311,10 @@ namespace IslandsOfValheim
             if (effect != null) effect.m_icon = item.ItemDrop.m_itemData.GetIcon();
         }
 
-        static void Food(string name, string[] bases, string token, float health, float stamina, float seconds, float regen, Recolor.Shift shift)
+        internal static CustomItem Food(string name, string[] bases, string token, float health, float stamina, float seconds, float regen, Recolor.Shift shift)
         {
             CustomItem item = Clone(name, bases, token, shift);
-            if (item == null) return;
+            if (item == null) return null;
             ItemDrop.ItemData.SharedData shared = item.ItemDrop.m_itemData.m_shared;
             shared.m_food = health;
             shared.m_foodStamina = stamina;
@@ -323,6 +323,7 @@ namespace IslandsOfValheim
             shared.m_foodRegen = regen;
             shared.m_consumeStatusEffect = null;
             shared.m_maxStackSize = 20;
+            return item;
         }
 
         internal static CustomItem Simple(string name, string[] bases, string token, int stack, float weight, Recolor.Shift shift)
