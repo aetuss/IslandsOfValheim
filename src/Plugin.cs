@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "2.0.10";
+        public const string Version = "2.0.11";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;

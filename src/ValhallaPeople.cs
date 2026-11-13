@@ -19,7 +19,7 @@ namespace IslandsOfValheim
     //   few already, to see them).
     //
     // The living are solid (a body on the "character" layer); a walker waits while you stand in its way.
-    class ValhallaPeople : MonoBehaviour
+    partial class ValhallaPeople : MonoBehaviour
     {
         internal const string DoneKey = "iovvalhalladone"; // (the game keeps its world keys in lower case)
         internal static int devAfter = -1;   // iov_people: 1 after the tale's end, 0 before, -1 as the world is
@@ -74,6 +74,7 @@ namespace IslandsOfValheim
             captains.Clear();
             captainSeats.Clear();
             edgeHafdis = null;
+            battle.Clear();
             ringPair = null;
             ringCleared = false;
             ringHomeKnown[0] = ringHomeKnown[1] = false;
@@ -169,6 +170,9 @@ namespace IslandsOfValheim
             // einherjar
             Vector2 m = IsletBuilder.RingMasterAt;
             Speaks(Stand(RingMaster(), new Vector3(m.x, 0f, m.y), new Vector3(Ring.x - m.x, 0f, Ring.y - m.y), 4f, "Battleaxe"), ValhallaSpeaker.RingMaster, 2.7f);
+            yield return null;
+            // The daily battle on the meadow south-west of the yard (ValhallaBattle)
+            n = Battlefield(n);
             yield return null;
 
             // Those who walk.
@@ -1264,6 +1268,7 @@ namespace IslandsOfValheim
             if (made.Count == 0) return;
             Details();
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
+            Battles(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Strolls(Time.deltaTime);
             Voices();
             if (walkers.Count == 0) return;
