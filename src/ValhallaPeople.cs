@@ -1026,7 +1026,7 @@ namespace IslandsOfValheim
             foreach (Actor a in actors)
             {
                 // about half of them, each in his own time, once to three times
-                if (a.kind != Watcher || a.who == null || a.who.Unseen) continue; // (not one in the ring himself)
+                if (a.kind != Watcher || a.who == null || a.who.Unseen || a.who.keepMoving) continue; // (not one in the ring himself, nor one walking back from it)
                 if (Random.value < 0.5f && Utils.DistanceXZ(a.who.transform.position, ring) < 16f) a.who.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
                 if (a.partner != null && Random.value < 0.5f && Utils.DistanceXZ(a.partner.transform.position, ring) < 16f) a.partner.Clang(Random.Range(0.05f, 0.7f), Random.Range(1, 4));
             }
