@@ -337,16 +337,24 @@ namespace IslandsOfValheim
         // shingle runs downhill is read from its collider's tilt. Without snap points it falls back to
         // stacking by the 2 m grid.
         // (from start to end along z, a metre over at each end; gives back the ridge's top, or NaN)
-        static float Roof(float beamTop, float beamOuter, float start = HallStart, float end = HallEnd)
+        // (of other pieces than the hall's darkwood, and over another middle than x 0, if asked: the pavilions')
+        static float Roof(float beamTop, float beamOuter, float start = HallStart, float end = HallEnd, string shingle = "darkwood_roof_45", string capName = "darkwood_roof_top_45", float cx = 0f)
         {
             float ridge = float.NaN;
-            GameObject prefab = PrefabManager.Instance.GetPrefab("darkwood_roof_45");
-            GameObject capPrefab = PrefabManager.Instance.GetPrefab("darkwood_roof_top_45");
+            GameObject prefab = PrefabManager.Instance.GetPrefab(shingle);
+            GameObject capPrefab = PrefabManager.Instance.GetPrefab(capName);
             if (prefab == null) return ridge;
-            Vector3 down = Downhill(prefab);
+            List<Vector3> snaps = SnapPoints(prefab);
+            // which way it runs down: its collider's tilt, unless its snap points (low edge, high edge) say
+            // otherwise (the thatch at 26°: its tilt read 90° off, and 2.0.22's pieces sloped along the rows)
+            Vector3 down = Downhill(prefab), bySnaps = SnapDownhill(snaps);
+            if (shingle != "darkwood_roof_45" && bySnaps != Vector3.zero && (down == Vector3.zero || Vector3.Dot(down, bySnaps) < 0.7f)) // (the hall's as it was)
+            {
+                Plugin.Debug("Valhalla: " + shingle + " runs down " + bySnaps.ToString("F2") + " by its snap points (its collider said " + down.ToString("F2") + ")");
+                down = bySnaps;
+            }
             float yawL = down != Vector3.zero ? YawFor(down, Vector3.left) : 90f;
             float yawR = down != Vector3.zero ? YawFor(down, Vector3.right) : -90f;
-            List<Vector3> snaps = SnapPoints(prefab);
             if (snaps.Count < 4) { Plugin.Log.LogWarning("Valhalla: the shingle has " + snaps.Count + " snap points; roof by the grid"); RoofByGrid(beamTop + 0.3f, yawL, yawR, start, end, beamOuter); return ridge; }
             int rows = 0;
             float slope = 1f, along = 2f, rise = 2f, run = 2f;
@@ -366,8 +374,8 @@ namespace IslandsOfValheim
                 for (int k = 0; k < rows; k++)
                     for (float z = start - 1f + along * 0.5f; z < end + 1f; z += along)
                     {
-                        Vector3 edge = new Vector3(side * beamOuter, beamTop, z) + new Vector3(-side * run, rise, 0f) * k;
-                        SkyPivot("darkwood_roof_45", edge - turn * Mid(snaps, true), turn);
+                        Vector3 edge = new Vector3(cx + side * beamOuter, beamTop, z) + new Vector3(-side * run, rise, 0f) * k;
+                        SkyPivot(shingle, edge - turn * Mid(snaps, true), turn);
                     }
             }
             Plugin.Debug("Valhalla: roof by snap points: " + rows + " rows a side, each " + run.ToString("F2") + " in and " + rise.ToString("F2") + " up, " +
@@ -382,10 +390,20 @@ namespace IslandsOfValheim
             float capY = beamTop + (beamOuter - capHalf) * slope;
             for (float z = start - 1f + along * 0.5f; z < end + 1f; z += along)
             {
-                GameObject cap = SkyPivot("darkwood_roof_top_45", new Vector3(0f, capY, z) - capTurn * capLow, capTurn);
+                GameObject cap = SkyPivot(capName, new Vector3(cx, capY, z) - capTurn * capLow, capTurn);
                 if (cap != null) ridge = float.IsNaN(ridge) ? SkyBounds(cap).max.y : Mathf.Max(ridge, SkyBounds(cap).max.y);
             }
             return ridge;
+        }
+
+        // Which way a sloped piece runs down by its snap points: from the middle of its highest to the middle of
+        // its lowest, flat.
+        static Vector3 SnapDownhill(List<Vector3> snaps)
+        {
+            if (snaps.Count < 4) return Vector3.zero;
+            Vector3 d = Mid(snaps, true) - Mid(snaps, false);
+            d.y = 0f;
+            return d.magnitude > 0.3f ? d.normalized : Vector3.zero;
         }
 
         // A turned piece's lower and upper snap edges (the middles of its lowest and highest snap points)
@@ -1022,8 +1040,8 @@ namespace IslandsOfValheim
             foreach (float dx in new[] { -9.5f, 9.5f })
                 foreach (float dz in new[] { -11.5f, 11.5f })
                     SkyProp("piece_groundtorch_wood", new Vector3(Feast.x + dx, 0f, Feast.y + dz), Vector3.zero);
-            // and over the tables an open pavilion, three posts down each long side (IsletValhallaPavilion)
-            Pavilion(Feast, G(Feast.x, Feast.y), 4, 5, new[] { new Vector2(-6.6f, -8.6f), new Vector2(6.6f, -8.6f), new Vector2(6.6f, 0f), new Vector2(6.6f, 8.6f), new Vector2(-6.6f, 8.6f), new Vector2(-6.6f, 0f) }, 3f);
+            // and over the tables an open shelter along them, three posts down each side (IsletValhallaPavilion)
+            Shelter(Feast, G(Feast.x, Feast.y), 6.8f, new[] { -9f, 0f, 9f }, 4, 3f);
         }
 
         // ---- Andhrímnir's kitchen, west of the hall's door ----
@@ -1110,8 +1128,9 @@ namespace IslandsOfValheim
             SkyProp("barrell", f + new Vector3(2.5f, 0f, -2.3f), new Vector3(0f, 40f, 0f));
             SkyProp("barrell", f + new Vector3(3.3f, 0f, -2.9f), new Vector3(0f, 75f, 0f));
             // (no braziers at its corners: the user had them out; the hearth, the pot's fire and the oven light it)
-            // and over it all an open pavilion, a post at each corner of the paving (IsletValhallaPavilion)
-            Pavilion(Kitchen, floor, 3, 3, new[] { new Vector2(-4.6f, -4.6f), new Vector2(4.6f, -4.6f), new Vector2(4.6f, 4.6f), new Vector2(-4.6f, 4.6f) }, 3f);
+            // and over it all an open shelter, its ridge north to south, a post at each corner of the paving
+            // (IsletValhallaPavilion)
+            Shelter(Kitchen, floor, 4.6f, new[] { -5f, 5f }, 3, 3f);
         }
 
         // Bigger by so much, still standing where it stood (its foot on the same ground, its middle the same).
