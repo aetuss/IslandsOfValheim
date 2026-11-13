@@ -75,6 +75,9 @@ namespace IslandsOfValheim
             captainSeats.Clear();
             edgeHafdis = null;
             ClearBouts();
+            servers.Clear();
+            fliers.Clear();
+            drinkers.Clear();
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -139,6 +142,8 @@ namespace IslandsOfValheim
                 Act(Seat(Warrior(n, false), spareBench, spareAlong, "Tankard"), Feaster, n * 3.7f);
                 n++;
             }
+            // the valkyries: three serving at the tables, two over the hall (ValhallaValkyries)
+            Valkyries();
 
             // The yard: two at the dummies, weapon and shield in hand, swinging at them.
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x - 2f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "SwordIron", "ShieldBanded"), Trainer, 0f);
@@ -1209,6 +1214,7 @@ namespace IslandsOfValheim
             Details();
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Battles(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
+            ValkyriesMove(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Strolls(Time.deltaTime);
             Voices();
             if (walkers.Count == 0) return;

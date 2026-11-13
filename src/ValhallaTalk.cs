@@ -17,6 +17,9 @@ namespace IslandsOfValheim
         internal const int BrimSoul = 8, BrimElder = 9, SaevarHarbour = 10, SaevarVillage = 11;
         // Andhrímnir, the einherjar's cook (his plate of Sæhrímnir: ValhallaFeast)
         internal const int Cook = 12;
+        // the valkyries serving at the hall's tables (ValhallaValkyries)
+        internal const int Valkyrie = 13;
+        static readonly string[] ValkyrieTalk = { "$iov_valkyrie_talk1", "$iov_valkyrie_talk2", "$iov_valkyrie_talk3" };
         static readonly string[] CookTalk = { "$iov_cook_talk1", "$iov_cook_talk2", "$iov_cook_talk3" };
         static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
         static readonly string[] ElderTalk = { "$iov_brimelder_talk1", "$iov_brimelder_talk2", "$iov_brimelder_talk3", "$iov_brimelder_home", "$iov_brimelder_talk4", "$iov_brimelder_talk5", "$iov_brimelder_talk6" };
@@ -66,6 +69,7 @@ namespace IslandsOfValheim
                 if (who == BrimSoul) return "$iov_brimsoul";
                 if (who == BrimElder) return "$iov_brimelder";
                 if (who == Cook) return "$iov_cook";
+                if (who == Valkyrie) return "$iov_valkyrie";
                 if (who == SaevarHarbour || who == SaevarVillage) return SeaTrader.NameToken;
                 return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
             }
@@ -104,6 +108,13 @@ namespace IslandsOfValheim
                 if (!player.HaveSeenTutorial(OdinSpokeKey)) { player.SetSeenTutorial(OdinSpokeKey); Say("$iov_odin_done"); }
                 else if (!OdinBlessing.Has(player)) OdinBlessing.Give(player, this); // (then, his blessing)
                 else Say(Random.value < 0.3f ? "$iov_odin_done" : OdinTalk[Random.Range(0, OdinTalk.Length)]);
+                return true;
+            }
+            if (who == Valkyrie)
+            {
+                // (and once Hafdís is at peace, a word of her: she was one of them)
+                int lines = ValkyrieTalk.Length + (TaleDone ? 1 : 0), k = Random.Range(0, lines);
+                Say(k < ValkyrieTalk.Length ? ValkyrieTalk[k] : "$iov_valkyrie_hafdis");
                 return true;
             }
             if (who == Cook)

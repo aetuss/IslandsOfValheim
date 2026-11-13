@@ -548,5 +548,10 @@
   "iov_cook_give": "Al bakalım, yolgezer. Sæhrímnir'in en iyi yeri senin.",
   "iov_cook_later": "Bugünkü payını aldın, yolgezer. Yarın yine gel.",
   "iov_saehrimnir": "Sæhrímnir'in eti",
-  "iov_saehrimnir_desc": "Valhalla'nın domuzu Sæhrímnir her gün pişer, her gece yeniden dirilir. Einherjar'ın sofrasından bir tabak."
+  "iov_saehrimnir_desc": "Valhalla'nın domuzu Sæhrímnir her gün pişer, her gece yeniden dirilir. Einherjar'ın sofrasından bir tabak.",
+  "iov_valkyrie": "Valkür",
+  "iov_valkyrie_talk1": "Yiğitlere şarap! Kadehini uzat, yolgezer.",
+  "iov_valkyrie_talk2": "Hepsini savaş meydanında biz seçtik. Şimdi kadehlerini dolduruyoruz.",
+  "iov_valkyrie_talk3": "Bu şarap Heiðrún adlı keçiden gelir. Læraðr'ın yapraklarıyla beslenir, şarabı hiç tükenmez.",
+  "iov_valkyrie_hafdis": "Hafdís bir zamanlar bizden biriydi. Artık huzura kavuştuğunu bilmek güzel."
 }

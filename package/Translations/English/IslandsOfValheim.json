@@ -548,5 +548,10 @@
   "iov_cook_give": "Here you are, wanderer. The best cut of Sæhrímnir is yours.",
   "iov_cook_later": "You've had your share today, wanderer. Come back tomorrow.",
   "iov_saehrimnir": "Sæhrímnir's meat",
-  "iov_saehrimnir_desc": "Valhalla's boar Sæhrímnir is cooked every day and rises again every night. A plate from the Einherjar's table."
+  "iov_saehrimnir_desc": "Valhalla's boar Sæhrímnir is cooked every day and rises again every night. A plate from the Einherjar's table.",
+  "iov_valkyrie": "Valkyrie",
+  "iov_valkyrie_talk1": "Mead for the brave! Hold out your cup, wanderer.",
+  "iov_valkyrie_talk2": "We chose every one of them on the battlefield. Now we fill their cups.",
+  "iov_valkyrie_talk3": "This mead comes from the goat Heiðrún. She feeds on the leaves of Læraðr, and it never runs dry.",
+  "iov_valkyrie_hafdis": "Hafdís was one of us once. It's good to know she's at peace now."
 }
