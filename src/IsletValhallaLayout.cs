@@ -85,6 +85,8 @@ namespace IslandsOfValheim
             LogCatalogue();
             LogChecks();
             FiresPauseUnseen();
+            DrawnTogether();
+            SmallOnesFadeFar();
         }
 
         // Every fire's, brazier's and torch's flames, smoke and sparks rest while out of the camera's view and
@@ -101,6 +103,83 @@ namespace IslandsOfValheim
                 n++;
             }
             Plugin.Debug("Valhalla: " + n + " particle systems rest while unseen");
+        }
+
+        // The same pieces over and over (roof boards, floor tiles, pillars, benches) drawn many at a time by the
+        // graphics card (GPU instancing) rather than one by one: each material Valhalla's pieces use is copied
+        // once with instancing on, and its pieces given the copy. They look the same; the game's own materials
+        // (the rest of the world) are left as they are. (iov_perf, 2.0.37, in the hall: 3555 renderers within
+        // 60 m, nearly 3000 of them Valhalla's. The idea from ValheimPerformanceOptimizations, MIT.)
+        static void DrawnTogether()
+        {
+            Dictionary<Material, Material> copies = new Dictionary<Material, Material>();
+            int pieces = 0;
+            foreach (MeshRenderer r in parent.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (r.HasPropertyBlock()) continue; // (one drawn its own way can't be drawn with others anyway)
+                Material[] mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    Material m = mats[i];
+                    if (m == null || m.enableInstancing) continue;
+                    Material copy;
+                    if (!copies.TryGetValue(m, out copy))
+                    {
+                        copy = new Material(m) { name = m.name + "_IoVMany", enableInstancing = true };
+                        copies[m] = copy;
+                    }
+                    mats[i] = copy;
+                    changed = true;
+                }
+                if (!changed) continue;
+                r.sharedMaterials = mats;
+                pieces++;
+            }
+            Plugin.Debug("Valhalla: " + pieces + " pieces drawn together, with " + copies.Count + " materials made instanced");
+        }
+
+        // Small things on their own (a tankard, a plate, a horn, a loaf, a candle) not drawn once they're under
+        // half a percent of the screen's height (a 25 cm tankard beyond about 40 m at the game's own detail
+        // setting; further with a higher one): by then they're a few pixels. Seen nearer, there as ever. (The
+        // "minimum screen percentage" idea of ValheimPerformanceOptimizations, MIT.) Only things without
+        // detail levels of their own, without lights, fire or a skinned body, and under 0.6 m.
+        const float SmallSize = 0.6f, SmallScreen = 0.005f;
+
+        static void SmallOnesFadeFar()
+        {
+            int n = 0;
+            List<Transform> units = new List<Transform>();
+            Units(parent, units);
+            foreach (Transform t in units)
+            {
+                if (t.GetComponentInChildren<LODGroup>(true) != null || t.GetComponentInChildren<Light>(true) != null ||
+                    t.GetComponentInChildren<ParticleSystem>(true) != null || t.GetComponentInChildren<SkinnedMeshRenderer>(true) != null) continue;
+                MeshRenderer[] drawn = t.GetComponentsInChildren<MeshRenderer>(true);
+                if (drawn.Length == 0) continue;
+                Bounds b = LocalBounds(t.gameObject);
+                float size = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
+                if (size <= 0.001f || size >= SmallSize) continue;
+                LODGroup lod = t.gameObject.AddComponent<LODGroup>();
+                lod.SetLODs(new[] { new LOD(SmallScreen, drawn) });
+                Vector3 scale = t.lossyScale;
+                float s = Mathf.Max(0.0001f, Mathf.Max(Mathf.Abs(scale.x), Mathf.Max(Mathf.Abs(scale.y), Mathf.Abs(scale.z))));
+                lod.localReferencePoint = t.InverseTransformPoint(root.transform.TransformPoint(b.center));
+                lod.size = size / s;
+                n++;
+            }
+            Plugin.Debug("Valhalla: " + n + " small things not drawn when tiny on the screen (of " + units.Count + " placed)");
+        }
+
+        // What was placed, each as a whole: the game's things put in (and those in our own holders and groups,
+        // named IoV_..., which aren't drawn themselves).
+        static void Units(Transform holder, List<Transform> units)
+        {
+            foreach (Transform c in holder)
+            {
+                if (c.name.StartsWith("IoV_") && c.GetComponent<Renderer>() == null) Units(c, units);
+                else units.Add(c);
+            }
         }
 
         // The meadow's height there (0 on the level places).
