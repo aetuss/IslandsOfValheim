@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0
+
+- New in Valhalla: Bragi's saga, a cook, einherjar bouts in the ring, valkyries, the dwarf smiths Eitri and Brokkr, and the golden tree Glasir.
+- More dialogue throughout the tale.
+
 ## 2.0.0
 
 - Story expansion: the second part of Sævar's tale, with a new place to reach, new tasks and foes, rewards and more. It begins once his tale has ended.

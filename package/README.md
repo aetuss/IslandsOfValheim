@@ -143,9 +143,9 @@ Four of the tale's foes are bosses of their own, each with its own look, words a
 | Ormr | Deep North waters | The second keeper. He goes into a mist and comes out behind you, his crew's shades fight for him, and at the end the curse feeds him: what he deals you heals him. |
 | Hafdís | Deep North waters | The last keeper. Her feathers rain down where you're heading (a gold light marks the spot), the sea drags you to her, her claws reach whoever stands under her, and at the end she calls the storm. |
 
-## The tale goes on (2.0.0)
+## The tale goes on: Valhalla (2.0.0)
 
-Sævar's tale has a second part: a new place to reach, new tasks and foes, rewards, and more. It begins once his tale has ended.
+Sævar's tale has a second part, in Valhalla. It begins once his tale has ended.
 
 ## Dvergr outposts
 
