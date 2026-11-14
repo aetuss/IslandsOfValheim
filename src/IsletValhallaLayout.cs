@@ -117,12 +117,16 @@ namespace IslandsOfValheim
             foreach (MeshRenderer r in parent.GetComponentsInChildren<MeshRenderer>(true))
             {
                 if (r.HasPropertyBlock()) continue; // (one drawn its own way can't be drawn with others anyway)
+                // Only the game's own pieces: not what we make ourselves (named IoV_...). The rock's meadow, on
+                // the game's ground material (Heightmap), drew nothing at all instanced: Valhalla stood on air
+                // (2.0.39).
+                if (r.gameObject.name.StartsWith("IoV_")) continue;
                 Material[] mats = r.sharedMaterials;
                 bool changed = false;
                 for (int i = 0; i < mats.Length; i++)
                 {
                     Material m = mats[i];
-                    if (m == null || m.enableInstancing) continue;
+                    if (m == null || m.enableInstancing || m.shader == null || m.shader.name.Contains("Heightmap")) continue;
                     Material copy;
                     if (!copies.TryGetValue(m, out copy))
                     {
@@ -136,7 +140,9 @@ namespace IslandsOfValheim
                 r.sharedMaterials = mats;
                 pieces++;
             }
-            Plugin.Debug("Valhalla: " + pieces + " pieces drawn together, with " + copies.Count + " materials made instanced");
+            List<string> which = new List<string>();
+            foreach (Material m in copies.Keys) which.Add(m.name + " (" + m.shader.name + ")");
+            Plugin.Debug("Valhalla: " + pieces + " pieces drawn together, with " + copies.Count + " materials made instanced: " + string.Join(", ", which.ToArray()));
         }
 
         // Small things on their own (a tankard, a plate, a horn, a loaf, a candle) not drawn once they're under
@@ -148,18 +154,19 @@ namespace IslandsOfValheim
 
         static void SmallOnesFadeFar()
         {
-            int n = 0;
+            int n = 0, haveLods = 0, alive = 0, big = 0;
             List<Transform> units = new List<Transform>();
             Units(parent, units);
             foreach (Transform t in units)
             {
-                if (t.GetComponentInChildren<LODGroup>(true) != null || t.GetComponentInChildren<Light>(true) != null ||
-                    t.GetComponentInChildren<ParticleSystem>(true) != null || t.GetComponentInChildren<SkinnedMeshRenderer>(true) != null) continue;
+                if (t.GetComponentInChildren<LODGroup>(true) != null) { haveLods++; continue; }
+                if (t.GetComponentInChildren<Light>(true) != null || t.GetComponentInChildren<ParticleSystem>(true) != null ||
+                    t.GetComponentInChildren<SkinnedMeshRenderer>(true) != null) { alive++; continue; }
                 MeshRenderer[] drawn = t.GetComponentsInChildren<MeshRenderer>(true);
                 if (drawn.Length == 0) continue;
                 Bounds b = LocalBounds(t.gameObject);
                 float size = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
-                if (size <= 0.001f || size >= SmallSize) continue;
+                if (size <= 0.001f || size >= SmallSize) { big++; continue; }
                 LODGroup lod = t.gameObject.AddComponent<LODGroup>();
                 lod.SetLODs(new[] { new LOD(SmallScreen, drawn) });
                 Vector3 scale = t.lossyScale;
@@ -168,7 +175,8 @@ namespace IslandsOfValheim
                 lod.size = size / s;
                 n++;
             }
-            Plugin.Debug("Valhalla: " + n + " small things not drawn when tiny on the screen (of " + units.Count + " placed)");
+            Plugin.Debug("Valhalla: " + n + " small things not drawn when tiny on the screen (of " + units.Count + " placed: " + haveLods +
+                " with detail levels of their own, " + alive + " lit, burning or skinned, " + big + " bigger)");
         }
 
         // What was placed, each as a whole: the game's things put in (and those in our own holders and groups,
