@@ -84,6 +84,23 @@ namespace IslandsOfValheim
             Plugin.Debug("Valhalla: layout of " + (built - before) + " pieces, " + missing + " not found");
             LogCatalogue();
             LogChecks();
+            FiresPauseUnseen();
+        }
+
+        // Every fire's, brazier's and torch's flames, smoke and sparks rest while out of the camera's view and
+        // catch up at once when seen again, so they look the same. (iov_perf, 2.0.37, in the hall: 394 of them
+        // playing within 60 m; a world-space one goes on being worked out off screen otherwise.)
+        static void FiresPauseUnseen()
+        {
+            int n = 0;
+            foreach (ParticleSystem p in parent.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                ParticleSystem.MainModule main = p.main;
+                if (main.cullingMode == ParticleSystemCullingMode.PauseAndCatchup) continue;
+                main.cullingMode = ParticleSystemCullingMode.PauseAndCatchup;
+                n++;
+            }
+            Plugin.Debug("Valhalla: " + n + " particle systems rest while unseen");
         }
 
         // The meadow's height there (0 on the level places).
@@ -894,9 +911,11 @@ namespace IslandsOfValheim
             // warm light on its crown from below and within (2.0.35's one light, in the crown's middle, was
             // hidden by its own leaves: by night only a few glints showed): one under the crown lighting its
             // underside and the ground, one in its upper half
+            // (2.0.36's lower light, 3.8 m up at 2.4, lit a hard-edged bright pool on the grass: now higher and
+            // softer, its light spread wider and fainter over the ground; the upper one a little stronger, for the crown)
             float ground = G(GlasirAt.x, GlasirAt.y);
-            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.3f), 16f, 2.4f);
-            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.7f), 11f, 1.6f);
+            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.42f), 15f, 1.4f);
+            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.72f), 11f, 1.9f);
             Plugin.Debug("Valhalla: Glasir, an oak " + reach.ToString("F1") + " m round and " + height.ToString("F1") + " m tall, grown x" + grow.ToString("F2") +
                 " to " + (Mathf.Max(now.size.x, now.size.z) * 0.5f).ToString("F1") + " m round, " + now.max.y.ToString("F1") + " m tall; gold: " +
                 (leaves.Count > 0 ? string.Join(", ", leaves.ToArray()) : "nothing") + "; left: " + (kept.Count > 0 ? string.Join(", ", kept.ToArray()) : "nothing"));
