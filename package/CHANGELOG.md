@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.2
+
+- Fixed: Sævar's store showed only a blank first line with the current version of the game.
+- Fixes: the tale's reward is no longer lost if the game closes during its ending, a fragment left lying no longer disappears, and Sævar can give a lost one again. Clearer hints on where to go next, and many text corrections.
+
 ## 2.1.1
 
 - Multiplayer fixes: Valhalla's gates and Odin's light now work for players on a server or in someone else's world, duels in the ring no longer clash, a lost tale fragment can be had again from Sævar, and the tale's bosses no longer come twice on a server.
