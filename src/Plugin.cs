@@ -17,7 +17,7 @@ namespace IslandsOfValheim
     {
         public const string Guid = "IslandsOfValheim";
         public const string ModName = "IslandsOfValheim";
-        public const string Version = "2.0.24";
+        public const string Version = "2.0.25";
 
         internal static ConfigEntry<string> GroundStyle;
         internal static ConfigEntry<int> SeaTraderIslets;
@@ -68,6 +68,7 @@ namespace IslandsOfValheim
             ExistingWorlds.Tick();
             SpiritsIslet.Tick();
             IsletBuilder.ValhallaTick();
+            DwarfWork.Tick();
         }
 
         // Spawners and chests are networked objects, so they need prefabs of their own in ZNetScene.
@@ -88,6 +89,7 @@ namespace IslandsOfValheim
             SpiritsIslet.Register(); // the Brim village's altar (Valhalla arc, T4)
             ValhallaGifts.Register(); // the rewards' resting icons (Valhalla arc)
             ValhallaFeast.Register(); // Sæhrímnir's meat, Andhrímnir's plate for each of you once a day (Valhalla)
+            DwarfWork.Register(); // Eitri's dwarf-work, once a day (Valhalla)
         }
 
         void OnVanillaLocations()

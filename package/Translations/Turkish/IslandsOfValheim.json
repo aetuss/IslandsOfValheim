@@ -553,5 +553,18 @@
   "iov_valkyrie_talk1": "Yiğitlere şarap! Kadehini uzat, yolgezer.",
   "iov_valkyrie_talk2": "Hepsini savaş meydanında biz seçtik. Şimdi kadehlerini dolduruyoruz.",
   "iov_valkyrie_talk3": "Bu şarap Heiðrún adlı keçiden gelir. Læraðr'ın yapraklarıyla beslenir, şarabı hiç tükenmez.",
-  "iov_valkyrie_hafdis": "Hafdís bir zamanlar bizden biriydi. Artık huzura kavuştuğunu bilmek güzel."
+  "iov_valkyrie_hafdis": "Hafdís bir zamanlar bizden biriydi. Artık huzura kavuştuğunu bilmek güzel.",
+  "iov_eitri": "Eitri",
+  "iov_brokkr": "Brokkr",
+  "iov_eitri_talk1": "Mjölnir, Draupnir, Gullinbursti... hepsi bu ocaktan çıktı. Senin kılıcın, işlediğim en zor şey olmayacak.",
+  "iov_eitri_talk2": "Silahını getir, yolgezer. Biraz cüce işi görsün, sana teşekkür edecek.",
+  "iov_eitri_talk3": "Odin'in mızrağı Gungnir mi? Onu İvaldi'nin oğulları yaptı, biz değil. Bizi karıştırma.",
+  "iov_brokkr_talk1": "Bir keresinde bu körüğü çekerken göz kapağımı bir sinek soktu. Loki tabii. Mjölnir'in sapı onun yüzünden kısa kaldı.",
+  "iov_brokkr_talk2": "İnce işi kardeşim yapar. Ben sadece ateşi harlarım.",
+  "iov_brokkr_talk3": "Bir keresinde Loki'nin başını iddiada kazandım. Boynun iddiaya dahil olmadığını söyledi. O herifle asla iddiaya girme.",
+  "iov_smith_ask": "Cüce işi iste",
+  "iov_eitri_given": "İşte. Cüce işi, en azından bir süreliğine.",
+  "iov_eitri_later": "Demirin de dinlenmesi lazım, benim de. Yarın gel.",
+  "iov_dwarfwork": "Cüce işi",
+  "iov_dwarfwork_tooltip": "Eitri elden geçirdi: teçhizatın aşınmaz, silahların %10 daha sert vurur."
 }

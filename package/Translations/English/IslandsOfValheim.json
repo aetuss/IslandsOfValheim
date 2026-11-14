@@ -553,5 +553,18 @@
   "iov_valkyrie_talk1": "Mead for the brave! Hold out your cup, wanderer.",
   "iov_valkyrie_talk2": "We chose every one of them on the battlefield. Now we fill their cups.",
   "iov_valkyrie_talk3": "This mead comes from the goat Heiðrún. She feeds on the leaves of Læraðr, and it never runs dry.",
-  "iov_valkyrie_hafdis": "Hafdís was one of us once. It's good to know she's at peace now."
+  "iov_valkyrie_hafdis": "Hafdís was one of us once. It's good to know she's at peace now.",
+  "iov_eitri": "Eitri",
+  "iov_brokkr": "Brokkr",
+  "iov_eitri_talk1": "Mjölnir, Draupnir, Gullinbursti... all came out of this forge. Your blade won't be the hardest thing I've worked.",
+  "iov_eitri_talk2": "Bring me your weapon, wanderer. A touch of dwarf-work and it'll thank you for it.",
+  "iov_eitri_talk3": "Odin's spear Gungnir? The sons of Ivaldi made that, not us. Don't mix us up.",
+  "iov_brokkr_talk1": "A fly stung my eyelid once while I worked these bellows. Loki, of course. That's why Mjölnir's handle came out short.",
+  "iov_brokkr_talk2": "My brother does the fine work. I just stoke the fire.",
+  "iov_brokkr_talk3": "I once won Loki's head in a wager. He said the neck wasn't part of the bet. Never wager with that one.",
+  "iov_smith_ask": "Ask for dwarf-work",
+  "iov_eitri_given": "There. Dwarf-wrought, for a while at least.",
+  "iov_eitri_later": "The iron needs rest, and so do I. Come back tomorrow.",
+  "iov_dwarfwork": "Dwarf-wrought",
+  "iov_dwarfwork_tooltip": "Worked over by Eitri: your gear takes no wear, and your weapons strike 10% harder."
 }

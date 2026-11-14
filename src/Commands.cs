@@ -145,6 +145,7 @@ namespace IslandsOfValheim
                     if (what == "ready")
                     {
                         ValhallaGifts.Ready(me);
+                        DwarfWork.Ready(me);
                         System.Reflection.FieldInfo shown = HarmonyLib.AccessTools.Field(typeof(Player), "m_shownTutorials");
                         System.Collections.Generic.HashSet<string> told = shown != null ? shown.GetValue(me) as System.Collections.Generic.HashSet<string> : null;
                         if (told != null) { told.Remove(ValhallaGifts.OathTold); told.Remove(ValhallaGifts.DebtTold); }

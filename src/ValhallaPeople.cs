@@ -78,6 +78,9 @@ namespace IslandsOfValheim
             servers.Clear();
             fliers.Clear();
             drinkers.Clear();
+            eitri = brokkr = null;
+            forgeFire.Clear();
+            forgeFireWas.Clear();
         }
 
         void OnDestroy() { Clear(); if (Current == this) Current = null; }
@@ -144,6 +147,8 @@ namespace IslandsOfValheim
             }
             // the valkyries: three serving at the tables, two over the hall (ValhallaValkyries)
             Valkyries();
+            // Eitri and Brokkr at their forge west of the yard (ValhallaSmiths)
+            Smiths();
 
             // The yard: two at the dummies, weapon and shield in hand, swinging at them.
             Act(Stand(Warrior(n++, true), new Vector3(Yard.x - 2f, 0f, Yard.y + 2.2f), Vector3.forward, 4f, "SwordIron", "ShieldBanded"), Trainer, 0f);
@@ -1215,6 +1220,7 @@ namespace IslandsOfValheim
             Perform(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Battles(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             ValkyriesMove(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
+            Smithing(ZNet.instance != null ? ZNet.instance.GetTimeSeconds() : Time.time);
             Strolls(Time.deltaTime);
             Voices();
             if (walkers.Count == 0) return;

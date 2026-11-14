@@ -84,6 +84,65 @@ namespace IslandsOfValheim
                 eave.ToString("F2") + " (run " + run.ToString("F2") + ", slope " + slope.ToString("F2") + "), ridge at " + ridge.ToString("F2"));
         }
 
+        // ---- Eitri and Brokkr's forge, west of the einherjar's yard (where the daily battle was) ----
+
+        internal static readonly Vector2 Smithy = new Vector2(19f, -16f);
+        // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them: ValhallaSmiths)
+        internal static readonly Vector2 SmithAnvil = new Vector2(1f, 0.6f), SmithBellows = new Vector2(-1.8f, -0.3f);
+
+        // A stone floor (8 x 8 m), the forge on its west side with its bellows, the cooler (a barrel of water)
+        // by it; the smith's anvil before it, the small anvils, the grinding wheel, the tool rack; under a shelter
+        // like the kitchen's, smaller.
+        static void SmithyBuild()
+        {
+            Vector3 k = new Vector3(Smithy.x, 0f, Smithy.y);
+            float floor = float.MinValue;
+            string tile = PieceNamed("$piece_stonefloor2x2", "stone_floor_2x2");
+            if (tile != null)
+                for (float x = -3f; x <= 3.01f; x += 2f)
+                    for (float z = -3f; z <= 3.01f; z += 2f)
+                    {
+                        GameObject t = SkyProp(tile, k + new Vector3(x, 0f, z), Vector3.zero);
+                        if (t != null) floor = Mathf.Max(floor, SkyBounds(t).max.y);
+                    }
+            if (floor == float.MinValue) floor = G(Smithy.x, Smithy.y);
+            Vector3 f = new Vector3(k.x, floor, k.z);
+            // the forge with its fire burning (a copy's fire shows only while it has fuel: shown here)
+            string forge = PieceNamed("$piece_forge", "forge");
+            if (forge != null) SkyProp(forge, f + new Vector3(-1.8f, 0f, 1.4f), new Vector3(0f, 90f, 0f), false, go =>
+            {
+                CraftingStation station = go.GetComponent<CraftingStation>();
+                if (station != null && station.m_haveFireObject != null) station.m_haveFireObject.SetActive(true);
+            });
+            Ext("$piece_forge_ext1", "forge_ext1", f, SmithBellows, 90f);   // the bellows
+            Ext("$piece_forge_ext5", "forge_ext5", f, new Vector2(-0.4f, 2.9f), 0f);  // the cooler
+            Ext("$piece_forge_ext4", "forge_ext4", f, SmithAnvil, 90f);     // the smith's anvil
+            Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(0.6f, -2.4f), 0f);  // the anvils
+            Ext("$piece_forge_ext3", "forge_ext3", f, new Vector2(2.1f, -2f), 0f);    // the grinding wheel
+            Ext("$piece_forge_ext6", "forge_ext6", f, new Vector2(2.7f, 1.6f), -90f); // the tool rack
+            Shelter(Smithy, floor, 3.2f, new[] { -3f, 3f }, 2, 3f);
+        }
+
+        static void Ext(string token, string name, Vector3 f, Vector2 at, float yaw)
+        {
+            string piece = PieceNamed(token, name);
+            if (piece != null) SkyProp(piece, f + new Vector3(at.x, 0f, at.y), new Vector3(0f, yaw, 0f));
+        }
+
+        // A piece of the game's by its prefab name, else by its own (shown) name: one whose Piece is called token.
+        static string PieceNamed(string token, string name)
+        {
+            if (PrefabManager.Instance.GetPrefab(name) != null) return name;
+            if (ZNetScene.instance != null)
+                foreach (GameObject p in ZNetScene.instance.m_prefabs)
+                {
+                    Piece piece = p != null ? p.GetComponent<Piece>() : null;
+                    if (piece != null && piece.m_name == token) { Plugin.Debug("Valhalla: " + token + " is " + p.name); return p.name; }
+                }
+            Plugin.Debug("Valhalla: no " + name + " (" + token + ")");
+            return null;
+        }
+
         // A sloped piece's run (how far in a row goes) and slope, by its snap points (lowest edge to highest).
         static bool Slope(string name, out float run, out float slope)
         {

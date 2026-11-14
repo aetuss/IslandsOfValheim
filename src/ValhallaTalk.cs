@@ -19,6 +19,10 @@ namespace IslandsOfValheim
         internal const int Cook = 12;
         // the valkyries serving at the hall's tables (ValhallaValkyries)
         internal const int Valkyrie = 13;
+        // the dwarf smiths at their forge (ValhallaSmiths; Eitri's dwarf-work: DwarfWork)
+        internal const int Eitri = 14, Brokkr = 15;
+        static readonly string[] EitriTalk = { "$iov_eitri_talk1", "$iov_eitri_talk2", "$iov_eitri_talk3" };
+        static readonly string[] BrokkrTalk = { "$iov_brokkr_talk1", "$iov_brokkr_talk2", "$iov_brokkr_talk3" };
         static readonly string[] ValkyrieTalk = { "$iov_valkyrie_talk1", "$iov_valkyrie_talk2", "$iov_valkyrie_talk3" };
         static readonly string[] CookTalk = { "$iov_cook_talk1", "$iov_cook_talk2", "$iov_cook_talk3" };
         static readonly string[] SoulTalk = { "$iov_brimsoul_talk1", "$iov_brimsoul_talk2", "$iov_brimsoul_talk3", "$iov_brimsoul_talk4", "$iov_brimsoul_talk5" };
@@ -70,6 +74,8 @@ namespace IslandsOfValheim
                 if (who == BrimElder) return "$iov_brimelder";
                 if (who == Cook) return "$iov_cook";
                 if (who == Valkyrie) return "$iov_valkyrie";
+                if (who == Eitri) return "$iov_eitri";
+                if (who == Brokkr) return "$iov_brokkr";
                 if (who == SaevarHarbour || who == SaevarVillage) return SeaTrader.NameToken;
                 return who == Bragi ? "$iov_bragi" : who == Saevar ? SeaTrader.NameToken : who == Odin ? "$iov_odin" : who == RingMaster ? "$iov_ringmaster" : "$iov_guard";
             }
@@ -85,9 +91,9 @@ namespace IslandsOfValheim
             if (who == Odin && !TaleDone) return Localization.instance.Localize(Name);
             // Bragi, once you've been welcomed: your saga too; Andhrímnir: a plate (the alt use key, as the game's
             // item stands use it)
-            if ((who == Bragi && Welcomed) || who == Cook)
+            if ((who == Bragi && Welcomed) || who == Cook || who == Eitri)
                 return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact\n[<color=yellow><b>" +
-                    (ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace") + " + $KEY_Use</b></color>] " + (who == Cook ? "$iov_cook_ask" : "$iov_saga_ask"));
+                    (ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace") + " + $KEY_Use</b></color>] " + (who == Cook ? "$iov_cook_ask" : who == Eitri ? "$iov_smith_ask" : "$iov_saga_ask"));
             if (who == RingMaster)
                 return Localization.instance.Localize(Name + (ValhallaDuel.Active ? "" : "\n[<color=yellow><b>$KEY_Use</b></color>] $iov_duel_challenge"));
             return Localization.instance.Localize(Name + "\n[<color=yellow><b>$KEY_Use</b></color>] $raven_interact");
@@ -110,6 +116,13 @@ namespace IslandsOfValheim
                 else Say(Random.value < 0.3f ? "$iov_odin_done" : OdinTalk[Random.Range(0, OdinTalk.Length)]);
                 return true;
             }
+            if (who == Eitri)
+            {
+                if (alt) DwarfWork.Give(player, this);
+                else Say(EitriTalk[Random.Range(0, EitriTalk.Length)]);
+                return true;
+            }
+            if (who == Brokkr) { Say(BrokkrTalk[Random.Range(0, BrokkrTalk.Length)]); return true; }
             if (who == Valkyrie)
             {
                 // (and once Hafdís is at peace, a word of her: she was one of them)
