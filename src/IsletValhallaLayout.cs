@@ -46,7 +46,7 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, Feast, 11f));
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
             pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 7.5f));
-            pad = Mathf.Max(pad, CirclePad(x, z, Smithy, 6f));
+            pad = Mathf.Max(pad, CirclePad(x, z, Smithy, 8.5f));
             pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
         }

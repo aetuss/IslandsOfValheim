@@ -15,7 +15,8 @@ namespace IslandsOfValheim
         readonly List<float> forgeFireWas = new List<float>();
         long smithBeat = long.MinValue;
         float flareAt = -1f;
-        static EffectList forgeWork;
+        static GameObject clang;
+        float clangAt = -1f;
 
         // a dwarf: short and broad (2.0.25's 0.8 high, 1.14 wide looked sunk to the knees in the floor: the user)
         static readonly Vector3 Squat = new Vector3(1.08f, 0.88f, 1.08f);
@@ -24,12 +25,13 @@ namespace IslandsOfValheim
         {
             Vector2 c = IsletBuilder.Smithy;
             // each by his own work, put by its real size (2.0.25 put them by a guess: Brokkr's head was in the
-            // bellows): Eitri just west of the smith's anvil, facing it; Brokkr just east of the bellows, facing them
+            // bellows; 2.0.26 had them back to back): Eitri just west of the smith's anvil, facing it; Brokkr just
+            // west of the bellows (between them and the floor's edge, out of the way from the west steps), facing them
             Vector2 anvil = c + IsletBuilder.SmithAnvil, bellows = c + IsletBuilder.SmithBellows;
-            Vector2 eitriAt = new Vector2(anvil.x - 1f, anvil.y), brokkrAt = new Vector2(bellows.x + 1.1f, bellows.y);
+            Vector2 eitriAt = new Vector2(anvil.x - 1f, anvil.y), brokkrAt = new Vector2(bellows.x - 1f, bellows.y);
             Vector3 lo, hi;
             if (Box("forge_ext4", out lo, out hi)) eitriAt = new Vector2(lo.x - 0.45f, (lo.z + hi.z) * 0.5f);
-            if (Box("forge_ext1", out lo, out hi)) brokkrAt = new Vector2(hi.x + 0.5f, (lo.z + hi.z) * 0.5f);
+            if (Box("forge_ext1", out lo, out hi)) brokkrAt = new Vector2(lo.x - 0.45f, (lo.z + hi.z) * 0.5f);
             eitri = Stand(new SpiritHuman.Look
             {
                 Hair = "Hair5", Beard = "Beard10", HairColor = new Vector3(0.55f, 0.28f, 0.14f), SkinColor = Vector3.one * 0.9f,
@@ -39,16 +41,17 @@ namespace IslandsOfValheim
             {
                 Hair = "Hair9", Beard = "Beard12", HairColor = new Vector3(0.12f, 0.1f, 0.09f), SkinColor = Vector3.one * 0.88f,
                 Chest = "ArmorRagsChest", Legs = "ArmorLeatherLegs",
-            }, new Vector3(brokkrAt.x, 0f, brokkrAt.y), Vector3.left, 4f);
+            }, new Vector3(brokkrAt.x, 0f, brokkrAt.y), Vector3.right, 4f);
             foreach (SpiritHuman d in new[] { eitri, brokkr })
                 if (d != null)
                 {
                     d.transform.localScale = Vector3.Scale(d.transform.localScale, Squat);
                     Vector3 feet = transform.InverseTransformPoint(d.transform.position);
                     Plugin.Debug("Valhalla: " + (d == eitri ? "Eitri" : "Brokkr") + "'s feet at " + feet.ToString("F2") + ", the ground there " + IsletBuilder.SkyGround(feet.x, feet.z).ToString("F2"));
-                }            Speaks(eitri, ValhallaSpeaker.Eitri, 1.8f);
+                }
+            Speaks(eitri, ValhallaSpeaker.Eitri, 1.8f);
             Speaks(brokkr, ValhallaSpeaker.Brokkr, 1.8f);
-            // the forge's own fire (its lights), and the sound of its work (what the game plays as you craft at it)
+            // the forge's own fire (its lights), and one ring of hammer on iron for each blow
             forgeFire.Clear();
             forgeFireWas.Clear();
             foreach (Transform forge in Children("forge"))
@@ -56,16 +59,14 @@ namespace IslandsOfValheim
                 foreach (Light l in forge.GetComponentsInChildren<Light>(true)) { forgeFire.Add(l); forgeFireWas.Add(l.intensity); }
                 break;
             }
-            if (forgeWork == null)
-            {
-                GameObject prefab = PrefabManager.Instance.GetPrefab("forge");
-                CraftingStation station = prefab != null ? prefab.GetComponent<CraftingStation>() : null;
-                forgeWork = station != null ? station.m_craftItemEffects : new EffectList();
-            }
+            if (clang == null)
+                foreach (string name in new[] { "sfx_build_hammer_metal", "sfx_metal_blocked", "sfx_HammerHit" })
+                    if ((clang = PrefabManager.Instance.GetPrefab(name)) != null) { Plugin.Debug("Valhalla: Eitri's anvil rings with " + name); break; }
             Plugin.Debug("Valhalla: Eitri and Brokkr at their forge (" + forgeFire.Count + " lights in its fire)");
         }
 
-        // Eitri: three blows on the anvil, a breath, again (each with the forge's ring of work); Brokkr's bellows:
+        // Eitri: three blows on the anvil, a breath, again, each ringing once as it lands (2.0.25-2.0.26 played the
+        // forge's whole crafting sound with each blow: it went on after the blow was done, the user heard); Brokkr's bellows:
         // now and then the fire flares up and dies down.
         void Smithing(double now)
         {
@@ -79,9 +80,14 @@ namespace IslandsOfValheim
                     if (k < 3)
                     {
                         eitri.Strike(k, null);
-                        if (forgeWork != null && forgeWork.m_effectPrefabs != null && forgeWork.m_effectPrefabs.Length > 0 && Near(eitri.transform.position, 30f))
-                            forgeWork.Create(eitri.transform.position + eitri.transform.forward * 0.9f + Vector3.up * 0.9f, Quaternion.identity);
+                        clangAt = Time.time + 0.38f; // (as the blow lands: SpiritHuman.Land)
                     }
+                }
+                if (clangAt > 0f && Time.time >= clangAt)
+                {
+                    clangAt = -1f;
+                    if (clang != null && Near(eitri.transform.position, 30f))
+                        Instantiate(clang, eitri.transform.position + eitri.transform.forward * 0.8f + Vector3.up * 0.9f, Quaternion.identity);
                 }
             }
             if (forgeFire.Count == 0) return;

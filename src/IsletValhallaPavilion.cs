@@ -87,20 +87,25 @@ namespace IslandsOfValheim
         // ---- Eitri and Brokkr's forge, west of the einherjar's yard (where the daily battle was) ----
 
         internal static readonly Vector2 Smithy = new Vector2(19f, -16f);
-        // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them: ValhallaSmiths)
-        internal static readonly Vector2 SmithAnvil = new Vector2(1f, 0.6f), SmithBellows = new Vector2(-1.8f, -0.3f);
+        // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them, by their real
+        // size: ValhallaSmiths)
+        internal static readonly Vector2 SmithAnvil = new Vector2(2.6f, 2.6f), SmithBellows = new Vector2(-3f, 1.4f);
+        const float SmithyHalf = 5f;
 
-        // A stone floor (8 x 8 m), the forge on its west side with its bellows, the cooler (a barrel of water)
-        // by it; the smith's anvil before it, the small anvils, the grinding wheel, the tool rack; under a shelter
-        // like the kitchen's, smaller.
+        // A stone floor (10 x 10 m, a metre high: its stones are blocks) with steps up the middle of each side and
+        // the way from each across it kept clear; in its four corners the work: the forge with its bellows beside
+        // it, the smith's anvil, the grinding wheel, the small anvils and the cooler; a dwarves' lantern either
+        // side of the east and west steps, its lamp over the floor; under a shelter like the kitchen's.
+        // (2.0.25-2.0.26: 8 x 8, all close together, one way up, the lanterns by the posts looking out, and the
+        // tool rack, a thing hung on a wall, standing in the air with nothing behind it.)
         static void SmithyBuild()
         {
             Vector3 k = new Vector3(Smithy.x, 0f, Smithy.y);
             float floor = float.MinValue;
             string tile = PieceNamed("$piece_stonefloor2x2", "stone_floor_2x2");
             if (tile != null)
-                for (float x = -3f; x <= 3.01f; x += 2f)
-                    for (float z = -3f; z <= 3.01f; z += 2f)
+                for (float x = -4f; x <= 4.01f; x += 2f)
+                    for (float z = -4f; z <= 4.01f; z += 2f)
                     {
                         GameObject t = SkyProp(tile, k + new Vector3(x, 0f, z), Vector3.zero);
                         if (t != null) floor = Mathf.Max(floor, SkyBounds(t).max.y);
@@ -108,8 +113,9 @@ namespace IslandsOfValheim
             if (floor == float.MinValue) floor = G(Smithy.x, Smithy.y);
             Vector3 f = new Vector3(k.x, floor, k.z);
             // the forge with its fire burning (a copy's fire shows only while it has fuel: shown here)
+            GameObject forgeGo = null;
             string forge = PieceNamed("$piece_forge", "forge");
-            if (forge != null) SkyProp(forge, f + new Vector3(-1.8f, 0f, 1.4f), new Vector3(0f, 90f, 0f), false, go =>
+            if (forge != null) forgeGo = SkyProp(forge, f + new Vector3(-3f, 0f, 3f), new Vector3(0f, 90f, 0f), false, go =>
             {
                 CraftingStation station = go.GetComponent<CraftingStation>();
                 if (station != null && station.m_haveFireObject != null) station.m_haveFireObject.SetActive(true);
@@ -117,47 +123,71 @@ namespace IslandsOfValheim
                 if (station != null && station.m_inUseObject != null) station.m_inUseObject.SetActive(false);
                 if (station != null && station.m_areaMarker != null) station.m_areaMarker.SetActive(false);
             });
-            Ext("$piece_forge_ext1", "forge_ext1", f, SmithBellows, 90f);   // the bellows
-            Ext("$piece_forge_ext5", "forge_ext5", f, new Vector2(-0.4f, 2.9f), 0f);  // the cooler
-            Ext("$piece_forge_ext4", "forge_ext4", f, SmithAnvil, 90f);     // the smith's anvil
-            Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(0.6f, -2.4f), 0f);  // the anvils
-            Ext("$piece_forge_ext3", "forge_ext3", f, new Vector2(2.1f, -2f), 0f);    // the grinding wheel
-            Ext("$piece_forge_ext6", "forge_ext6", f, new Vector2(2.7f, 1.6f), -90f); // the tool rack
-            // two of the dwarves' own pole lanterns inside (2.0.25 had no light under the roof but the forge's)
+            // the bellows right against the forge's south side, as the game sets them by it
+            GameObject bellows = Ext("$piece_forge_ext1", "forge_ext1", f, SmithBellows, 90f);
+            if (forgeGo != null && bellows != null)
+            {
+                Bounds fb = SkyBounds(forgeGo), bb = SkyBounds(bellows);
+                Put(bellows, new Vector3(fb.center.x, floor, fb.min.z - bb.extents.z - 0.05f), false);
+            }
+            Ext("$piece_forge_ext5", "forge_ext5", f, new Vector2(-1.6f, -3.6f), 0f);  // the cooler
+            Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(-3.2f, -3f), 0f);    // the small anvils
+            Ext("$piece_forge_ext4", "forge_ext4", f, SmithAnvil, 90f);                // the smith's anvil
+            Ext("$piece_forge_ext3", "forge_ext3", f, new Vector2(3f, -3f), 0f);       // the grinding wheel
+            // the lanterns: each by the east or west steps, its lamp turned in over the floor
             string lantern = PieceNamed("$piece_dvergr_lantern_pole", "piece_dvergr_lantern_pole");
             if (lantern != null)
-                foreach (Vector2 at in new[] { new Vector2(2.6f, -2.6f), new Vector2(-2.6f, -2.6f) })
-                    SkyProp(lantern, f + new Vector3(at.x, 0f, at.y), Vector3.zero);
-            // steps up onto the floor (its stones stand a metre high: 2.0.25 had none), on the yard's side
-            if (tile != null) StoneSteps(tile, Smithy.x + 4f, Smithy.y - 0.4f, floor, 2.4f);
-            Shelter(Smithy, floor, 3.2f, new[] { -3f, 3f }, 2, 3f);
+                foreach (float side in new[] { -1f, 1f })
+                    foreach (float z in new[] { -1.7f, 1.7f })
+                    {
+                        if (side * z < 0f) continue; // (one each side: south of the west steps, north of the east)
+                        Inward(lantern, f + new Vector3(side * 4.4f, 0f, z), new Vector3(-side, 0f, 0f));
+                    }
+            // steps up the middle of each side (its stones stand a metre high: 2.0.25 had none, 2.0.26 one)
+            if (tile != null)
+                foreach (Vector2 way in new[] { Vector2.right, Vector2.left, Vector2.up, Vector2.down })
+                    StoneSteps(tile, Smithy, way, SmithyHalf, floor, 2.4f);
+            Shelter(Smithy, floor, 4.4f, new[] { -4f, 4f }, 3, 3.8f);
         }
 
-        // Steps going down east from an edge at x (to the ground there), width wide, each a stone of the floor's
-        // own kind, cut to size.
-        static void StoneSteps(string stone, float edge, float z, float top, float width)
+        // Turned so the lamp (its light) is toward look from its foot.
+        static void Inward(string name, Vector3 at, Vector3 look)
         {
-            float ground = G(edge + 1f, z), rise = top - ground;
+            GameObject prefab = PrefabManager.Instance.GetPrefab(name);
+            Light lamp = prefab != null ? prefab.GetComponentInChildren<Light>(true) : null;
+            Vector3 own = lamp != null ? prefab.transform.InverseTransformPoint(lamp.transform.position) : Vector3.zero;
+            own.y = 0f;
+            float yaw = own.sqrMagnitude > 0.01f ? YawFor(own.normalized, look) : 0f;
+            SkyProp(name, at, new Vector3(0f, yaw, 0f));
+        }
+
+        // Steps going down from the floor's edge (half from the middle c, way out) to the ground there, width
+        // wide, each a stone of the floor's own kind, cut to size.
+        static void StoneSteps(string stone, Vector2 c, Vector2 way, float half, float top, float width)
+        {
+            Vector2 edge = c + way * half;
+            float ground = G(edge.x + way.x, edge.y + way.y), rise = top - ground;
             if (rise < 0.15f) return;
             int count = Mathf.Max(2, Mathf.CeilToInt(rise / 0.25f));
             const float depth = 0.45f;
+            bool alongX = Mathf.Abs(way.x) > 0.5f;
             for (int i = 1; i <= count; i++)
             {
                 float height = rise * i / (count + 1f);
-                Vector3 at = new Vector3(edge + depth * (count - i) + depth * 0.5f, ground - 0.3f, z);
+                Vector2 p = edge + way * (depth * (count - i) + depth * 0.5f);
+                Vector3 at = new Vector3(p.x, ground - 0.3f, p.y);
                 GameObject go = SkyProp(stone, at, Vector3.zero);
                 if (go == null) return;
                 Bounds b = SkyBounds(go);
-                go.transform.localScale = new Vector3(depth / Mathf.Max(0.1f, b.size.x), (height + 0.3f) / Mathf.Max(0.05f, b.size.y), width / Mathf.Max(0.1f, b.size.z));
+                go.transform.localScale = new Vector3((alongX ? depth : width) / Mathf.Max(0.1f, b.size.x), (height + 0.3f) / Mathf.Max(0.05f, b.size.y),
+                    (alongX ? width : depth) / Mathf.Max(0.1f, b.size.z));
                 Put(go, at, false);
             }
-            Plugin.Debug("Valhalla: " + count + " steps up to the forge's floor, " + rise.ToString("F2") + " m");
         }
-
-        static void Ext(string token, string name, Vector3 f, Vector2 at, float yaw)
+        static GameObject Ext(string token, string name, Vector3 f, Vector2 at, float yaw)
         {
             string piece = PieceNamed(token, name);
-            if (piece != null) SkyProp(piece, f + new Vector3(at.x, 0f, at.y), new Vector3(0f, yaw, 0f));
+            return piece != null ? SkyProp(piece, f + new Vector3(at.x, 0f, at.y), new Vector3(0f, yaw, 0f)) : null;
         }
 
         // A piece of the game's by its prefab name, else by its own (shown) name: one whose Piece is called token.
