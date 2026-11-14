@@ -15,8 +15,18 @@ namespace IslandsOfValheim
     // Each client works it out for itself from the world's keys; the first to see a step due sets its key.
     class ValhallaCall : MonoBehaviour
     {
-        internal const string CallKey = "iovvalhallacall";          // Hugin's words (the player's seen list)
-        internal const string EnteredKey = "iovvalhallaentered";    // first time through the gate (the same)
+        // Hugin's words, and the first time through the gate: kept in the player's seen list, for this world (the
+        // world's id after the name). Up to 2.1.1 they were the character's: one that went to Valhalla in another
+        // world had no call and no light in the next. Seen: either, or the old one where someone was welcomed.
+        const string CallBase = "iovvalhallacall", EnteredBase = "iovvalhallaentered";
+        static string World { get { return ZNet.instance != null ? ZNet.instance.GetWorldUID().ToString() : ""; } }
+        internal static string CallKey { get { return CallBase + World; } }
+        internal static string EnteredKey { get { return EnteredBase + World; } }
+
+        static bool Seen(Player player, string key)
+        {
+            return player.HaveSeenTutorial(key + World) || (player.HaveSeenTutorial(key) && Story.Key(ValhallaSpeaker.WelcomedKey));
+        }
         const string DayKey = "iovcallday";                          // + the day the end was first seen on
         internal static bool devNow;                                 // iov_call now: due at once, tale or not
 
@@ -52,6 +62,7 @@ namespace IslandsOfValheim
             ZoneSystem zones = ZoneSystem.instance;
             Player player = Player.m_localPlayer;
             EnvMan env = EnvMan.instance;
+            if (player == null) told = false; // (out to the menu: Hugin comes again for whoever comes in next, if not yet heard)
             if (zones == null || player == null || env == null) { Light(false, player); return; }
             bool open = zones.GetGlobalKey(ValhallaGate.OpenKey);
             if (!open && (devNow || Story.Key(Story.FinalDone)))
@@ -65,7 +76,7 @@ namespace IslandsOfValheim
                 }
             }
             if (!open) { Light(false, player); return; }
-            if (!told && !player.HaveSeenTutorial(CallKey))
+            if (!told && !Seen(player, CallBase))
             {
                 told = true;
                 if (Raven.m_tutorialsEnabled)
@@ -83,7 +94,7 @@ namespace IslandsOfValheim
                     Plugin.Debug("Odin's call: shown without Hugin (his tips are off)");
                 }
             }
-            Light(!player.HaveSeenTutorial(EnteredKey), player);
+            Light(!Seen(player, EnteredBase), player);
         }
 
         // The day the tale's end was first seen on, by anyone (set now if no one has yet).
@@ -135,7 +146,7 @@ namespace IslandsOfValheim
             if (player != null)
             {
                 HashSet<string> seen = HarmonyLib.Traverse.Create(player).Field("m_shownTutorials").GetValue<HashSet<string>>();
-                if (seen != null) { seen.Remove(CallKey); seen.Remove(EnteredKey); seen.Remove(ValhallaSky.FoundKey); seen.Remove(ValhallaSky.WayLitKey); }
+                if (seen != null) { seen.Remove(CallKey); seen.Remove(EnteredKey); seen.Remove(CallBase); seen.Remove(EnteredBase); seen.Remove(ValhallaSky.FoundKey); seen.Remove(ValhallaSky.WayLitKey); }
             }
             foreach (ValhallaCall call in Object.FindObjectsOfType<ValhallaCall>()) call.told = false;
         }

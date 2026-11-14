@@ -274,6 +274,9 @@ namespace IslandsOfValheim
             ItemDrop.ItemData.SharedData shared = piece.ItemDrop.m_itemData.m_shared;
             shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
             shared.m_teleportable = false;
+            // Left lying (dropped by a boss you fell to before picking it up, or by its stand with your bag full), it
+            // stays: the game clears away loose things after an hour, and with it the tale's only one (2.1.1).
+            piece.ItemDrop.m_autoDestroy = false;
         }
 
         // Something used up for a status effect, with the item's icon on it.
@@ -546,6 +549,8 @@ namespace IslandsOfValheim
                         // The light comes for him, as it once came for her, after his last words; the page
                         // and what the light leaves of the fragments come once he's gone.
                         player.AddKnownText("$" + step.Lore, "$" + step.Lore + "_text");
+                        player.m_customData[HeartOwed] = "1"; // (given at the end of it: Ending, or Track if that's missed)
+                        ending = true;
                         npc.Hold();
                         Plugin.Instance.StartCoroutine(Ending(player, npc, "$" + step.Lore));
                         Plugin.Debug("Story: the tale is told");
@@ -600,11 +605,36 @@ namespace IslandsOfValheim
             return found != int.MaxValue && EnvMan.instance != null && EnvMan.instance.GetDay() > found;
         }
 
+        // A fragment out in the world from its source (its boss fallen, taken from its place), carried or not: what
+        // never reached a bag can be had again from Sævar too (2.1.1 only knew of those once carried).
+        static void MarkFound(string piece)
+        {
+            if (ZoneSystem.instance == null || EnvMan.instance == null) return;
+            for (int s = 0; s < Steps.Length; s++)
+            {
+                if (Steps[s].Piece != piece || Key(Steps[s].Done) || FoundDay(s) != int.MaxValue) continue;
+                ZoneSystem.instance.SetGlobalKey(FoundKey + s + "d" + EnvMan.instance.GetDay());
+                Plugin.Debug("Story: the fragment of step " + (s + 2) + " is out in the world, on day " + EnvMan.instance.GetDay());
+            }
+        }
+
+        // The tale's end: what the light leaves of the fragments is owed to whoever brought the last one, kept with
+        // them (their own data) until it's in their hands. Ending gives it after the light; if the game closed in
+        // between, Track gives it the next time they're about. (Up to 2.1.1 it was lost then, for good.)
+        const string HeartOwed = "IoV_HeartOwed";
+        static bool ending;
+
         // Every few seconds, for the local player: a fragment they carry is marked found; one of a step already
-        // done (a second one, given again) is taken away.
+        // done (a second one, given again) is taken away; the heart, if it's owed them.
         internal static void Track(Player player)
         {
             if (player == null || ZoneSystem.instance == null || EnvMan.instance == null) return;
+            if (!ending && player.m_customData.ContainsKey(HeartOwed))
+            {
+                player.m_customData.Remove(HeartOwed);
+                Give(player, BrimHeart);
+                Plugin.Log.LogInfo("Story: the heart was still owed (the game closed during the tale's end); given now");
+            }
             for (int s = 0; s < Steps.Length; s++)
             {
                 ItemDrop.ItemData piece = Find(player, Steps[s].Piece);
@@ -632,8 +662,9 @@ namespace IslandsOfValheim
             yield return new WaitForSeconds(9f);
             if (npc != null) npc.Leave(true);
             yield return new WaitForSeconds(3f);
-            if (player == null) yield break;
-            Give(player, BrimHeart);
+            ending = false;
+            if (player == null || player != Player.m_localPlayer) yield break; // (owed still: Track gives it)
+            if (player.m_customData.Remove(HeartOwed)) Give(player, BrimHeart);
             if (TextViewer.instance != null) TextViewer.instance.ShowText(TextViewer.Style.Rune, lore, lore + "_text", true);
         }
 
@@ -837,14 +868,17 @@ namespace IslandsOfValheim
         [HarmonyPatch(typeof(Pickable), "Interact")]
         static class AshPiecePatch
         {
-            static void Prefix(Pickable __instance, bool repeat, out bool __state)
+            static void Prefix(Pickable __instance, bool repeat, out string __state)
             {
-                __state = !repeat && Utils.GetPrefabName(__instance.gameObject) == AshPiece && pickedField != null && !(bool)pickedField.GetValue(__instance);
+                string name = Utils.GetPrefabName(__instance.gameObject);
+                __state = !repeat && (name == AshPiece || name == RunePiece) && pickedField != null && !(bool)pickedField.GetValue(__instance) ? name : null;
             }
 
-            static void Postfix(Pickable __instance, Humanoid character, bool __state)
+            static void Postfix(Pickable __instance, Humanoid character, string __state)
             {
-                if (!__state || character != Player.m_localPlayer || ZNetScene.instance == null) return;
+                if (__state == null) return;
+                MarkFound(__state == AshPiece ? Piece5 : Piece4); // (taken from its place, into the bag or onto the ground)
+                if (__state != AshPiece || character != Player.m_localPlayer || ZNetScene.instance == null) return;
                 Vector3 at = __instance.transform.position;
                 for (int i = 0; i < Crew.Length; i++)
                 {
@@ -904,6 +938,10 @@ namespace IslandsOfValheim
         {
             static void Prefix(Character __instance)
             {
+                // the two who carry a fragment: it's out in the world from now (MarkFound), picked up or not
+                string name = __instance != null ? Utils.GetPrefabName(__instance.gameObject) : "";
+                if (name == Ketill) MarkFound(Piece1);
+                else if (name == Hafdis) MarkFound(Piece6);
                 Keeper keeper = KeeperOf(__instance);
                 if (keeper == null) return;
                 Set(keeper.Down);

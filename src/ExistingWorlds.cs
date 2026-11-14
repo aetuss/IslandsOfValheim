@@ -266,8 +266,14 @@ namespace IslandsOfValheim
 
             System.Random random = new System.Random(WorldGenerator.instance.GetSeed() ^ 0x1e7a);
             int registered = 0, built = 0, short_ = 0;
+            bool uniqueShort = false;
             List<string> report = new List<string>();
-            foreach (ZoneSystem.ZoneLocation location in new List<ZoneSystem.ZoneLocation>(zones.m_locations))
+            // The one-of-a-kind places first (the tale's islets, the harbour, Rán's graveyard), and not held back by
+            // the cap on islets built at once: without one of them the tale's map leads nowhere. (Up to 2.1.1 they
+            // took their turn, and one that didn't fit was never tried again.)
+            List<ZoneSystem.ZoneLocation> order = new List<ZoneSystem.ZoneLocation>(zones.m_locations);
+            order.Sort((a, b) => (b != null && b.m_unique).CompareTo(a != null && a.m_unique));
+            foreach (ZoneSystem.ZoneLocation location in order)
             {
                 // (Kinds no longer placed, kept for the worlds that have them built: quantity 0.)
                 if (!Ours(location) || location.m_quantity <= 0) continue;
@@ -284,20 +290,20 @@ namespace IslandsOfValheim
                     Vector3 spot;
                     bool found = Next(location, unexplored, ref u, ours, byGroup, null, random, out spot);
                     bool build = false;
-                    if (!found && built < MaxBuiltPerPass)
+                    if (!found && (built < MaxBuiltPerPass || location.m_unique))
                     {
                         if (explored == null) explored = Candidates(location, sea.Explored, random);
                         found = Next(location, explored, ref e, ours, byGroup, buildings, random, out spot);
                         build = found;
                     }
-                    if (!found) { short_ += missing - n; break; }
+                    if (!found) { short_ += missing - n; if (location.m_unique) uniqueShort = true; break; }
                     spot.y = zones.m_waterLevel;
                     if (build)
                     {
                         // made first, listed once it's there (IsletBuilder.BuildLocationNow); one that couldn't be
                         // made is left out and counted as missing (iov_placeislets tries again)
                         Quaternion rotation = Quaternion.Euler(0f, random.Next(16) * 22.5f, 0f);
-                        if (!IsletBuilder.BuildLocationNow(location, random.Next(), spot, rotation)) { short_ += missing - n; break; }
+                        if (!IsletBuilder.BuildLocationNow(location, random.Next(), spot, rotation)) { short_ += missing - n; if (location.m_unique) uniqueShort = true; break; }
                         built++;
                         addedBuilt++;
                         Plugin.Debug("Islets in existing worlds: built " + location.m_prefabName + " at " + spot.ToString("F0") + " in sailed ocean");
@@ -316,10 +322,11 @@ namespace IslandsOfValheim
                 yield return null;
             }
 
-            zones.SetGlobalKey(DoneKey);
+            // (a one-of-a-kind place still missing: not marked done, so the next load tries again)
+            if (!uniqueShort) zones.SetGlobalKey(DoneKey);
             string summary = report.Count == 0 ? "the world already had every islet; nothing added."
                 : "added " + (registered + built) + " islets, " + built + " built now in sailed ocean and " + registered + " where nobody has sailed yet: " + string.Join(", ", report.ToArray()) + ".";
-            if (short_ > 0) summary += " " + short_ + " didn't fit (no open sea left in their ring).";
+            if (short_ > 0) summary += " " + short_ + " didn't fit (no open sea left in their ring)" + (uniqueShort ? "; one of them is one of a kind, so it's tried again next time the world loads." : ".");
             Plugin.Log.LogInfo("Islets in existing worlds: " + summary);
             if (context != null) context.AddString("Islets in existing worlds: " + summary);
         }
