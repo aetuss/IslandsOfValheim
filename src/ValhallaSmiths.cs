@@ -18,8 +18,9 @@ namespace IslandsOfValheim
         static GameObject clang;
         float clangAt = -1f;
 
-        // a dwarf: short and broad (2.0.25's 0.8 high, 1.14 wide looked sunk to the knees in the floor: the user)
-        static readonly Vector3 Squat = new Vector3(1.08f, 0.88f, 1.08f);
+        // a dwarf: short, the same all over (stretched wider than tall, 2.0.25-2.0.27, his head was too, his face
+        // squashed flat and broad: the user saw it was wrong; and he looked sunk to the knees)
+        static readonly Vector3 Squat = Vector3.one * 0.84f;
 
         void Smiths()
         {

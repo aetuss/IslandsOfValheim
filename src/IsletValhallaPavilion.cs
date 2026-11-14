@@ -90,7 +90,7 @@ namespace IslandsOfValheim
         // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them, by their real
         // size: ValhallaSmiths)
         internal static readonly Vector2 SmithAnvil = new Vector2(2.6f, 2.6f), SmithBellows = new Vector2(-3f, 1.4f);
-        const float SmithyHalf = 5f;
+        const float SmithyHalf = 5f, SmithyPostX = 4.4f, SmithyPostZ = 4f, SmithyPosts = 3.8f;
 
         // A stone floor (10 x 10 m, a metre high: its stones are blocks) with steps up the middle of each side and
         // the way from each across it kept clear; in its four corners the work: the forge with its bellows beside
@@ -134,33 +134,34 @@ namespace IslandsOfValheim
             Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(-3.2f, -3f), 0f);    // the small anvils
             Ext("$piece_forge_ext4", "forge_ext4", f, SmithAnvil, 90f);                // the smith's anvil
             Ext("$piece_forge_ext3", "forge_ext3", f, new Vector2(3f, -3f), 0f);       // the grinding wheel
-            // the lanterns: each by the east or west steps, its lamp turned in over the floor
-            string lantern = PieceNamed("$piece_dvergr_lantern_pole", "piece_dvergr_lantern_pole");
+            // a hooded lantern hung under the middle of each of the four beams, its light turned in over the floor
+            // (2.0.25-2.0.27's dwarves' pole lanterns stood by the posts looking out: the user had these instead,
+            // hung so)
+            string lantern = PieceNamed("$piece_hoodedlantern", "piece_hoodedlantern");
+            float top = floor + SmithyPosts;
             if (lantern != null)
-                foreach (float side in new[] { -1f, 1f })
-                    foreach (float z in new[] { -1.7f, 1.7f })
-                    {
-                        if (side * z < 0f) continue; // (one each side: south of the west steps, north of the east)
-                        Inward(lantern, f + new Vector3(side * 4.4f, 0f, z), new Vector3(-side, 0f, 0f));
-                    }
-            // steps up the middle of each side (its stones stand a metre high: 2.0.25 had none, 2.0.26 one)
+            {
+                Hang(lantern, new Vector3(k.x - SmithyPostX, top - 0.26f, k.z), Vector3.right);
+                Hang(lantern, new Vector3(k.x + SmithyPostX, top - 0.26f, k.z), Vector3.left);
+                Hang(lantern, new Vector3(k.x, top - 0.52f, k.z - SmithyPostZ), Vector3.forward);
+                Hang(lantern, new Vector3(k.x, top - 0.52f, k.z + SmithyPostZ), Vector3.back);
+            }            // steps up the middle of each side (its stones stand a metre high: 2.0.25 had none, 2.0.26 one)
             if (tile != null)
                 foreach (Vector2 way in new[] { Vector2.right, Vector2.left, Vector2.up, Vector2.down })
                     StoneSteps(tile, Smithy, way, SmithyHalf, floor, 2.4f);
-            Shelter(Smithy, floor, 4.4f, new[] { -4f, 4f }, 3, 3.8f);
+            Shelter(Smithy, floor, SmithyPostX, new[] { -SmithyPostZ, SmithyPostZ }, 3, SmithyPosts);
         }
 
-        // Turned so the lamp (its light) is toward look from its foot.
-        static void Inward(string name, Vector3 at, Vector3 look)
+        // Hung by its top from under a beam at at, its light turned toward look (as far as it points sideways).
+        static void Hang(string name, Vector3 at, Vector3 look)
         {
             GameObject prefab = PrefabManager.Instance.GetPrefab(name);
             Light lamp = prefab != null ? prefab.GetComponentInChildren<Light>(true) : null;
-            Vector3 own = lamp != null ? prefab.transform.InverseTransformPoint(lamp.transform.position) : Vector3.zero;
+            Vector3 own = lamp != null ? prefab.transform.InverseTransformDirection(lamp.transform.forward) : Vector3.zero;
             own.y = 0f;
-            float yaw = own.sqrMagnitude > 0.01f ? YawFor(own.normalized, look) : 0f;
-            SkyProp(name, at, new Vector3(0f, yaw, 0f));
+            float yaw = own.sqrMagnitude > 0.04f ? YawFor(own.normalized, look) : 0f;
+            SkyProp(name, at, new Vector3(0f, yaw, 0f), true);
         }
-
         // Steps going down from the floor's edge (half from the middle c, way out) to the ground there, width
         // wide, each a stone of the floor's own kind, cut to size.
         static void StoneSteps(string stone, Vector2 c, Vector2 way, float half, float top, float width)
