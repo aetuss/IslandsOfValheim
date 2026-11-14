@@ -83,6 +83,9 @@ namespace IslandsOfValheim
             {
                 GameObject go = Beast("Valkyrie", new Vector3(HallMiddle.x, 0f, HallMiddle.y), Vector3.forward, 4f, 1f, Color.white, "");
                 if (go == null) break;
+                // (the game's Valkyrie carries a looping wind (Wind_BlowingLoop1) round her: two of them circling
+                // over the hall all the time filled Valhalla with a hiss, 2.0.33; silenced)
+                foreach (AudioSource a in go.GetComponentsInChildren<AudioSource>(true)) { a.Stop(); a.enabled = false; }
                 fliers.Add(new Flier { body = go.transform, radius = i == 0 ? 34f : 46f, height = ground + (i == 0 ? 26f : 32f), speed = 7f, phase = i * 2.4f });
             }
             Plugin.Debug("Valhalla: " + servers.Count + " valkyries serving (" + drinkers.Count + " at the tables), " + fliers.Count + " in the sky");
