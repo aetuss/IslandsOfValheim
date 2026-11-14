@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- Multiplayer fixes: Valhalla's gates and Odin's light now work for players on a server or in someone else's world, duels in the ring no longer clash, a lost tale fragment can be had again from Sævar, and the tale's bosses no longer come twice on a server.
+
 ## 2.1.0
 
 - New in Valhalla: Bragi's saga, a cook, einherjar bouts in the ring, valkyries, the dwarf smiths Eitri and Brokkr, and the golden tree Glasir.
