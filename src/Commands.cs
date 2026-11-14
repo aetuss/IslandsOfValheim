@@ -312,6 +312,10 @@ namespace IslandsOfValheim
                         ", " + ValhallaPeople.devCrowd + " more standing west of the way. Press F2 for the frame rate.");
                 }, true);
 
+            new Terminal.ConsoleCommand("iov_perf",
+                "- IslandsOfValheim (development): what costs the frame rate where you stand: counts what's drawn and lit, then switches each kind off for a few seconds and measures (about 40 s; stand still)",
+                args => ValhallaPerf.Run(args.Context), true);
+
             new Terminal.ConsoleCommand("iov_spirits",
                 "- IslandsOfValheim (development): a standing ghost, a seated one and a solid one around you, to see the spirits",
                 args => SpiritHuman.SpawnTest(args.Context), true);
