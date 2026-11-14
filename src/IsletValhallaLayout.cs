@@ -47,6 +47,7 @@ namespace IslandsOfValheim
             pad = Mathf.Max(pad, CirclePad(x, z, Yard, 12f));
             pad = Mathf.Max(pad, CirclePad(x, z, Kitchen, 7.5f));
             pad = Mathf.Max(pad, CirclePad(x, z, Smithy, 8.5f));
+            pad = Mathf.Max(pad, CirclePad(x, z, GlasirAt, 4f));
             pad = Mathf.Max(pad, CirclePad(x, z, new Vector2(0f, LookoutZ), 12f));
             return pad;
         }
@@ -79,6 +80,7 @@ namespace IslandsOfValheim
             EinherjarYard();
             MemorialPath();
             Meadow();
+            Glasir();
             Plugin.Debug("Valhalla: layout of " + (built - before) + " pieces, " + missing + " not found");
             LogCatalogue();
             LogChecks();
@@ -842,6 +844,60 @@ namespace IslandsOfValheim
                 Vector3 at = new Vector3(DuelRing.x, 0f, DuelRing.y) - inward * (DuelRadius - 0.8f);
                 SkyItem(ShieldNames[i * 2 % ShieldNames.Length], at, (inward + Vector3.up * 0.26f).normalized, Vector3.up, false);
             }
+        }
+
+        // ---- Glasir, the golden tree before Valhalla's doors ----
+
+        // East of the hall's front, across the way from the kitchen: 11 m off the hall's front corner, 14 m off
+        // the last birch of the way, clear of the ring, the smithy and the guard's round (x 11.5).
+        internal static readonly Vector2 GlasirAt = new Vector2(18f, -1f);
+        const float GlasirCrown = 9f, GlasirTallest = 22f; // (its crown's reach; and kept under the valkyries' flight, 26 m up)
+
+        // One of the game's oaks, grown as far as its crown may reach, its leaves turned to red gold (their
+        // picture recoloured, the bark left as it is), a warm light under its crown; its name when you look at it.
+        static void Glasir()
+        {
+            GameObject tree = SkyPlant("Oak1", GlasirAt.x, GlasirAt.y, 35f, 0.1f);
+            if (tree == null) return;
+            Bounds b = SkyBounds(tree);
+            float reach = Mathf.Max(b.size.x, b.size.z) * 0.5f, height = b.max.y;
+            float grow = Mathf.Clamp(Mathf.Min(GlasirCrown / Mathf.Max(reach, 0.1f), GlasirTallest / Mathf.Max(height, 0.1f)), 1f, 1.6f);
+            tree.transform.localScale *= grow;
+            Recolor.Shift gold = Recolor.ToHue(0.11f, 0.85f, 1.35f);
+            List<string> leaves = new List<string>(), kept = new List<string>();
+            foreach (Renderer r in tree.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                Material[] mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    string n = mats[i].name.ToLowerInvariant();
+                    if (n.Contains("bark") || n.Contains("trunk") || n.Contains("wood")) { if (!kept.Contains(mats[i].name)) kept.Add(mats[i].name); continue; }
+                    if (!leaves.Contains(mats[i].name)) leaves.Add(mats[i].name);
+                    mats[i] = Recolor.Material(mats[i], gold);
+                    if (mats[i] != null && mats[i].HasProperty("_EmissionColor"))
+                    {
+                        mats[i].EnableKeyword("_EMISSION");
+                        mats[i].SetColor("_EmissionColor", new Color(1f, 0.7f, 0.2f) * 0.12f);
+                    }
+                }
+                r.sharedMaterials = mats;
+            }
+            tree.AddComponent<ValhallaWork>().token = "iov_glasir";
+            Bounds now = SkyBounds(tree);
+            GameObject glow = new GameObject("IoV_GlasirGlow");
+            glow.transform.SetParent(tree.transform.parent, false);
+            glow.transform.localPosition = new Vector3(GlasirAt.x, Mathf.Lerp(G(GlasirAt.x, GlasirAt.y), now.max.y, 0.5f), GlasirAt.y); // (the sky floor's space, as SkyBounds)
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.78f, 0.35f);
+            light.range = 14f;
+            light.intensity = 1.3f;
+            light.shadows = LightShadows.None;
+            Plugin.Debug("Valhalla: Glasir, an oak " + reach.ToString("F1") + " m round and " + height.ToString("F1") + " m tall, grown x" + grow.ToString("F2") +
+                " to " + (Mathf.Max(now.size.x, now.size.z) * 0.5f).ToString("F1") + " m round, " + now.max.y.ToString("F1") + " m tall; gold: " +
+                (leaves.Count > 0 ? string.Join(", ", leaves.ToArray()) : "nothing") + "; left: " + (kept.Count > 0 ? string.Join(", ", kept.ToArray()) : "nothing"));
         }
 
         // ---- the meadow ----
