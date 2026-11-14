@@ -63,7 +63,33 @@ namespace IslandsOfValheim
             if (clang == null)
                 foreach (string name in new[] { "sfx_build_hammer_metal", "sfx_metal_blocked", "sfx_HammerHit" })
                     if ((clang = PrefabManager.Instance.GetPrefab(name)) != null) { Plugin.Debug("Valhalla: Eitri's anvil rings with " + name); break; }
-            Plugin.Debug("Valhalla: Eitri and Brokkr at their forge (" + forgeFire.Count + " lights in its fire)");
+            // Gullinbursti, Freyr's golden boar cast small, on his plinth by the north steps (the daises, Mjölnir and
+            // Draupnir: IsletBuilder.SmithWorks), still as a casting, his bristles glowing
+            Vector2 gb = c + IsletBuilder.GullinburstiAt;
+            GameObject boar = Beast("Boar", new Vector3(gb.x, 0f, gb.y), Vector3.left, 4f, 0.8f, new Color(1f, 0.76f, 0.22f), "");
+            if (boar != null)
+            {
+                boar.AddComponent<ValhallaWork>().token = "iov_gullinbursti";
+                GameObject glow = new GameObject("IoV_GullinburstiGlow");
+                glow.transform.SetParent(boar.transform, false);
+                glow.transform.localPosition = Vector3.up * 0.8f;
+                Light light = glow.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.78f, 0.35f);
+                light.range = 3f;
+                light.intensity = 1.1f;
+                light.shadows = LightShadows.None;
+                StartCoroutine(Cast(boar));
+            }
+            Plugin.Debug("Valhalla: Eitri and Brokkr at their forge (" + forgeFire.Count + " lights in its fire)" + (boar != null ? ", Gullinbursti by it" : ""));
+        }
+
+        // A casting: held in the pose it stands in a moment after it's made.
+        static System.Collections.IEnumerator Cast(GameObject beast)
+        {
+            yield return new WaitForSeconds(0.6f);
+            if (beast == null) yield break;
+            foreach (Animator a in beast.GetComponentsInChildren<Animator>(true)) a.speed = 0f;
         }
 
         // Eitri: three blows on the anvil, a breath, again, each ringing once as it lands (2.0.25-2.0.26 played the
@@ -209,5 +235,24 @@ namespace IslandsOfValheim
 
         // (development: iov_gifts ready)
         internal static void Ready(Player player) { player.m_customData.Remove(DayKey); }
+    }
+
+    // One of the smiths' works on show (Mjölnir, Draupnir, Gullinbursti): its name and what it is, when you look
+    // at it. (Its field is public so the location's copy keeps it.)
+    class ValhallaWork : MonoBehaviour, Hoverable
+    {
+        public string token = "";
+
+        public string GetHoverText() { return Localization.instance.Localize("$" + token + "\n<color=#c8c8c8>$" + token + "_desc</color>"); }
+        public string GetHoverName() { return Localization.instance.Localize("$" + token); }
+        public float GetHoverOffset() { return 0f; }
+    }
+
+    // Turning slowly round its up (Draupnir over its pedestal).
+    class Spin : MonoBehaviour
+    {
+        public float degrees = 20f;
+
+        void Update() { transform.Rotate(Vector3.up, degrees * Time.deltaTime, Space.World); }
     }
 }

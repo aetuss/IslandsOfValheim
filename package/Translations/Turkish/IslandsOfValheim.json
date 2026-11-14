@@ -566,5 +566,11 @@
   "iov_eitri_given": "İşte. Cüce işi, en azından bir süreliğine.",
   "iov_eitri_later": "Demirin de dinlenmesi lazım, benim de. Yarın gel.",
   "iov_dwarfwork": "Cüce işi",
-  "iov_dwarfwork_tooltip": "Eitri elden geçirdi: teçhizatın aşınmaz, silahların %10 daha sert vurur."
+  "iov_dwarfwork_tooltip": "Eitri elden geçirdi: teçhizatın aşınmaz, silahların %10 daha sert vurur.",
+  "iov_mjolnir": "Mjölnir",
+  "iov_mjolnir_desc": "Thor'un çekici Mjölnir'in bir eşi. Brokkr, sapın kısa kalmasının bir sineğin suçu olduğuna yemin ediyor.",
+  "iov_draupnir": "Draupnir",
+  "iov_draupnir_desc": "Odin'in yüzüğü Draupnir'in bir eşi. Her dokuzuncu gece ondan aynı ağırlıkta sekiz yüzük damlar.",
+  "iov_gullinbursti": "Gullinbursti",
+  "iov_gullinbursti_desc": "Freyr'in altın domuzu Gullinbursti'nin küçük bir dökümü. Kılları en karanlık geceyi aydınlatır."
 }

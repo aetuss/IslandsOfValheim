@@ -150,6 +150,123 @@ namespace IslandsOfValheim
                 foreach (Vector2 way in new[] { Vector2.right, Vector2.left, Vector2.up, Vector2.down })
                     StoneSteps(tile, Smithy, way, SmithyHalf, floor, 2.4f);
             Shelter(Smithy, floor, SmithyPostX, new[] { -SmithyPostZ, SmithyPostZ }, 3, SmithyPosts);
+            if (tile != null) SmithWorks(tile);
+        }
+
+        // ---- the smiths' works, shown north of the forge, either side of its north steps ----
+
+        // where Gullinbursti stands, from the forge's middle (made with the people: ValhallaSmiths)
+        internal static readonly Vector2 GullinburstiAt = new Vector2(3.5f, 6.2f);
+
+        // Two low stone daises either side of the north steps: on the west one Mjölnir lying on a pedestal and
+        // Draupnir turning over another; on the east one, Gullinbursti (ValhallaSmiths). Each says what it is.
+        static void SmithWorks(string stone)
+        {
+            foreach (float side in new[] { -1f, 1f })
+                StoneBlock(stone, new Vector2(Smithy.x + side * 3.5f, Smithy.y + 6.2f), 3.4f, 0.4f, 1.6f, 0f);
+            float dais = G(Smithy.x - 3.5f, Smithy.y + 6.2f) + 0.4f;
+            // Mjölnir: a twin of Thor's hammer, short in the handle, lying on its pedestal
+            float mTop = StoneBlock(stone, new Vector2(Smithy.x - 4.4f, Smithy.y + 6.2f), 0.7f, 0.75f, 0.7f, dais);
+            GameObject hammer = SkyItem("SledgeIron", new Vector3(Smithy.x - 4.4f, mTop, Smithy.y + 6.2f), Vector3.up, Vector3.forward, false);
+            if (hammer != null)
+            {
+                Grow(hammer, 0.55f, new Vector3(Smithy.x - 4.4f, mTop, Smithy.y + 6.2f));
+                Plaque(hammer, "iov_mjolnir");
+            }
+            // Draupnir: a gold ring standing on its edge over its pedestal, turning slowly, faintly lit
+            float dTop = StoneBlock(stone, new Vector2(Smithy.x - 2.6f, Smithy.y + 6.2f), 0.6f, 0.75f, 0.6f, dais);
+            GameObject ring = GoldRing(new Vector3(Smithy.x - 2.6f, dTop + 0.42f, Smithy.y + 6.2f));
+            if (ring != null) Plaque(ring, "iov_draupnir");
+            // (Gullinbursti's low plinth on the east dais; he's made with the people)
+            StoneBlock(stone, new Vector2(Smithy.x + GullinburstiAt.x, Smithy.y + GullinburstiAt.y), 1.7f, 0.3f, 0.9f, G(Smithy.x + 3.5f, Smithy.y + 6.2f) + 0.4f);
+        }
+
+        // A block of the floor's stone cut to size, its foot at foot (or the ground there, 0), its middle at c.
+        // Gives back its top.
+        static float StoneBlock(string stone, Vector2 c, float sx, float sy, float sz, float foot)
+        {
+            float y = foot != 0f ? foot : G(c.x, c.y);
+            Vector3 at = new Vector3(c.x, y - 0.3f, c.y);
+            GameObject go = SkyProp(stone, at, Vector3.zero);
+            if (go == null) return y + sy;
+            Bounds b = SkyBounds(go);
+            go.transform.localScale = new Vector3(sx / Mathf.Max(0.1f, b.size.x), (sy + 0.3f) / Mathf.Max(0.05f, b.size.y), sz / Mathf.Max(0.1f, b.size.z));
+            Put(go, at, false);
+            return y + sy;
+        }
+
+        // A ring of gold (the game has none to lay out: made here, of the gold of the game's coins).
+        static GameObject GoldRing(Vector3 at)
+        {
+            GameObject coins = PrefabManager.Instance.GetPrefab("Coins");
+            Renderer gold = coins != null ? coins.GetComponentInChildren<MeshRenderer>(true) : null;
+            if (gold == null) return null;
+            GameObject go = new GameObject("IoV_Draupnir");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = at;
+            go.AddComponent<MeshFilter>().sharedMesh = Torus(0.2f, 0.045f, 40, 14);
+            MeshRenderer r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = gold.sharedMaterial;
+            go.AddComponent<Spin>().degrees = 25f;
+            GameObject glow = new GameObject("IoV_DraupnirGlow");
+            glow.transform.SetParent(go.transform, false);
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.8f, 0.4f);
+            light.range = 2.2f;
+            light.intensity = 0.9f;
+            light.shadows = LightShadows.None;
+            built++;
+            return go;
+        }
+
+        // A ring standing on its edge (its hole looking along z), round its middle.
+        static Mesh Torus(float big, float small, int around, int across)
+        {
+            List<Vector3> v = new List<Vector3>();
+            List<Vector3> n = new List<Vector3>();
+            List<Vector2> uv = new List<Vector2>();
+            List<int> tris = new List<int>();
+            for (int i = 0; i <= around; i++)
+            {
+                float a = i * Mathf.PI * 2f / around;
+                Vector3 centre = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * big;
+                for (int j = 0; j <= across; j++)
+                {
+                    float b = j * Mathf.PI * 2f / across;
+                    Vector3 normal = new Vector3(Mathf.Cos(a) * Mathf.Cos(b), Mathf.Sin(a) * Mathf.Cos(b), Mathf.Sin(b));
+                    v.Add(centre + normal * small);
+                    n.Add(normal);
+                    uv.Add(new Vector2((float)i / around, (float)j / across));
+                }
+            }
+            for (int i = 0; i < around; i++)
+                for (int j = 0; j < across; j++)
+                {
+                    int p = i * (across + 1) + j, q = p + across + 1;
+                    tris.Add(p); tris.Add(q); tris.Add(p + 1);
+                    tris.Add(p + 1); tris.Add(q); tris.Add(q + 1);
+                }
+            Mesh mesh = new Mesh { name = "IoV_Ring" };
+            mesh.SetVertices(v);
+            mesh.SetNormals(n);
+            mesh.SetUVs(0, uv);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        // What a work is, shown when you look at it: a box round it you can point at.
+        static void Plaque(GameObject work, string token)
+        {
+            Bounds b = SkyBounds(work);
+            GameObject box = new GameObject("IoV_Plaque");
+            box.layer = LayerMask.NameToLayer("piece");
+            box.transform.SetParent(parent, false);
+            box.transform.localPosition = b.center;
+            BoxCollider c = box.AddComponent<BoxCollider>();
+            c.size = Vector3.Max(b.size, Vector3.one * 0.35f);
+            box.AddComponent<ValhallaWork>().token = token;
         }
 
         // Hung by its top from under a beam at at, its light turned toward look (as far as it points sideways).

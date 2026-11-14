@@ -566,5 +566,11 @@
   "iov_eitri_given": "There. Dwarf-wrought, for a while at least.",
   "iov_eitri_later": "The iron needs rest, and so do I. Come back tomorrow.",
   "iov_dwarfwork": "Dwarf-wrought",
-  "iov_dwarfwork_tooltip": "Worked over by Eitri: your gear takes no wear, and your weapons strike 10% harder."
+  "iov_dwarfwork_tooltip": "Worked over by Eitri: your gear takes no wear, and your weapons strike 10% harder.",
+  "iov_mjolnir": "Mjölnir",
+  "iov_mjolnir_desc": "A twin of Mjölnir, Thor's hammer. Brokkr swears the short handle is a fly's fault.",
+  "iov_draupnir": "Draupnir",
+  "iov_draupnir_desc": "A twin of Draupnir, Odin's ring. Every ninth night, eight rings of the same weight drip from it.",
+  "iov_gullinbursti": "Gullinbursti",
+  "iov_gullinbursti_desc": "Gullinbursti, Freyr's golden boar, cast small. Its bristles light up the darkest night."
 }
