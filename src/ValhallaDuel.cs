@@ -168,9 +168,25 @@ namespace IslandsOfValheim
             body = GetComponent<Character>();
             ai = GetComponent<MonsterAI>();
             if (battle && body != null) Battle[body] = this;
+            if (!battle && !ally && body != null) Duelling.Add(this);
         }
 
-        void OnDestroy() { if (body != null) Battle.Remove(body); }
+        void OnDestroy() { if (body != null) Battle.Remove(body); Duelling.Remove(this); }
+
+        // ---- a player's bouts in the ring (ValhallaDuel): whose they are ----
+
+        // Every duel's fighter in this game (the duellist's own and anyone else's), and the player each fights,
+        // kept with him so every game knows (DuelRules: no one else's foe, nor hurt by anyone else).
+        internal static readonly HashSet<EinherjarFighter> Duelling = new HashSet<EinherjarFighter>();
+        const string DuelForKey = "IoV_DuelFor";
+
+        internal long DuelFor { get { return Kept != null ? Kept.GetLong(DuelForKey, 0L) : 0L; } }
+        internal Character Body { get { return body; } }
+
+        internal void For(Player player)
+        {
+            if (Kept != null && player != null) Kept.Set(DuelForKey, player.GetPlayerID());
+        }
 
         // ---- the ring's bouts between einherjar (ValhallaBattle) ----
 
@@ -971,6 +987,26 @@ namespace IslandsOfValheim
         void Awake() { Current = this; }
         void OnDestroy() { Stop(); if (Current == this) Current = null; }
 
+        // The ring is someone else's now: another player's bout is on (their fighters about it), or another player
+        // stands in it. (Each player's bouts are their own game's: until 2.1.0 two could begin at once, and the
+        // einherjar went for whoever was near.)
+        internal static bool RingTaken()
+        {
+            Player me = Player.m_localPlayer;
+            if (me == null || Current == null) return false;
+            Vector3 centre = Current.RingCentre;
+            long mine = me.GetPlayerID();
+            foreach (EinherjarFighter f in EinherjarFighter.Duelling)
+            {
+                if (f == null || f.Body == null || f.Body.IsDead()) continue;
+                long whose = f.DuelFor;
+                if (whose != 0L && whose != mine && Utils.DistanceXZ(f.transform.position, centre) < RingRadius + 20f) return true;
+            }
+            foreach (Player p in Player.GetAllPlayers())
+                if (p != null && p != me && !p.IsDead() && Utils.DistanceXZ(p.transform.position, centre) < RingRadius + 1f) return true;
+            return false;
+        }
+
         Vector3 RingCentre
         {
             get { return transform.TransformPoint(new Vector3(Ring.x, IsletBuilder.SkyGround(Ring.x, Ring.y), Ring.y)); }
@@ -1342,7 +1378,7 @@ namespace IslandsOfValheim
             body.SetMaxHealth(health);
             body.SetHealth(health);
             EinherjarFighter me = go.GetComponent<EinherjarFighter>();
-            if (me != null) { me.modelWanted = model; me.hairWanted = hair ?? ""; me.beardWanted = beard ?? ""; }
+            if (me != null) { me.modelWanted = model; me.hairWanted = hair ?? ""; me.beardWanted = beard ?? ""; me.For(player); }
             VisEquipment vis = go.GetComponent<VisEquipment>();
             if (vis != null)
             {
@@ -1354,6 +1390,45 @@ namespace IslandsOfValheim
             fighters.Add(body);
             Plugin.Debug("Duel: " + prefabName + " with " + right + (left != "" ? " and " + left : "") + ", " + health.ToString("F0") + " health");
             return body;
+        }
+    }
+
+    // A player's bout is theirs alone: its einherjar take no other player for a foe, and neither harms, nor is
+    // harmed by, anyone but the one they fight. (Up to 2.1.0 a bystander could be hunted, and really die.)
+    static class DuelRules
+    {
+        // a is a bout's fighter, and b a player who isn't the one it fights
+        static bool Stranger(Character a, Character b)
+        {
+            Player player = b as Player;
+            if (player == null || a == null || a is Player) return false;
+            EinherjarFighter f = a.GetComponent<EinherjarFighter>();
+            if (f == null || !EinherjarFighter.Duelling.Contains(f)) return false;
+            long whose = f.DuelFor;
+            return whose != 0L && whose != player.GetPlayerID();
+        }
+
+        [HarmonyPatch(typeof(BaseAI), "IsEnemy", new[] { typeof(Character), typeof(Character) })]
+        static class Foes
+        {
+            static bool Prefix(Character __0, Character __1, ref bool __result)
+            {
+                if (EinherjarFighter.Duelling.Count == 0) return true;
+                if (!Stranger(__0, __1) && !Stranger(__1, __0)) return true;
+                __result = false;
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(Character), "RPC_Damage")]
+        static class Blows
+        {
+            static bool Prefix(Character __instance, HitData hit)
+            {
+                if (EinherjarFighter.Duelling.Count == 0 || hit == null) return true;
+                Character by = hit.GetAttacker();
+                return !Stranger(by, __instance) && !Stranger(__instance, by);
+            }
         }
     }
 }

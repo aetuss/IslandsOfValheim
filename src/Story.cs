@@ -531,8 +531,9 @@ namespace IslandsOfValheim
                 }
                 return false;
             }
-            foreach (Step step in Steps)
+            for (int s = 0; s < Steps.Length; s++)
             {
+                Step step = Steps[s];
                 if (Key(step.Done)) continue;
                 ItemDrop.ItemData piece = Find(player, step.Piece);
                 if (piece != null)
@@ -558,9 +559,68 @@ namespace IslandsOfValheim
                     Give(player, step.Map);
                     return true;
                 }
+                // found once and lost since (Lost): he has it back from the sea, and gives it again
+                if (Lost(s))
+                {
+                    Give(player, step.Piece);
+                    Plugin.Log.LogInfo("Story: the fragment of step " + (s + 2) + " was found on day " + FoundDay(s) + " and never brought back; Sævar gives it again");
+                    return true;
+                }
                 return false; // one step at a time
             }
             return false;
+        }
+
+        // ---- a fragment lost ----
+        // Each fragment is in the world once: one carried off by a player who left for good, lost with a death,
+        // or left lying until it was gone, would leave the tale stuck for the world. So once a step's fragment has
+        // been found (someone has carried it: a world key with the day, Track), and that step isn't done, Sævar
+        // gives it again to whoever comes to him without it, from the next day on. Should two be about then, the
+        // other goes once the step is done (Track: a fragment of a step done is gone from whoever still has one).
+
+        const string FoundKey = "iovfound"; // + the step's number + "d" + the day it was first carried
+
+        static int FoundDay(int step)
+        {
+            int found = int.MaxValue;
+            if (ZoneSystem.instance == null) return found;
+            string prefix = FoundKey + step + "d";
+            foreach (string key in ZoneSystem.instance.GetGlobalKeys())
+            {
+                if (!key.StartsWith(prefix)) continue;
+                int day;
+                if (int.TryParse(key.Substring(prefix.Length).Trim(), out day)) found = Mathf.Min(found, day);
+            }
+            return found;
+        }
+
+        static bool Lost(int step)
+        {
+            int found = FoundDay(step);
+            return found != int.MaxValue && EnvMan.instance != null && EnvMan.instance.GetDay() > found;
+        }
+
+        // Every few seconds, for the local player: a fragment they carry is marked found; one of a step already
+        // done (a second one, given again) is taken away.
+        internal static void Track(Player player)
+        {
+            if (player == null || ZoneSystem.instance == null || EnvMan.instance == null) return;
+            for (int s = 0; s < Steps.Length; s++)
+            {
+                ItemDrop.ItemData piece = Find(player, Steps[s].Piece);
+                if (piece == null) continue;
+                if (Key(Steps[s].Done))
+                {
+                    player.GetInventory().RemoveItem(piece);
+                    Plugin.Debug("Story: a second fragment of step " + (s + 2) + " (done already) is gone");
+                    continue;
+                }
+                if (FoundDay(s) == int.MaxValue)
+                {
+                    ZoneSystem.instance.SetGlobalKey(FoundKey + s + "d" + EnvMan.instance.GetDay());
+                    Plugin.Debug("Story: the fragment of step " + (s + 2) + " is found, on day " + EnvMan.instance.GetDay());
+                }
+            }
         }
 
         // The end, in its own time: his last words, then the light comes down slowly, he goes in it, and
@@ -820,6 +880,25 @@ namespace IslandsOfValheim
             return null;
         }
 
+        // Whether a keeper may come now, asked right before it's made: still the next (its fall not yet a world
+        // key), and not brought by this marker in the last ten minutes (kept on the marker itself). On a
+        // dedicated server the key of a fall reaches a game a moment after the body is gone, and the game that
+        // brings them saw none standing and brought the same one again.
+        const string CameKey = "IoV_KeeperCame_";
+        static readonly long Again = System.TimeSpan.FromMinutes(10).Ticks;
+
+        internal static bool MayCome(ZNetView marker, Keeper keeper)
+        {
+            if (keeper == null || Key(keeper.Down) || NextKeeper() != keeper || marker == null || !marker.IsValid() || ZNet.instance == null) return false;
+            long came = marker.GetZDO().GetLong(CameKey + keeper.Prefab, 0L);
+            return came == 0L || ZNet.instance.GetTime().Ticks - came > Again;
+        }
+
+        internal static void Came(ZNetView marker, Keeper keeper)
+        {
+            if (marker != null && marker.IsValid() && ZNet.instance != null) marker.GetZDO().Set(CameKey + keeper.Prefab, ZNet.instance.GetTime().Ticks);
+        }
+
         [HarmonyPatch(typeof(Character), "OnDeath")]
         static class KeeperDeathPatch
         {
@@ -934,7 +1013,8 @@ namespace IslandsOfValheim
             Effect("fx_frostcloud", at);
             yield return new WaitForSeconds(2.5f);
             coming = false;
-            if (prefab == null || !nview.IsValid()) yield break;
+            if (prefab == null || !nview.IsValid() || !nview.IsOwner() || Find(keeper) != null || !Story.MayCome(nview, keeper)) yield break;
+            Story.Came(nview, keeper);
             Player closest = Player.GetClosestPlayer(at, Near * 2f);
             Vector3 to = closest != null ? closest.transform.position - at : -transform.forward;
             to.y = 0f;
@@ -1084,6 +1164,7 @@ namespace IslandsOfValheim
         void Tick()
         {
             Player player = Player.m_localPlayer;
+            if (player != null && !player.IsDead()) Story.Track(player); // (a fragment found, or a second one of a step done)
             bool carrying = player != null && !player.IsDead() && Story.CarriesPiece(player) && !Story.Calmed(player);
             if (carrying != active)
             {

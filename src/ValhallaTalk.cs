@@ -151,6 +151,7 @@ namespace IslandsOfValheim
                 // Sævar sends you here; then the ring is yours whenever you like (again after you've won)
                 if (ValhallaDuel.Active || ValhallaDuel.Current == null) return false;
                 if (!Welcomed) { Say("$iov_ringmaster_wait"); return true; }
+                if (ValhallaDuel.RingTaken()) { Say("$iov_ringmaster_busy"); return true; } // (another's bout, or someone in the ring)
                 Say(Story.Key(ValhallaDuel.WonKey) ? RingAgain[Random.Range(0, RingAgain.Length)] : "$iov_ringmaster_start");
                 ValhallaDuel.Current.Begin();
                 return true;
@@ -168,6 +169,7 @@ namespace IslandsOfValheim
                     return true;
                 }
                 player.AddKnownText("$iov_t5_page", "$iov_t5_page_text");
+                if (ValhallaDuel.RingTaken()) { Say("$iov_ringmaster_busy"); return true; }
                 Say("$iov_t5_challenge");
                 ValhallaDuel.Current.BeginHafdis();
                 if (ValhallaPeople.Current != null) ValhallaPeople.Current.HafdisAway(true, 5f); // (her words read first)

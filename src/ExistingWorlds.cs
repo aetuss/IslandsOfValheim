@@ -294,9 +294,10 @@ namespace IslandsOfValheim
                     spot.y = zones.m_waterLevel;
                     if (build)
                     {
-                        registerLocation.Invoke(zones, new object[] { location, spot, true });
+                        // made first, listed once it's there (IsletBuilder.BuildLocationNow); one that couldn't be
+                        // made is left out and counted as missing (iov_placeislets tries again)
                         Quaternion rotation = Quaternion.Euler(0f, random.Next(16) * 22.5f, 0f);
-                        spawnLocation.Invoke(zones, new object[] { location, random.Next(), spot, rotation, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+                        if (!IsletBuilder.BuildLocationNow(location, random.Next(), spot, rotation)) { short_ += missing - n; break; }
                         built++;
                         addedBuilt++;
                         Plugin.Debug("Islets in existing worlds: built " + location.m_prefabName + " at " + spot.ToString("F0") + " in sailed ocean");

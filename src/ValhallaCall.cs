@@ -107,15 +107,15 @@ namespace IslandsOfValheim
         {
             if (!on) { if (beam != null) { Destroy(beam.gameObject); beam = null; } return; }
             if (beam == null) beam = CallLight.Make();
-            // over the harbour's gate if it's here, else over the harbour's middle
+            // over the harbour's gate if it's here, else over the harbour's middle (where it is: ValhallaWhere, the
+            // server's answer on a client); not shown till that's known (2.1.0 left it at the world's middle on a
+            // client, the list of places being the server's only)
             foreach (ValhallaGate gate in ValhallaGate.All)
-                if (gate != null && !gate.valhallaSide) { beam.transform.position = gate.transform.position; return; }
-            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
-                if (instance.m_location != null && instance.m_location.m_prefabName == IsletBuilder.HarbourName)
-                {
-                    beam.transform.position = new Vector3(instance.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau, instance.m_position.z);
-                    return;
-                }
+                if (gate != null && !gate.valhallaSide) { beam.transform.position = gate.transform.position; beam.gameObject.SetActive(true); return; }
+            Vector3 harbour;
+            bool known = ValhallaWhere.Harbour(out harbour);
+            if (known) beam.transform.position = new Vector3(harbour.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau, harbour.z);
+            if (beam.gameObject.activeSelf != known) beam.gameObject.SetActive(known);
         }
 
         // iov_call reset (development): as if the tale had just ended (the gate dark, Hugin's words and the

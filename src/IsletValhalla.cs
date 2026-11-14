@@ -107,10 +107,30 @@ namespace IslandsOfValheim
             spot.y = zones.m_waterLevel;
             HashSet<Vector2s> generated = generatedZonesV != null ? generatedZonesV.GetValue(zones) as HashSet<Vector2s> : null;
             bool built = generated != null && generated.Contains(ZoneSystem.GetZone(spot));
-            registerValhalla.Invoke(zones, new object[] { location, spot, built });
-            if (built)
-                spawnValhalla.Invoke(zones, new object[] { location, 1234, spot, Quaternion.identity, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+            if (built) { if (!BuildLocationNow(location, 1234, spot, Quaternion.identity)) return false; }
+            else registerValhalla.Invoke(zones, new object[] { location, spot, false });
             Plugin.Log.LogInfo("Valhalla placed at " + spot.ToString("F0") + (built ? " (its zone already there: built now)" : " (built when its zone is)"));
+            return true;
+        }
+
+        // A place built at once, where the sea has already been sailed (its zone made, so the game won't build it
+        // there itself): made first, and put in the world's list as built only once it's there. Until 2.1.0 it was
+        // listed first; had the making failed (a server without graphics, say), the list would have it built but
+        // nothing would stand there, for good. Now it's left out of the list, and tried again later.
+        internal static bool BuildLocationNow(ZoneSystem.ZoneLocation location, int seed, Vector3 at, Quaternion rotation)
+        {
+            ZoneSystem zones = ZoneSystem.instance;
+            if (zones == null || registerValhalla == null || spawnValhalla == null) return false;
+            try
+            {
+                spawnValhalla.Invoke(zones, new object[] { location, seed, at, rotation, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.LogWarning("Couldn't build " + location.m_prefabName + " at " + at.ToString("F0") + " now (left for later): " + (e.InnerException ?? e).Message);
+                return false;
+            }
+            registerValhalla.Invoke(zones, new object[] { location, at, true });
             return true;
         }
 

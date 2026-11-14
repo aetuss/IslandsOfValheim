@@ -576,5 +576,6 @@
   "iov_gungnir": "Gungnir",
   "iov_gungnir_desc": "A twin of Gungnir, Odin's spear. The sons of Ivaldi made it, not us, Eitri grumbles, but he keeps it here to show his own work is finer.",
   "iov_glasir": "Glasir",
-  "iov_glasir_desc": "The tree before Valhalla's doors, its leaves of red gold. The skalds call it the fairest tree among gods and men."
+  "iov_glasir_desc": "The tree before Valhalla's doors, its leaves of red gold. The skalds call it the fairest tree among gods and men.",
+  "iov_ringmaster_busy": "Someone else has the ring now. Wait your turn, wanderer."
 }

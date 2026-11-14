@@ -346,7 +346,17 @@ namespace IslandsOfValheim
             if (wait > 0f) return;
             wait = 5f;
             if (ZoneSystem.instance.GetGlobalKey(PlacedKey)) return;
+            // (nothing to do till the harbour stands: looked for cheaply, and not so often, first; 2.1.0 went
+            // through the whole place-making every 5 s till then)
+            if (!HarbourPlaced()) { wait = 30f; return; }
             Place(null);
+        }
+
+        static bool HarbourPlaced()
+        {
+            foreach (ZoneSystem.LocationInstance i in ZoneSystem.instance.GetLocationList())
+                if (i.m_placed && i.m_location != null && i.m_location.m_prefabName == IsletBuilder.HarbourName) return true;
+            return false;
         }
 
         static readonly System.Reflection.MethodInfo registerLocation = AccessTools.Method(typeof(ZoneSystem), "RegisterLocation");
@@ -390,14 +400,19 @@ namespace IslandsOfValheim
                     Vector2s zone = ZoneSystem.GetZone(p);
                     HashSet<Vector2s> generated = generatedZones != null ? generatedZones.GetValue(zones) as HashSet<Vector2s> : null;
                     bool now = generated != null && generated.Contains(zone);
-                    registerLocation.Invoke(zones, new object[] { location, p, now });
                     if (now)
                     {
-                        // its back to the harbour, so its square and houses face it
+                        // its back to the harbour, so its square and houses face it (made first, listed once it's
+                        // there: IsletBuilder.BuildLocationNow; tried again later if it couldn't be)
                         Vector3 away = p - harbour;
                         Quaternion rotation = Quaternion.Euler(0f, Mathf.Atan2(away.x, away.z) * Mathf.Rad2Deg, 0f);
-                        spawnLocation.Invoke(zones, new object[] { location, WorldGenerator.instance.GetSeed() ^ 0x5b1, p, rotation, ZoneSystem.SpawnMode.Full, new List<GameObject>(), false });
+                        if (!IsletBuilder.BuildLocationNow(location, WorldGenerator.instance.GetSeed() ^ 0x5b1, p, rotation))
+                        {
+                            wait = 120f;
+                            return false;
+                        }
                     }
+                    else registerLocation.Invoke(zones, new object[] { location, p, false });
                     zones.SetGlobalKey(PlacedKey);
                     string said = "Brim village placed " + distance.ToString("F0") + " m from Sævar's harbour, at " + p.ToString("F0") + (now ? " (built now: that sea had been sailed)" : "");
                     Plugin.Log.LogInfo(said);

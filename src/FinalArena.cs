@@ -94,7 +94,8 @@ namespace IslandsOfValheim
             yield return new WaitForSeconds(2.5f);
             coming = false;
             GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(keeper.Prefab) : null;
-            if (prefab == null || !nview.IsValid() || Find(keeper) != null) yield break;
+            if (prefab == null || !nview.IsValid() || !nview.IsOwner() || Find(keeper) != null || !Story.MayCome(nview, keeper)) yield break;
+            Story.Came(nview, keeper);
             Player closest = Player.GetClosestPlayer(at, 60f);
             Vector3 to = closest != null ? closest.transform.position - at : -(transform.rotation * Vector3.forward);
             to.y = 0f;

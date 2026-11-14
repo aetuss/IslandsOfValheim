@@ -15,9 +15,13 @@ namespace IslandsOfValheim
         static readonly HashSet<int> seen = new HashSet<int>();
         static int mask;
 
+        // (a new world: those looked at before are gone; and never more than so many kept in a long game)
+        internal static void Reset() { seen.Clear(); }
+
         static void Prefix(StaticPhysics __instance)
         {
             if (__instance.m_checkSolids || seen.Contains(__instance.GetInstanceID())) return;
+            if (seen.Count > 50000) seen.Clear();
             if (mask == 0) mask = LayerMask.GetMask("static_solid", "terrain"); // terrain: on the land, it's settled at once
             bool any = false;
             foreach (RaycastHit hit in Physics.RaycastAll(__instance.transform.position + Vector3.up * 0.5f, Vector3.down, 40f, mask, QueryTriggerInteraction.Ignore))

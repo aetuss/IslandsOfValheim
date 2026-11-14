@@ -545,6 +545,7 @@ namespace IslandsOfValheim
         // in a test, and a new Hafgufa rose): either one is enough, and the key is set again from it.
         const string DoneHere = "IoV_T3Done";
         const string BeastHere = "IoV_T3Beast"; // the one Hafgufa that rose here (its ZDO), so no second rises
+        const string RoseHere = "IoV_T3RoseAt"; // when it last rose (the world's clock, ticks)
 
         bool Done
         {
@@ -736,8 +737,13 @@ namespace IslandsOfValheim
             }
             yield return new WaitForSeconds(3f);
             GameObject prefab = ZNetScene.instance.GetPrefab(RanNet.Hafgufa);
-            if (prefab != null && Find() == null)
+            // (looked at again right before it comes: on a dedicated server the world's key that the net is torn
+            // can reach this game a moment after the beast's body is gone, and a second one rose; nor another
+            // within two minutes of the last, by the graveyard's own record)
+            bool again = nview.IsValid() && ZNet.instance != null && ZNet.instance.GetTime().Ticks - nview.GetZDO().GetLong(RoseHere, 0L) < System.TimeSpan.FromMinutes(2).Ticks;
+            if (prefab != null && Find() == null && !Done && !again && nview.IsValid() && nview.IsOwner())
             {
+                nview.GetZDO().Set(RoseHere, ZNet.instance.GetTime().Ticks);
                 // in front of whoever came, between them and the middle (from the far side it lay off out of sight)
                 Vector3 at = middle;
                 if (near != null)

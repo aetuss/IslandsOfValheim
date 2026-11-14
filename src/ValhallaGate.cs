@@ -70,7 +70,11 @@ namespace IslandsOfValheim
         // Who's on the way through, and to which end: set as they go, cleared when they're set down in front of
         // the other gate (its zone has to load first, so that gate does it).
         static int arriving;          // 0: no one; 1: to Valhalla; 2: to the harbour
-        static float arrivedAt = -10f;
+        static float arrivedAt = -10f, leftAt = -100f;
+        const float ArrivingFor = 30f; // (a way through not ended by then, quitting mid-way, say: let go of)
+
+        // A new world, or the same one again: no one on the way.
+        internal static void Reset() { arriving = 0; arrivedAt = -10f; leftAt = -100f; }
         const int ToValhalla = 1, ToHarbour = 2;
 
         int shown = -1;
@@ -102,6 +106,8 @@ namespace IslandsOfValheim
             // set down in front of this gate, if that's where someone was going
             Player player = Player.m_localPlayer;
             if (player == null || player.IsTeleporting()) return;
+            // (where the other end is: asked for while you're near an open gate, so stepping in goes at once)
+            if (shown == 1 && Vector3.Distance(player.transform.position, transform.position) < 30f) ValhallaWhere.Prefetch(valhallaSide);
             if (arriving == (valhallaSide ? ToValhalla : ToHarbour))
             {
                 arriving = 0;
@@ -135,15 +141,24 @@ namespace IslandsOfValheim
 
         internal void Enter(Player player)
         {
+            if (arriving != 0 && Time.time - leftAt > ArrivingFor) arriving = 0;
             if (!Open || player.IsTeleporting() || Time.time - arrivedAt < 4f || arriving != 0) return;
+            bool server = ZNet.instance != null && ZNet.instance.IsServer();
             Quaternion facing = player.transform.rotation;
             if (valhallaSide)
             {
-                // back to the harbour, over its plateau, then out in front of its gate
-                ZoneSystem.LocationInstance harbour;
-                if (!Find(IsletBuilder.HarbourName, out harbour)) { Plugin.Log.LogWarning("Gate: this world has no harbour to go back to"); return; }
+                // back to the harbour, over its plateau, then out in front of its gate (where it is: ValhallaWhere,
+                // asked of the server on a client)
+                Vector3 harbour;
+                if (!ValhallaWhere.Harbour(out harbour))
+                {
+                    if (!server) { ValhallaWhere.WaitFor(this); return; }
+                    Plugin.Log.LogWarning("Gate: this world has no harbour to go back to");
+                    return;
+                }
                 arriving = ToHarbour;
-                player.TeleportTo(new Vector3(harbour.m_position.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau + 3f, harbour.m_position.z), facing, true);
+                leftAt = Time.time;
+                player.TeleportTo(new Vector3(harbour.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SmallPlateau + 3f, harbour.z), facing, true);
             }
             else
             {
@@ -152,13 +167,15 @@ namespace IslandsOfValheim
                 // (placed now if the call hasn't seen to it yet: IsletBuilder.PlaceValhalla; until 1.10.128 the
                 // development builds' own test placing did it, and a game without them had no Valhalla at all)
                 Vector3 rock;
-                if (!IsletBuilder.FindValhalla(out rock) && !(IsletBuilder.PlaceValhalla() && IsletBuilder.FindValhalla(out rock)))
+                if (!ValhallaWhere.Valhalla(out rock, true))
                 {
+                    if (!server) { ValhallaWhere.WaitFor(this); return; } // (the server's answer takes you through)
                     player.Message(MessageHud.MessageType.Center, "$iov_gate_notyet");
                     Plugin.Log.LogWarning("Gate: Valhalla isn't in this world yet");
                     return;
                 }
                 arriving = ToValhalla;
+                leftAt = Time.time;
                 player.SetSeenTutorial(ValhallaCall.EnteredKey); // the light over the harbour has done its work
                 float z = IsletBuilder.ValhallaGateZ + 3f;
                 Vector3 target = new Vector3(rock.x, ZoneSystem.instance.m_waterLevel + IsletBuilder.SkyHeight + IsletBuilder.SkyGround(0f, z) + 0.3f, rock.z + z);
@@ -195,14 +212,6 @@ namespace IslandsOfValheim
             Plugin.Log.LogInfo("iov_gate here: " + line);
         }
 
-        static bool Find(string name, out ZoneSystem.LocationInstance found)
-        {
-            found = default(ZoneSystem.LocationInstance);
-            if (ZoneSystem.instance == null) return false;
-            foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.GetLocationList())
-                if (instance.m_location != null && instance.m_location.m_prefabName == name) { found = instance; return true; }
-            return false;
-        }
     }
 
     // On the portal's own way-through (the trigger inside its arch): the local player stepping in goes.
