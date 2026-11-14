@@ -807,6 +807,7 @@ namespace IslandsOfValheim
             // after the other, never over each other (RanVoice)
             RanVoice.Say(local, "$iov_ran_torn", 5f);
             RanVoice.Say(local, "$iov_ran_free", 8f);
+            RanVoice.Say(local, "$iov_ran_tell", 6f); // (where to now: back to Sævar; the tale seemed over here, 2.1.1)
             Vector3 middle = Middle;
             for (int i = 0; i < 7; i++)
             {

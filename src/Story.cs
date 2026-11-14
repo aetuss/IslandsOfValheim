@@ -567,10 +567,13 @@ namespace IslandsOfValheim
                 // found once and lost since (Lost): he has it back from the sea, and gives it again
                 if (Lost(s))
                 {
+                    npc.Say("$iov_story_lost_give");
                     Give(player, step.Piece);
                     Plugin.Log.LogInfo("Story: the fragment of step " + (s + 2) + " was found on day " + FoundDay(s) + " and never brought back; Sævar gives it again");
                     return true;
                 }
+                // found today, and you come without it: he tells you to come back tomorrow (his store opens too)
+                if (FoundDay(s) != int.MaxValue) npc.Say("$iov_story_lost_wait");
                 return false; // one step at a time
             }
             return false;
