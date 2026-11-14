@@ -851,7 +851,11 @@ namespace IslandsOfValheim
         // East of the hall's front, across the way from the kitchen: 11 m off the hall's front corner, 14 m off
         // the last birch of the way, clear of the ring, the smithy and the guard's round (x 11.5).
         internal static readonly Vector2 GlasirAt = new Vector2(18f, -1f);
-        const float GlasirCrown = 9f, GlasirTallest = 22f; // (its crown's reach; and kept under the valkyries' flight, 26 m up)
+        // (its crown's reach: 11 m off the hall's corner, 13 off the ring's stones; kept under the valkyries'
+        // flight, 26 m up. The game's Oak1 is 23.5 m round and 23.6 tall: 2.0.35 only let it grow, so it stood
+        // as it is, its crown over the ring's stones, the hall's eaves and the way's birches; now it's made
+        // smaller, a little taller than wide)
+        const float GlasirCrown = 10.5f, GlasirTallest = 22f, GlasirStature = 1.2f;
 
         // One of the game's oaks, grown as far as its crown may reach, its leaves turned to red gold (their
         // picture recoloured, the bark left as it is), a warm light under its crown; its name when you look at it.
@@ -861,9 +865,10 @@ namespace IslandsOfValheim
             if (tree == null) return;
             Bounds b = SkyBounds(tree);
             float reach = Mathf.Max(b.size.x, b.size.z) * 0.5f, height = b.max.y;
-            float grow = Mathf.Clamp(Mathf.Min(GlasirCrown / Mathf.Max(reach, 0.1f), GlasirTallest / Mathf.Max(height, 0.1f)), 1f, 1.6f);
-            tree.transform.localScale *= grow;
-            Recolor.Shift gold = Recolor.ToHue(0.11f, 0.85f, 1.35f);
+            float grow = Mathf.Clamp(Mathf.Min(GlasirCrown / Mathf.Max(reach, 0.1f), GlasirTallest / Mathf.Max(height * GlasirStature, 0.1f)), 0.3f, 1.6f);
+            tree.transform.localScale = Vector3.Scale(tree.transform.localScale, new Vector3(grow, grow * GlasirStature, grow));
+            // (brighter than 2.0.35's: by day it came out ochre, by night olive)
+            Recolor.Shift gold = Recolor.ToHue(0.115f, 0.9f, 1.7f);
             List<string> leaves = new List<string>(), kept = new List<string>();
             foreach (Renderer r in tree.GetComponentsInChildren<Renderer>(true))
             {
@@ -886,18 +891,28 @@ namespace IslandsOfValheim
             }
             tree.AddComponent<ValhallaWork>().token = "iov_glasir";
             Bounds now = SkyBounds(tree);
-            GameObject glow = new GameObject("IoV_GlasirGlow");
-            glow.transform.SetParent(tree.transform.parent, false);
-            glow.transform.localPosition = new Vector3(GlasirAt.x, Mathf.Lerp(G(GlasirAt.x, GlasirAt.y), now.max.y, 0.5f), GlasirAt.y); // (the sky floor's space, as SkyBounds)
-            Light light = glow.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = new Color(1f, 0.78f, 0.35f);
-            light.range = 14f;
-            light.intensity = 1.3f;
-            light.shadows = LightShadows.None;
+            // warm light on its crown from below and within (2.0.35's one light, in the crown's middle, was
+            // hidden by its own leaves: by night only a few glints showed): one under the crown lighting its
+            // underside and the ground, one in its upper half
+            float ground = G(GlasirAt.x, GlasirAt.y);
+            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.3f), 16f, 2.4f);
+            GlasirLight(tree, Mathf.Lerp(ground, now.max.y, 0.7f), 11f, 1.6f);
             Plugin.Debug("Valhalla: Glasir, an oak " + reach.ToString("F1") + " m round and " + height.ToString("F1") + " m tall, grown x" + grow.ToString("F2") +
                 " to " + (Mathf.Max(now.size.x, now.size.z) * 0.5f).ToString("F1") + " m round, " + now.max.y.ToString("F1") + " m tall; gold: " +
                 (leaves.Count > 0 ? string.Join(", ", leaves.ToArray()) : "nothing") + "; left: " + (kept.Count > 0 ? string.Join(", ", kept.ToArray()) : "nothing"));
+        }
+
+        static void GlasirLight(GameObject tree, float y, float range, float intensity)
+        {
+            GameObject glow = new GameObject("IoV_GlasirGlow");
+            glow.transform.SetParent(tree.transform.parent, false);
+            glow.transform.localPosition = new Vector3(GlasirAt.x, y, GlasirAt.y); // (the sky floor's space, as SkyBounds)
+            Light light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.76f, 0.32f);
+            light.range = range;
+            light.intensity = intensity;
+            light.shadows = LightShadows.None;
         }
 
         // ---- the meadow ----
