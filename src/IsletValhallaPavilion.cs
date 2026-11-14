@@ -89,7 +89,7 @@ namespace IslandsOfValheim
         internal static readonly Vector2 Smithy = new Vector2(19f, -16f);
         // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them, by their real
         // size: ValhallaSmiths)
-        internal static readonly Vector2 SmithAnvil = new Vector2(2.6f, 2.6f), SmithBellows = new Vector2(-3f, 1.4f);
+        internal static readonly Vector2 SmithAnvil = new Vector2(2.6f, 2.6f), SmithBellows = new Vector2(-3f, 3.7f);
         const float SmithyHalf = 5f, SmithyPostX = 4.4f, SmithyPostZ = 4f, SmithyPosts = 3.8f;
 
         // A stone floor (10 x 10 m, a metre high: its stones are blocks) with steps up the middle of each side and
@@ -115,7 +115,7 @@ namespace IslandsOfValheim
             // the forge with its fire burning (a copy's fire shows only while it has fuel: shown here)
             GameObject forgeGo = null;
             string forge = PieceNamed("$piece_forge", "forge");
-            if (forge != null) forgeGo = SkyProp(forge, f + new Vector3(-3f, 0f, 3f), new Vector3(0f, 90f, 0f), false, go =>
+            if (forge != null) forgeGo = SkyProp(forge, f + new Vector3(-3f, 0f, 2.2f), new Vector3(0f, 90f, 0f), false, go =>
             {
                 CraftingStation station = go.GetComponent<CraftingStation>();
                 if (station != null && station.m_haveFireObject != null) station.m_haveFireObject.SetActive(true);
@@ -123,12 +123,13 @@ namespace IslandsOfValheim
                 if (station != null && station.m_inUseObject != null) station.m_inUseObject.SetActive(false);
                 if (station != null && station.m_areaMarker != null) station.m_areaMarker.SetActive(false);
             });
-            // the bellows right against the forge's south side, as the game sets them by it
+            // the bellows right against the forge's north side, as the game sets them by it, Brokkr behind them
+            // (2.0.27-2.0.29: on its south side, him hidden behind them)
             GameObject bellows = Ext("$piece_forge_ext1", "forge_ext1", f, SmithBellows, 90f);
             if (forgeGo != null && bellows != null)
             {
                 Bounds fb = SkyBounds(forgeGo), bb = SkyBounds(bellows);
-                Put(bellows, new Vector3(fb.center.x, floor, fb.min.z - bb.extents.z - 0.05f), false);
+                Put(bellows, new Vector3(fb.center.x, floor, fb.max.z + bb.extents.z + 0.05f), false);
             }
             Ext("$piece_forge_ext5", "forge_ext5", f, new Vector2(-1.6f, -3.6f), 0f);  // the cooler
             Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(-3.2f, -3f), 0f);    // the small anvils
@@ -158,24 +159,29 @@ namespace IslandsOfValheim
         // where Gullinbursti stands, from the forge's middle (made with the people: ValhallaSmiths)
         internal static readonly Vector2 GullinburstiAt = new Vector2(3.5f, 6.2f);
 
-        // Two low stone daises either side of the north steps: on the west one Mjölnir lying on a pedestal and
-        // Draupnir turning over another; on the east one, Gullinbursti (ValhallaSmiths). Each says what it is.
+        // Two low stone daises either side of the north steps: on the west one Mjölnir, Gungnir and Draupnir, each
+        // on a pedestal; on the east one, Gullinbursti (ValhallaSmiths). Each says what it is.
         static void SmithWorks(string stone)
         {
             foreach (float side in new[] { -1f, 1f })
                 StoneBlock(stone, new Vector2(Smithy.x + side * 3.5f, Smithy.y + 6.2f), 3.4f, 0.4f, 1.6f, 0f);
             float dais = G(Smithy.x - 3.5f, Smithy.y + 6.2f) + 0.4f;
-            // Mjölnir: a twin of Thor's hammer, short in the handle, lying on its pedestal
-            float mTop = StoneBlock(stone, new Vector2(Smithy.x - 4.4f, Smithy.y + 6.2f), 0.7f, 0.75f, 0.7f, dais);
-            GameObject hammer = SkyItem("SledgeIron", new Vector3(Smithy.x - 4.4f, mTop, Smithy.y + 6.2f), Vector3.up, Vector3.forward, false);
-            if (hammer != null)
-            {
-                Grow(hammer, 0.55f, new Vector3(Smithy.x - 4.4f, mTop, Smithy.y + 6.2f));
-                Plaque(hammer, "iov_mjolnir");
-            }
+            // Mjölnir: a twin of Thor's hammer, standing on its head, its short handle up (2.0.29 laid it down small,
+            // its head off the pedestal's edge)
+            float mTop = StoneBlock(stone, new Vector2(Smithy.x - 4.5f, Smithy.y + 6.2f), 0.6f, 0.6f, 0.6f, dais);
+            Vector3 mAt = new Vector3(Smithy.x - 4.5f, mTop, Smithy.y + 6.2f);
+            GameObject hammer = SkyItem("SledgeIron", mAt, Vector3.back, Vector3.up, false, true);
+            if (hammer != null) { Grow(hammer, 0.6f, mAt); Plaque(hammer, "iov_mjolnir"); }
+            // Gungnir: a twin of Odin's spear (the sons of Ivaldi's work, not theirs: Eitri keeps it to show his is
+            // finer), upright, its butt set in its pedestal (the user asked for it between Mjölnir and the ring)
+            float gTop = StoneBlock(stone, new Vector2(Smithy.x - 3.4f, Smithy.y + 6.2f), 0.5f, 0.45f, 0.5f, dais);
+            Vector3 gAt = new Vector3(Smithy.x - 3.4f, gTop - 0.15f, Smithy.y + 6.2f);
+            string spear = PrefabManager.Instance.GetPrefab("SpearWolfFang") != null ? "SpearWolfFang" : "SpearElderbark";
+            GameObject gungnir = SkyItem(spear, gAt, Vector3.back, Vector3.up, false);
+            if (gungnir != null) { Grow(gungnir, 0.85f, gAt); Plaque(gungnir, "iov_gungnir"); }
             // Draupnir: a gold ring standing on its edge over its pedestal, turning slowly, faintly lit
-            float dTop = StoneBlock(stone, new Vector2(Smithy.x - 2.6f, Smithy.y + 6.2f), 0.6f, 0.75f, 0.6f, dais);
-            GameObject ring = GoldRing(new Vector3(Smithy.x - 2.6f, dTop + 0.42f, Smithy.y + 6.2f));
+            float dTop = StoneBlock(stone, new Vector2(Smithy.x - 2.3f, Smithy.y + 6.2f), 0.6f, 0.75f, 0.6f, dais);
+            GameObject ring = GoldRing(new Vector3(Smithy.x - 2.3f, dTop + 0.42f, Smithy.y + 6.2f));
             if (ring != null) Plaque(ring, "iov_draupnir");
             // (Gullinbursti's low plinth on the east dais; he's made with the people)
             StoneBlock(stone, new Vector2(Smithy.x + GullinburstiAt.x, Smithy.y + GullinburstiAt.y), 1.7f, 0.3f, 0.9f, G(Smithy.x + 3.5f, Smithy.y + 6.2f) + 0.4f);

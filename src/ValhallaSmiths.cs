@@ -27,12 +27,13 @@ namespace IslandsOfValheim
             Vector2 c = IsletBuilder.Smithy;
             // each by his own work, put by its real size (2.0.25 put them by a guess: Brokkr's head was in the
             // bellows; 2.0.26 had them back to back): Eitri just west of the smith's anvil, facing it; Brokkr just
-            // west of the bellows (between them and the floor's edge, out of the way from the west steps), facing them
+            // north of the bellows, at the back of the forge, facing them and the floor (2.0.27-2.0.29 had him west of
+            // them, hidden behind their frame: the user)
             Vector2 anvil = c + IsletBuilder.SmithAnvil, bellows = c + IsletBuilder.SmithBellows;
-            Vector2 eitriAt = new Vector2(anvil.x - 1f, anvil.y), brokkrAt = new Vector2(bellows.x - 1f, bellows.y);
+            Vector2 eitriAt = new Vector2(anvil.x - 1f, anvil.y), brokkrAt = new Vector2(bellows.x, bellows.y + 1f);
             Vector3 lo, hi;
             if (Box("forge_ext4", out lo, out hi)) eitriAt = new Vector2(lo.x - 0.45f, (lo.z + hi.z) * 0.5f);
-            if (Box("forge_ext1", out lo, out hi)) brokkrAt = new Vector2(lo.x - 0.45f, (lo.z + hi.z) * 0.5f);
+            if (Box("forge_ext1", out lo, out hi)) brokkrAt = new Vector2((lo.x + hi.x) * 0.5f, hi.z + 0.45f);
             eitri = Stand(new SpiritHuman.Look
             {
                 Hair = "Hair5", Beard = "Beard10", HairColor = new Vector3(0.55f, 0.28f, 0.14f), SkinColor = Vector3.one * 0.9f,
@@ -40,9 +41,9 @@ namespace IslandsOfValheim
             }, new Vector3(eitriAt.x, 0f, eitriAt.y), Vector3.right, 4f, SmithHammer());
             brokkr = Stand(new SpiritHuman.Look
             {
-                Hair = "Hair9", Beard = "Beard12", HairColor = new Vector3(0.12f, 0.1f, 0.09f), SkinColor = Vector3.one * 0.88f,
+                Hair = "Hair17", Beard = "Beard12", // (Neat Braids: 2.0.25-2.0.29's Old One-Eye looked a strip on a bald head) HairColor = new Vector3(0.12f, 0.1f, 0.09f), SkinColor = Vector3.one * 0.88f,
                 Chest = "ArmorRagsChest", Legs = "ArmorLeatherLegs",
-            }, new Vector3(brokkrAt.x, 0f, brokkrAt.y), Vector3.right, 4f);
+            }, new Vector3(brokkrAt.x, 0f, brokkrAt.y), Vector3.back, 4f);
             foreach (SpiritHuman d in new[] { eitri, brokkr })
                 if (d != null)
                 {
@@ -70,6 +71,7 @@ namespace IslandsOfValheim
             if (boar != null)
             {
                 boar.AddComponent<ValhallaWork>().token = "iov_gullinbursti";
+                Gilded(boar);
                 GameObject glow = new GameObject("IoV_GullinburstiGlow");
                 glow.transform.SetParent(boar.transform, false);
                 glow.transform.localPosition = Vector3.up * 0.8f;
@@ -82,6 +84,29 @@ namespace IslandsOfValheim
                 StartCoroutine(Cast(boar));
             }
             Plugin.Debug("Valhalla: Eitri and Brokkr at their forge (" + forgeFire.Count + " lights in its fire)" + (boar != null ? ", Gullinbursti by it" : ""));
+        }
+
+        // Gold all over: his own coat's picture taken off and gold put in its place (2.0.29 only tinted it, and
+        // over a boar's dark bristles the tint came out a dull brown).
+        static void Gilded(GameObject go)
+        {
+            Color gold = new Color(1f, 0.74f, 0.25f);
+            foreach (Renderer r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                r.SetPropertyBlock(null);
+                Material[] mats = r.materials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    if (mats[i].HasProperty("_MainTex")) mats[i].SetTexture("_MainTex", Texture2D.whiteTexture);
+                    if (mats[i].HasProperty("_Color")) mats[i].SetColor("_Color", gold);
+                    if (mats[i].HasProperty("_Metallic")) mats[i].SetFloat("_Metallic", 0.8f);
+                    if (mats[i].HasProperty("_Glossiness")) mats[i].SetFloat("_Glossiness", 0.7f);
+                    if (mats[i].HasProperty("_EmissionColor")) { mats[i].EnableKeyword("_EMISSION"); mats[i].SetColor("_EmissionColor", gold * 0.15f); }
+                }
+                r.materials = mats;
+            }
         }
 
         // A casting: held in the pose it stands in a moment after it's made.
