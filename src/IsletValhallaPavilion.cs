@@ -113,6 +113,9 @@ namespace IslandsOfValheim
             {
                 CraftingStation station = go.GetComponent<CraftingStation>();
                 if (station != null && station.m_haveFireObject != null) station.m_haveFireObject.SetActive(true);
+                // (and none of a working station's markers: a hammer hung over it in 2.0.25, the user saw it)
+                if (station != null && station.m_inUseObject != null) station.m_inUseObject.SetActive(false);
+                if (station != null && station.m_areaMarker != null) station.m_areaMarker.SetActive(false);
             });
             Ext("$piece_forge_ext1", "forge_ext1", f, SmithBellows, 90f);   // the bellows
             Ext("$piece_forge_ext5", "forge_ext5", f, new Vector2(-0.4f, 2.9f), 0f);  // the cooler
@@ -120,7 +123,35 @@ namespace IslandsOfValheim
             Ext("$piece_forge_ext2", "forge_ext2", f, new Vector2(0.6f, -2.4f), 0f);  // the anvils
             Ext("$piece_forge_ext3", "forge_ext3", f, new Vector2(2.1f, -2f), 0f);    // the grinding wheel
             Ext("$piece_forge_ext6", "forge_ext6", f, new Vector2(2.7f, 1.6f), -90f); // the tool rack
+            // two of the dwarves' own pole lanterns inside (2.0.25 had no light under the roof but the forge's)
+            string lantern = PieceNamed("$piece_dvergr_lantern_pole", "piece_dvergr_lantern_pole");
+            if (lantern != null)
+                foreach (Vector2 at in new[] { new Vector2(2.6f, -2.6f), new Vector2(-2.6f, -2.6f) })
+                    SkyProp(lantern, f + new Vector3(at.x, 0f, at.y), Vector3.zero);
+            // steps up onto the floor (its stones stand a metre high: 2.0.25 had none), on the yard's side
+            if (tile != null) StoneSteps(tile, Smithy.x + 4f, Smithy.y - 0.4f, floor, 2.4f);
             Shelter(Smithy, floor, 3.2f, new[] { -3f, 3f }, 2, 3f);
+        }
+
+        // Steps going down east from an edge at x (to the ground there), width wide, each a stone of the floor's
+        // own kind, cut to size.
+        static void StoneSteps(string stone, float edge, float z, float top, float width)
+        {
+            float ground = G(edge + 1f, z), rise = top - ground;
+            if (rise < 0.15f) return;
+            int count = Mathf.Max(2, Mathf.CeilToInt(rise / 0.25f));
+            const float depth = 0.45f;
+            for (int i = 1; i <= count; i++)
+            {
+                float height = rise * i / (count + 1f);
+                Vector3 at = new Vector3(edge + depth * (count - i) + depth * 0.5f, ground - 0.3f, z);
+                GameObject go = SkyProp(stone, at, Vector3.zero);
+                if (go == null) return;
+                Bounds b = SkyBounds(go);
+                go.transform.localScale = new Vector3(depth / Mathf.Max(0.1f, b.size.x), (height + 0.3f) / Mathf.Max(0.05f, b.size.y), width / Mathf.Max(0.1f, b.size.z));
+                Put(go, at, false);
+            }
+            Plugin.Debug("Valhalla: " + count + " steps up to the forge's floor, " + rise.ToString("F2") + " m");
         }
 
         static void Ext(string token, string name, Vector3 f, Vector2 at, float yaw)
