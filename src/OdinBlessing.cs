@@ -100,7 +100,14 @@ namespace IslandsOfValheim
                     Trader.TradeItem copy;
                     if (!copies.TryGetValue(item, out copy))
                     {
-                        copy = new Trader.TradeItem { m_prefab = item.m_prefab, m_stack = item.m_stack, m_requiredGlobalKey = item.m_requiredGlobalKey };
+                        copy = new Trader.TradeItem
+                        {
+                            m_prefab = item.m_prefab, m_stack = item.m_stack, m_requiredGlobalKey = item.m_requiredGlobalKey,
+                            // (all the rest too: the game's store reads them, and null ones stopped it, 2.1.2)
+                            m_levelUpEffect = item.m_levelUpEffect, m_buyPlayerEffects = item.m_buyPlayerEffects ?? new EffectList(),
+                            m_icon = item.m_icon, m_name = item.m_name ?? "", m_tooltip = item.m_tooltip ?? "",
+                            m_buyKey = item.m_buyKey, m_incrementKey = item.m_incrementKey, m_incrementAmount = item.m_incrementAmount,
+                        };
                         copies[item] = copy;
                     }
                     copy.m_price = Mathf.Max(1, Mathf.RoundToInt(item.m_price * Price));

@@ -164,6 +164,11 @@ namespace IslandsOfValheim
                 trade.m_stack = (int)Goods[i + 1];
                 trade.m_price = (int)Goods[i + 2];
                 trade.m_requiredGlobalKey = (string)Goods[i + 3];
+                // (the game's newer store reads these as it lists the goods, and a trade made in code leaves them
+                // null: the store stopped at its first line, "12345" and "Tooltip" showing, 2.1.2)
+                trade.m_tooltip = "";
+                trade.m_name = "";
+                trade.m_buyPlayerEffects = new EffectList();
                 trader.m_items.Add(trade);
             }
             Plugin.Debug("Sea trader sells " + trader.m_items.Count + " goods");
