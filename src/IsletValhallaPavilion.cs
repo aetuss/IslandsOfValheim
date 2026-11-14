@@ -86,11 +86,14 @@ namespace IslandsOfValheim
 
         // ---- Eitri and Brokkr's forge, west of the einherjar's yard (where the daily battle was) ----
 
-        internal static readonly Vector2 Smithy = new Vector2(19f, -16f);
+        // (its south edge in line with the yard's, z -25.5: where the user drew it; 2.0.25-2.0.31 had it at -16, 4.5 m
+        // short of it)
+        internal static readonly Vector2 Smithy = new Vector2(19f, -20.5f);
         // where the smith's anvil and the bellows stand, from its middle (the smiths stand by them, by their real
         // size: ValhallaSmiths)
         internal static readonly Vector2 SmithAnvil = new Vector2(2.6f, 2.6f), SmithBellows = new Vector2(-3f, 3.7f);
         const float SmithyHalf = 5f, SmithyPostX = 4.4f, SmithyPostZ = 4f, SmithyPosts = 3.8f;
+        internal const float SmithyHalfSize = SmithyHalf;
 
         // A stone floor (10 x 10 m, a metre high: its stones are blocks) with steps up the middle of each side and
         // the way from each across it kept clear; in its four corners the work: the forge with its bellows beside
@@ -168,20 +171,22 @@ namespace IslandsOfValheim
             float dais = G(Smithy.x - 3.5f, Smithy.y + 6.2f) + 0.4f;
             // Mjölnir: a twin of Thor's hammer, standing on its head, its short handle up (2.0.29 laid it down small,
             // its head off the pedestal's edge)
-            float mTop = StoneBlock(stone, new Vector2(Smithy.x - 4.5f, Smithy.y + 6.2f), 0.6f, 0.6f, 0.6f, dais);
-            Vector3 mAt = new Vector3(Smithy.x - 4.5f, mTop, Smithy.y + 6.2f);
+            // (the three evenly apart round the dais's middle, each pedestal alike: 2.0.29-2.0.31's were off to one
+            // side, the user asked them centred)
+            float mTop = StoneBlock(stone, new Vector2(Smithy.x - 4.6f, Smithy.y + 6.2f), 0.6f, 0.6f, 0.6f, dais);
+            Vector3 mAt = new Vector3(Smithy.x - 4.6f, mTop, Smithy.y + 6.2f);
             GameObject hammer = SkyItem("SledgeIron", mAt, Vector3.back, Vector3.up, false, true);
             if (hammer != null) { Grow(hammer, 0.6f, mAt); Plaque(hammer, "iov_mjolnir"); }
             // Gungnir: a twin of Odin's spear (the sons of Ivaldi's work, not theirs: Eitri keeps it to show his is
             // finer), upright, its butt set in its pedestal (the user asked for it between Mjölnir and the ring)
-            float gTop = StoneBlock(stone, new Vector2(Smithy.x - 3.4f, Smithy.y + 6.2f), 0.5f, 0.45f, 0.5f, dais);
-            Vector3 gAt = new Vector3(Smithy.x - 3.4f, gTop - 0.15f, Smithy.y + 6.2f);
+            float gTop = StoneBlock(stone, new Vector2(Smithy.x - 3.5f, Smithy.y + 6.2f), 0.6f, 0.6f, 0.6f, dais);
+            Vector3 gAt = new Vector3(Smithy.x - 3.5f, gTop - 0.15f, Smithy.y + 6.2f);
             string spear = PrefabManager.Instance.GetPrefab("SpearWolfFang") != null ? "SpearWolfFang" : "SpearElderbark";
             GameObject gungnir = SkyItem(spear, gAt, Vector3.back, Vector3.up, false);
             if (gungnir != null) { Grow(gungnir, 0.85f, gAt); Plaque(gungnir, "iov_gungnir"); }
             // Draupnir: a gold ring standing on its edge over its pedestal, turning slowly, faintly lit
-            float dTop = StoneBlock(stone, new Vector2(Smithy.x - 2.3f, Smithy.y + 6.2f), 0.6f, 0.75f, 0.6f, dais);
-            GameObject ring = GoldRing(new Vector3(Smithy.x - 2.3f, dTop + 0.42f, Smithy.y + 6.2f));
+            float dTop = StoneBlock(stone, new Vector2(Smithy.x - 2.4f, Smithy.y + 6.2f), 0.6f, 0.6f, 0.6f, dais);
+            GameObject ring = GoldRing(new Vector3(Smithy.x - 2.4f, dTop + 0.42f, Smithy.y + 6.2f));
             if (ring != null) Plaque(ring, "iov_draupnir");
             // (Gullinbursti's low plinth on the east dais; he's made with the people)
             StoneBlock(stone, new Vector2(Smithy.x + GullinburstiAt.x, Smithy.y + GullinburstiAt.y), 1.7f, 0.3f, 0.9f, G(Smithy.x + 3.5f, Smithy.y + 6.2f) + 0.4f);

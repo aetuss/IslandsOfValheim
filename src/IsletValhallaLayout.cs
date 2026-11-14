@@ -872,7 +872,7 @@ namespace IslandsOfValheim
                 new Vector3(Yard.x + 16f, 0f, Yard.y - 5f),  // east
                 new Vector3(Yard.x + 7f, 0f, Yard.y - 13f),  // south
                 new Vector3(Yard.x - 6f, 0f, Yard.y - 13.5f),// south
-                new Vector3(Yard.x - 15f, 0f, Yard.y - 8f),  // west, toward the way
+                new Vector3(Yard.x - 18.5f, 0f, Yard.y - 12.5f), // south-west, past the forge's corner (at -15, -8 it stood under its roof)
             };
             string[] groveKinds = { "Oak1", "Beech1", "Birch1", "Beech_small1", "Beech_small2" };
             for (int i = 0; i < grove.Length; i++)
