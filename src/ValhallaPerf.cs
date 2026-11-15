@@ -10,18 +10,19 @@ namespace IslandsOfValheim
     // (development) iov_perf: what costs the frame rate where you stand. Counts what's drawn, lit and moving within
     // 60 m of the camera; then switches each kind of thing off in turn for a few seconds (people drawn, people's
     // animation, capes, people's shadows, lights, fire and smoke, every shadow, Valhalla's people's own script),
-    // measures the frame rate without it, and puts it back as it was. Stand still, don't touch anything: about 40 s.
+    // measures the frame rate with and without it, and puts it back as it was. Stand still, don't touch anything:
+    // about 2 minutes.
     // The table goes to the console and the log ("iov_perf:").
     static class ValhallaPerf
     {
-        const float Near = 60f, Settle = 1.2f, Measure = 3f;
+        const float Near = 60f, Settle = 1.2f, Measure = 1.5f;
         static bool running;
 
         internal static void Run(Terminal context)
         {
             if (running) { context.AddString("iov_perf is measuring already."); return; }
             if (Plugin.Instance == null || Utils.GetMainCamera() == null) return;
-            context.AddString("iov_perf: measuring for about 40 s. Stand still and don't touch anything; the result comes here and in the log.");
+            context.AddString("iov_perf: measuring for about 2 minutes. Stand still and don't touch anything; the result comes here and in the log.");
             Plugin.Instance.StartCoroutine(Test(context));
         }
 
@@ -92,7 +93,7 @@ namespace IslandsOfValheim
             lines.Add("iov_perf: within " + Near + " m of the camera at " + eye.ToString("F0") + ":");
             lines.Add("iov_perf:   renderers " + renderers.Count + " (" + visible + " in view, " + skinned + " skinned, " + casting + " casting shadows)");
             lines.Add("iov_perf:   lights " + lights.Count + " (" + shadowed + " with shadows); fire/smoke systems playing " + particles.Count);
-            lines.Add("iov_perf:   people " + people.Count + " (" + peopleParts.Count + " parts drawn, " + peopleAnimators.Count + " animated); capes moving " + capes.Count + " (+" + magica.Count + " MagicaCloth" + (magicaType == null ? ": type not found" : "") + "); dressed once " + settled.Count +
+            lines.Add("iov_perf:   people " + people.Count + " (" + peopleParts.Count + " parts drawn, " + peopleAnimators.Count + " animated); capes moving " + capes.Count + " (+" + magica.Count + " MagicaCloth on, those past 14 m resting" + (magicaType == null ? ": type not found" : "") + "); dressed once " + settled.Count +
                 "; animators " + animators.Count + "; game characters " + characters);
             lines.Add("iov_perf:   heaviest by what's drawn: " + Heaviest(renderers));
 
@@ -120,19 +121,25 @@ namespace IslandsOfValheim
             ValhallaPeople hall = ValhallaPeople.Current;
             if (hall != null) steps.Add(new Step { name = "Valhalla people's script stopped", off = () => hall.enabled = false, on = () => { if (hall != null) hall.enabled = true; } });
 
+            // Each step measured as it is, without, without, as it is (one after another, so the frame rate's own
+            // slow drift, about 13 fps over the old 40 s run, falls equally on both sides and cancels out).
             yield return new WaitForSecondsRealtime(Settle);
             float baseline = 0f;
             yield return Fps(v => baseline = v);
             lines.Add("iov_perf: frame rate as it is: " + baseline.ToString("F0"));
             foreach (Step s in steps)
             {
-                float fps = 0f;
+                float a1 = 0f, b1 = 0f, b2 = 0f, a2 = 0f;
+                yield return Fps(v => a1 = v);
                 try { s.off(); } catch (System.Exception e) { Plugin.Log.LogWarning("iov_perf: " + s.name + ": " + e.Message); }
                 yield return new WaitForSecondsRealtime(Settle);
-                yield return Fps(v => fps = v);
+                yield return Fps(v => b1 = v);
+                yield return Fps(v => b2 = v);
                 try { s.on(); } catch (System.Exception e) { Plugin.Log.LogWarning("iov_perf: " + s.name + " back: " + e.Message); }
-                lines.Add("iov_perf:   " + s.name + ": " + fps.ToString("F0") + " (" + (fps - baseline >= 0f ? "+" : "") + (fps - baseline).ToString("F0") + ")");
-                yield return new WaitForSecondsRealtime(0.5f);
+                yield return new WaitForSecondsRealtime(Settle);
+                yield return Fps(v => a2 = v);
+                float with = (a1 + a2) * 0.5f, without = (b1 + b2) * 0.5f, change = without - with;
+                lines.Add("iov_perf:   " + s.name + ": " + with.ToString("F0") + " -> " + without.ToString("F0") + " (" + (change >= 0f ? "+" : "") + change.ToString("F0") + ")");
             }
             float after = 0f;
             yield return Fps(v => after = v);

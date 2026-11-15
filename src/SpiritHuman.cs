@@ -200,9 +200,69 @@ namespace IslandsOfValheim
         {
             if (KeepDressing || look == null || vis == null || !vis.enabled) return;
             if (settleAt < 0f) settleAt = Time.time + 8f;
+            // (its capes told as they come, so none is seen blown about and then stilled at once)
+            if (Time.time >= nextCapeLook) { nextCapeLook = Time.time + 0.5f; CapesSettleFar(); }
             if (Time.time < settleAt) return;
             if (ghost != Solid && (ghostSince < 0f || Time.time - ghostSince < 11f)) return;
             vis.enabled = false;
+            CapesSettleFar();
+        }
+
+        // Most of the game's capes now are MagicaCloth (set up as VisEquipment puts them on), which Detail's
+        // Unity Cloth list never sees: dozens of them blown about at any distance. Each is told, as it comes,
+        // to settle by itself past the distance Detail stills the others at: the cloth's own distance culling,
+        // which blends it back to its plain pose over its last few metres and stops working it there; it moves
+        // again as you come near. Not a soft ghost's: its depth twin is a copy of the cape's mesh as the cloth
+        // drew it, and wouldn't follow the plain one back.
+        const float CapeStill = 14f, CapeFade = 0.2f;
+        static bool magicaLooked;
+        static System.Type magicaType;
+        static System.Reflection.PropertyInfo magicaData;
+        static System.Reflection.FieldInfo magicaCulling, cullingLength, cullingFade, sliderUse, sliderValue;
+        static System.Reflection.MethodInfo magicaChanged;
+        readonly HashSet<Component> capesTold = new HashSet<Component>();
+        float nextCapeLook;
+
+        void CapesSettleFar()
+        {
+            if (ghost == GhostSoft) return;
+            if (!magicaLooked)
+            {
+                magicaLooked = true;
+                foreach (System.Reflection.Assembly a in System.AppDomain.CurrentDomain.GetAssemblies())
+                    if (a.GetName().Name == "MagicaClothV2") { magicaType = a.GetType("MagicaCloth2.MagicaCloth"); break; }
+                if (magicaType != null)
+                {
+                    magicaData = magicaType.GetProperty("SerializeData");
+                    magicaChanged = magicaType.GetMethod("SetParameterChange", System.Type.EmptyTypes);
+                    magicaCulling = magicaData != null ? magicaData.PropertyType.GetField("cullingSettings") : null;
+                    cullingLength = magicaCulling != null ? magicaCulling.FieldType.GetField("distanceCullingLength") : null;
+                    cullingFade = magicaCulling != null ? magicaCulling.FieldType.GetField("distanceCullingFadeRatio") : null;
+                    sliderUse = cullingLength != null ? cullingLength.FieldType.GetField("use") : null;
+                    sliderValue = cullingLength != null ? cullingLength.FieldType.GetField("value") : null;
+                }
+                bool ready = magicaChanged != null && sliderUse != null && sliderValue != null && cullingFade != null;
+                Plugin.Debug("Spirits: MagicaCloth capes " + (ready ? "settle past " + CapeStill + " m" : "left as they are (not found)"));
+                if (!ready) magicaType = null;
+            }
+            if (magicaType == null) return;
+            foreach (Component cape in GetComponentsInChildren(magicaType, true))
+            {
+                if (cape == null || capesTold.Contains(cape)) continue;
+                try
+                {
+                    object data = magicaData.GetValue(cape, null);
+                    object culling = data != null ? magicaCulling.GetValue(data) : null;
+                    object length = culling != null ? cullingLength.GetValue(culling) : null;
+                    if (length == null) continue;
+                    sliderUse.SetValue(length, true);
+                    sliderValue.SetValue(length, CapeStill);
+                    cullingFade.SetValue(culling, CapeFade);
+                    magicaChanged.Invoke(cape, null);
+                    capesTold.Add(cape);
+                }
+                catch (System.Exception e) { Plugin.Debug("Spirits: a cape left as it is (" + e.Message + ")"); }
+            }
         }
 
         // The game keeps a player's hair and beard from casting shadows when it's set to (VisEquipment, every
