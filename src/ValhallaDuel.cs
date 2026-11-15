@@ -200,7 +200,8 @@ namespace IslandsOfValheim
         int slot = -1;
         long bout = -1;
 
-        ZDO Kept { get { ZNetView nview = GetComponent<ZNetView>(); return nview != null && nview.IsValid() ? nview.GetZDO() : null; } }
+        ZNetView keptBy; // (looked up once: read for each fighter every frame of a bout)
+        ZDO Kept { get { if (keptBy == null) keptBy = GetComponent<ZNetView>(); return keptBy != null && keptBy.IsValid() ? keptBy.GetZDO() : null; } }
 
         // Which watcher he is, and in which bout, kept with him so every game knows.
         internal int Slot { get { if (slot < 0 && Kept != null) slot = Kept.GetInt(SlotKey, 0) - 1; return slot; } }

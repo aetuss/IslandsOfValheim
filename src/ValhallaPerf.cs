@@ -62,8 +62,19 @@ namespace IslandsOfValheim
                 if (p != null && p.isPlaying && Vector3.Distance(eye, p.transform.position) < Near) particles.Add(p);
             List<Cloth> capes = new List<Cloth>();
             foreach (Cloth c in Object.FindObjectsOfType<Cloth>()) if (c != null && c.enabled && Vector3.Distance(eye, c.transform.position) < Near) capes.Add(c);
+            // The game's newer capes (MagicaCloth, on what VisEquipment puts on) aren't Unity's Cloth.
+            List<Behaviour> magica = new List<Behaviour>();
+            System.Type magicaType = MagicaType();
+            if (magicaType != null)
+                foreach (Object o in Object.FindObjectsOfType(magicaType))
+                {
+                    Behaviour b = o as Behaviour;
+                    if (b != null && b.enabled && Vector3.Distance(eye, b.transform.position) < Near) magica.Add(b);
+                }
             List<SpiritHuman> people = new List<SpiritHuman>();
             foreach (SpiritHuman h in Object.FindObjectsOfType<SpiritHuman>()) if (h != null && Vector3.Distance(eye, h.transform.position) < Near) people.Add(h);
+            List<VisEquipment> settled = new List<VisEquipment>(); // dressed once and left be (SpiritHuman.Settle)
+            foreach (SpiritHuman h in people) { VisEquipment v = h.GetComponent<VisEquipment>(); if (v != null && !v.enabled) settled.Add(v); }
             List<Animator> animators = new List<Animator>(), peopleAnimators = new List<Animator>();
             foreach (Animator a in Object.FindObjectsOfType<Animator>())
                 if (a != null && a.enabled && Vector3.Distance(eye, a.transform.position) < Near)
@@ -81,7 +92,7 @@ namespace IslandsOfValheim
             lines.Add("iov_perf: within " + Near + " m of the camera at " + eye.ToString("F0") + ":");
             lines.Add("iov_perf:   renderers " + renderers.Count + " (" + visible + " in view, " + skinned + " skinned, " + casting + " casting shadows)");
             lines.Add("iov_perf:   lights " + lights.Count + " (" + shadowed + " with shadows); fire/smoke systems playing " + particles.Count);
-            lines.Add("iov_perf:   people " + people.Count + " (" + peopleParts.Count + " parts drawn, " + peopleAnimators.Count + " animated); capes moving " + capes.Count +
+            lines.Add("iov_perf:   people " + people.Count + " (" + peopleParts.Count + " parts drawn, " + peopleAnimators.Count + " animated); capes moving " + capes.Count + " (+" + magica.Count + " MagicaCloth" + (magicaType == null ? ": type not found" : "") + "); dressed once " + settled.Count +
                 "; animators " + animators.Count + "; game characters " + characters);
             lines.Add("iov_perf:   heaviest by what's drawn: " + Heaviest(renderers));
 
@@ -90,6 +101,14 @@ namespace IslandsOfValheim
             steps.Add(Toggle("people not drawn", peopleParts, r => r.forceRenderingOff, (r, v) => r.forceRenderingOff = v, true));
             steps.Add(Toggle("people not animated", peopleAnimators, a => a.enabled, (a, v) => a.enabled = v, false));
             steps.Add(Toggle("capes still", capes, c => c.enabled, (c, v) => c.enabled = v, false));
+            steps.Add(Toggle("MagicaCloth capes still", magica, b => b.enabled, (b, v) => b.enabled = v, false));
+            // (these two put back what was saved before: the frame rate should drop)
+            Step dressing = Toggle("people dressed every frame again, as before", settled, v => v.enabled, (v, on) => v.enabled = on, true);
+            System.Action dressOff = dressing.off, dressOn = dressing.on;
+            dressing.off = () => { SpiritHuman.KeepDressing = true; dressOff(); };
+            dressing.on = () => { SpiritHuman.KeepDressing = false; dressOn(); };
+            steps.Add(dressing);
+            steps.Add(new Step { name = "every grass patch out again, as before", off = () => ValhallaSky.AllPatches = true, on = () => ValhallaSky.AllPatches = false });
             List<Renderer> peopleCasting = peopleParts.FindAll(r => r.shadowCastingMode != ShadowCastingMode.Off);
             steps.Add(Toggle("people cast no shadow", peopleCasting, r => r.shadowCastingMode, (r, v) => r.shadowCastingMode = v, ShadowCastingMode.Off));
             steps.Add(Toggle("lights off", lights, l => l.enabled, (l, v) => l.enabled = v, false));
@@ -120,6 +139,18 @@ namespace IslandsOfValheim
             lines.Add("iov_perf: frame rate with all back: " + after.ToString("F0"));
             foreach (string line in lines) { Plugin.Log.LogInfo(line); if (context != null) context.AddString(line.Substring("iov_perf: ".Length)); }
             running = false;
+        }
+
+        static System.Type MagicaType()
+        {
+            foreach (System.Reflection.Assembly a in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (!a.GetName().Name.Contains("Magica")) continue;
+                System.Type[] types;
+                try { types = a.GetTypes(); } catch (System.Reflection.ReflectionTypeLoadException e) { types = e.Types; }
+                foreach (System.Type t in types) if (t != null && t.Name == "MagicaCloth" && typeof(Behaviour).IsAssignableFrom(t)) return t;
+            }
+            return null;
         }
 
         // Each thing's setting kept, the new one put in its place; then each one's own put back.

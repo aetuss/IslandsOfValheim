@@ -277,18 +277,49 @@ namespace IslandsOfValheim
                 if (rows == null) return;
                 for (int i = 0; i < rows.Count && i < statusEffects.Count; i++)
                 {
-                    Component text = rows[i] != null ? rows[i].GetComponentInChildren(textType) : null;
+                    Component text = Text(rows[i]);
                     RectTransform place = text != null ? text.transform as RectTransform : null;
                     if (place == null) continue;
                     int id = place.GetInstanceID();
                     Vector2 home;
                     if (!namePlaces.TryGetValue(id, out home)) { home = place.anchoredPosition; namePlaces[id] = home; }
-                    bool ours = statusEffects[i] != null && statusEffects[i].name.StartsWith("IoV_SE_");
+                    bool ours = Ours(statusEffects[i]);
                     place.anchoredPosition = ours ? home + new Vector2(0f, NameRaise) : home;
                     // Ours run long ("Denizin çocuğu"). The game sizes each name to fit, so a longer one came out
-                    // smaller than its neighbour: ours all get one fixed, smaller size instead.
-                    Size(text, ours);
+                    // smaller than its neighbour: ours all get one fixed, smaller size instead. (Set as a row
+                    // turns ours or the game's again: nothing else changes it between.)
+                    bool was;
+                    if (!sizedOurs.TryGetValue(id, out was) || was != ours) { Size(text, ours); sizedOurs[id] = ours; }
                 }
+            }
+
+            // (this runs every frame: each row's name found once, and whether an effect is ours told once)
+            static readonly System.Collections.Generic.Dictionary<int, Component> rowTexts = new System.Collections.Generic.Dictionary<int, Component>();
+            static readonly System.Collections.Generic.Dictionary<int, bool> oursById = new System.Collections.Generic.Dictionary<int, bool>();
+            static readonly System.Collections.Generic.Dictionary<int, bool> sizedOurs = new System.Collections.Generic.Dictionary<int, bool>();
+
+            static Component Text(RectTransform row)
+            {
+                if (row == null) return null;
+                int id = row.GetInstanceID();
+                Component text;
+                if (rowTexts.TryGetValue(id, out text) && text != null) return text;
+                text = row.GetComponentInChildren(textType);
+                if (rowTexts.Count > 500) { rowTexts.Clear(); sizedOurs.Clear(); } // (rows made anew as the list's length changes)
+                if (text != null) rowTexts[id] = text;
+                return text;
+            }
+
+            static bool Ours(StatusEffect effect)
+            {
+                if (effect == null) return false;
+                int id = effect.GetInstanceID();
+                bool ours;
+                if (oursById.TryGetValue(id, out ours)) return ours;
+                if (oursById.Count > 2000) oursById.Clear(); // (each effect given is a copy of its own)
+                ours = effect.name.StartsWith("IoV_SE_", System.StringComparison.Ordinal);
+                oursById[id] = ours;
+                return ours;
             }
         }
 

@@ -147,6 +147,7 @@ namespace IslandsOfValheim
 
         void Update()
         {
+            Settle();
             Land();
             Clanging();
             if (animator == null || !animator.enabled) { if (ghost == Solid) return; }
@@ -188,6 +189,43 @@ namespace IslandsOfValheim
 
         bool shown, up;
         float ghostSince = -1f;
+
+        // Dressed, a local one's looks never change again, but the game's VisEquipment would dress it anew every
+        // frame (its colours, hair and beard looked up, every piece checked), for each of dozens of people. So
+        // it's switched off once its clothes are on and, a ghost, made pale (Ghostly looks it over for 10 s).
+        float settleAt = -1f;
+        internal static bool KeepDressing; // (development: iov_perf, dressed every frame as before)
+
+        void Settle()
+        {
+            if (KeepDressing || look == null || vis == null || !vis.enabled) return;
+            if (settleAt < 0f) settleAt = Time.time + 8f;
+            if (Time.time < settleAt) return;
+            if (ghost != Solid && (ghostSince < 0f || Time.time - ghostSince < 11f)) return;
+            vis.enabled = false;
+        }
+
+        // The game keeps a player's hair and beard from casting shadows when it's set to (VisEquipment, every
+        // frame); with that switched off once dressed, Detail keeps them so itself.
+        static readonly System.Reflection.FieldInfo hairWorn = HarmonyLib.AccessTools.Field(typeof(VisEquipment), "m_hairItemInstance");
+        static readonly System.Reflection.FieldInfo beardWorn = HarmonyLib.AccessTools.Field(typeof(VisEquipment), "m_beardItemInstance");
+
+        bool HairUnshadowed(Renderer r)
+        {
+            if (vis == null || !vis.m_disableHairShadows) return false;
+            GameObject hair = hairWorn != null ? hairWorn.GetValue(vis) as GameObject : null;
+            GameObject beard = beardWorn != null ? beardWorn.GetValue(vis) as GameObject : null;
+            return (hair != null && r.transform.IsChildOf(hair.transform)) || (beard != null && r.transform.IsChildOf(beard.transform));
+        }
+
+        // A ghost's own materials (made for it alone) go with it.
+        readonly List<Material> made = new List<Material>();
+
+        void OnDestroy()
+        {
+            foreach (Material m in made) if (m != null) Destroy(m);
+            made.Clear();
+        }
 
         // The body's animator parameters, read once (they're the same for everyone; asking the animator for them
         // makes a new list of 170 each time, which, every frame for dozens of people, cost real frame rate).
@@ -380,7 +418,7 @@ namespace IslandsOfValheim
             {
                 if (r == null) continue;
                 r.forceRenderingOff = want == 3 || unseen;
-                r.shadowCastingMode = want == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off;
+                r.shadowCastingMode = want == 0 && !HairUnshadowed(r) ? ShadowCastingMode.On : ShadowCastingMode.Off;
             }
             foreach (Cloth c in capes) if (c != null) c.enabled = want == 0;
             animator.enabled = want <= 1 || (keepMoving && want == 2);
@@ -416,12 +454,21 @@ namespace IslandsOfValheim
                     : r.GetComponent<MeshFilter>() != null ? r.GetComponent<MeshFilter>().sharedMesh : null;
                 int parts = mesh != null ? Mathf.Max(1, mesh.subMeshCount) : mats.Length;
                 if (mats.Length > parts) System.Array.Resize(ref mats, parts);
-                for (int i = 0; i < mats.Length; i++) mats[i] = GhostMaterial(mats[i], ghost, BodyTexture(mats[i]));
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    Material ghostly = GhostMaterial(mats[i], ghost, BodyTexture(mats[i]));
+                    if (ghostly != mats[i] && ghostly != null) made.Add(ghostly);
+                    mats[i] = ghostly;
+                }
                 r.materials = mats;
                 r.shadowCastingMode = ShadowCastingMode.Off;
                 r.receiveShadows = false;
                 Renderer depth = DepthTwin(r, mesh, parts, ghost);
-                if (depth != null) ghosted.Add(depth);
+                if (depth != null)
+                {
+                    ghosted.Add(depth);
+                    if (depth.sharedMaterial != null) made.Add(depth.sharedMaterial);
+                }
             }
         }
 

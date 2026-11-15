@@ -897,6 +897,7 @@ namespace IslandsOfValheim
                                 GameObject go = Object.Instantiate(c.m_prefab, centre, Quaternion.identity, transform);
                                 drawn = go.GetComponent<InstanceRenderer>();
                                 if (drawn.m_lodMaxDistance > system.m_distance - patch * 0.5f) drawn.m_lodMaxDistance = system.m_distance - patch * 0.5f;
+                                if (drawn.m_useLod) { patches.Add(drawn); patchAt.Add(centre); patchReach.Add(drawn.m_lodMaxDistance + patch + 6f); }
                             }
                             drawn.AddInstance(transform.TransformPoint(new Vector3(x, IsletBuilder.SkyGround(x, z), z)), Quaternion.Euler(0f, yaw, 0f), size);
                             blades++;
@@ -904,7 +905,38 @@ namespace IslandsOfValheim
                     }
                 Random.state = saved;
             }
-            Plugin.Debug("Valhalla: " + blades + " blades and flowers of " + kinds + " of the game's grass kinds on the rock");
+            Plugin.Debug("Valhalla: " + blades + " blades and flowers of " + kinds + " of the game's grass kinds on the rock, in " + patches.Count + " patches put away when far");
+        }
+
+        // The patches farther off than they're drawn are put away, and back as you come near: each one otherwise
+        // looks itself over every frame (thousands across the rock) to draw nothing. Nothing seen changes: a
+        // patch draws nothing past its own furthest distance, and only patches that fade so are put away.
+        // Put away with none of its blades shown (a patch out of view keeps the count it last had, and brought
+        // back so it would show them all past its distance for a moment), so it fades in as it does at first.
+        readonly List<InstanceRenderer> patches = new List<InstanceRenderer>();
+        readonly List<Vector3> patchAt = new List<Vector3>();
+        readonly List<float> patchReach = new List<float>();
+        float nextPatchCheck;
+        internal static bool AllPatches; // (development: iov_perf, every patch kept out as before)
+        static readonly System.Reflection.FieldInfo patchShowing = AccessTools.Field(typeof(InstanceRenderer), "m_lodCount");
+
+        void PatchesNear()
+        {
+            if (patches.Count == 0 || Time.time < nextPatchCheck) return;
+            nextPatchCheck = Time.time + 0.25f;
+            Camera cam = Utils.GetMainCamera();
+            if (cam == null) return;
+            Vector3 eye = cam.transform.position;
+            for (int i = 0; i < patches.Count; i++)
+            {
+                InstanceRenderer patch = patches[i];
+                if (patch == null) continue;
+                GameObject g = patch.gameObject;
+                bool near = AllPatches || Utils.DistanceXZ(eye, patchAt[i]) < patchReach[i];
+                if (g.activeSelf == near) continue;
+                if (!near && patchShowing != null) patchShowing.SetValue(patch, 0f);
+                g.SetActive(near);
+            }
         }
 
         // Whether a kind of grass grows at (x, z) on the rock: on it and off its edge, not where it's paved,
@@ -1033,6 +1065,7 @@ namespace IslandsOfValheim
             // The layers drift apart, slowly, each its own way.
             for (int i = 0; i < clouds.Count; i++)
                 clouds[i].Rotate(0f, (i % 2 == 0 ? 0.08f : -0.12f) * (1f + i * 0.4f) * Time.deltaTime, 0f, Space.Self);
+            PatchesNear();
 
             Player player = Player.m_localPlayer;
             if (player == null) return;
