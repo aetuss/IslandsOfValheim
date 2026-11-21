@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3
+
+- New colours for the tale's four bosses: Ketill, Grímr, Ormr and Hafdís.
+- Performance improvements in Valhalla.
+
 ## 2.1.2
 
 - Fixed: Sævar's store showed only a blank first line with the current version of the game.

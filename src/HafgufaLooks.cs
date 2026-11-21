@@ -202,7 +202,7 @@ namespace IslandsOfValheim
             int last = sample.Count - 1;
             float lo = sample[Mathf.Min(last, (int)(sample.Count * p.low))], hi = sample[Mathf.Min(last, (int)(sample.Count * p.high))];
             if (hi - lo < 0.05f) hi = lo + 0.05f;
-            Color[] glow = new Color[pixels.Length];
+            Color[] glow = p.glowParts ? new Color[pixels.Length] : null; // (no glowing parts: no glow picture)
             for (int i = 0; i < pixels.Length; i++)
             {
                 float light = Light(pixels[i]);
@@ -222,6 +222,7 @@ namespace IslandsOfValheim
                 }
                 c.a = pixels[i].a;
                 pixels[i] = c;
+                if (glow == null) continue;
                 float g = Mathf.Clamp01((t - 0.72f) / 0.28f);
                 Color e = p.glow * (g * g);
                 e.a = 1f;
@@ -233,13 +234,14 @@ namespace IslandsOfValheim
             main.filterMode = source.filterMode;
             main.anisoLevel = source.anisoLevel;
             main.Apply(true, true);
+            Plugin.Debug(p.who + "'s skin painted: its light " + lo.ToString("F2") + " to " + hi.ToString("F2") + " (drawn " + source.filterMode + ")");
+            if (glow == null) return new Texture2D[] { main, null };
             Texture2D lit = new Texture2D(main.width, main.height, TextureFormat.RGBA32, true);
             lit.SetPixels(glow);
             lit.name = source.name + GlowSuffix;
             lit.wrapMode = source.wrapMode;
             lit.filterMode = source.filterMode;
             lit.Apply(true, true);
-            Plugin.Debug(p.who + "'s skin painted: its light " + lo.ToString("F2") + " to " + hi.ToString("F2") + " (drawn " + source.filterMode + ")");
             return new[] { main, lit };
         }
 
