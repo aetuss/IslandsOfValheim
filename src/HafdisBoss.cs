@@ -20,7 +20,8 @@ namespace IslandsOfValheim
         {
             Character body = go.GetComponent<Character>();
             BossKit.Steady(body, "Hafdís");
-            BossKit.Tint(go, BossKit.Cast(new Color(0.9f, 0.85f, 0.7f), 0.5f, 1.15f), 0.3f, "Hafdís");
+            // a valkyrie's: dark bronze, pale gold, a warm gold glow
+            BossKit.TwoTone(go, "Hafdís", new Color(0.06f, 0.035f, 0.015f), new Color(0.32f, 0.2f, 0.08f), new Color(0.95f, 0.82f, 0.52f), Glow * 0.55f, 0.3f);
             BossKit.AddGlow(go, Glow, 6f, 2f, "Hafdís");
             go.AddComponent<HafdisFight>();
             BossKit.RegisterLight(Mark, Glow, 3.5f, 4f, 1.8f);

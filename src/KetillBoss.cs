@@ -24,16 +24,6 @@ namespace IslandsOfValheim
         internal const float Health = 700f; // before his star: about twice that in the fight
         internal static readonly Color Glow = new Color(0.35f, 1f, 0.72f);
 
-        // Drowned: every colour pulled towards a dark, wet sea-green, keeping its light and shade.
-        static Color Drowned(Color c)
-        {
-            float light = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
-            Color sea = new Color(0.2f, 0.36f, 0.3f) * (0.55f + light * 1.2f);
-            Color result = Color.Lerp(c, sea, 0.55f) * 0.85f;
-            result.a = c.a;
-            return result;
-        }
-
         internal static void Setup(GameObject go)
         {
             go.transform.localScale = go.transform.localScale * Scale;
@@ -52,30 +42,10 @@ namespace IslandsOfValheim
             RegisterLastLight();
         }
 
+        // Drowned: black weed-green, pale sea-foam, a faint green sea-shimmer; wet.
         static void Look(GameObject go)
         {
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return; // a dedicated server: no looks
-            try
-            {
-                Recolor.Shift drowned = Drowned;
-                foreach (Renderer renderer in go.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (renderer is ParticleSystemRenderer) continue;
-                    Material[] materials = renderer.sharedMaterials;
-                    for (int i = 0; i < materials.Length; i++)
-                    {
-                        Material copy = Recolor.Material(materials[i], drowned);
-                        if (copy == null) continue;
-                        if (copy.HasProperty("_Glossiness")) copy.SetFloat("_Glossiness", Mathf.Max(copy.GetFloat("_Glossiness"), 0.55f)); // wet
-                        materials[i] = copy;
-                    }
-                    renderer.sharedMaterials = materials;
-                }
-            }
-            catch (System.Exception e)
-            {
-                Plugin.Log.LogWarning("Could not give Ketill his drowned look: " + e.Message);
-            }
+            BossKit.TwoTone(go, "Ketill", new Color(0.01f, 0.03f, 0.02f), new Color(0.06f, 0.14f, 0.1f), new Color(0.55f, 0.68f, 0.6f), Glow * 0.5f, 0.55f);
         }
 
         // The fragment about his neck: a light on his chest that moves with him.

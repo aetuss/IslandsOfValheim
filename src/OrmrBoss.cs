@@ -35,7 +35,8 @@ namespace IslandsOfValheim
             go.transform.localScale = go.transform.localScale * Scale;
             Character body = go.GetComponent<Character>();
             BossKit.Steady(body, "Ormr");
-            BossKit.Tint(go, BossKit.Cast(new Color(0.26f, 0.2f, 0.32f), 0.45f, 0.85f), 0f, "Ormr");
+            // the mist's: blackened violet, pale lilac, a violet glow
+            BossKit.TwoTone(go, "Ormr", new Color(0.02f, 0.01f, 0.03f), new Color(0.12f, 0.07f, 0.18f), new Color(0.62f, 0.55f, 0.72f), Glow * 0.6f, 0f);
             BossKit.AddGlow(go, Glow, 3.5f, 1.3f, "Ormr");
             go.AddComponent<OrmrFight>();
             if (body != null) RegisterShade(body.m_faction);

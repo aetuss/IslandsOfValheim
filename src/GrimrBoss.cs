@@ -26,7 +26,8 @@ namespace IslandsOfValheim
             go.transform.localScale = go.transform.localScale * Scale;
             Character body = go.GetComponent<Character>();
             BossKit.Steady(body, "Grímr");
-            BossKit.Tint(go, BossKit.Cast(new Color(0.55f, 0.72f, 0.9f), 0.4f, 1.05f), 0.35f, "Grímr");
+            // frozen: deep navy, ice-white, a cold blue glow
+            BossKit.TwoTone(go, "Grímr", new Color(0.01f, 0.02f, 0.06f), new Color(0.07f, 0.13f, 0.28f), new Color(0.8f, 0.88f, 0.95f), Glow * 0.6f, 0.35f);
             BossKit.AddGlow(go, Glow, 4f, 1.4f, "Grímr");
             go.AddComponent<GrimrFight>();
             BossKit.RegisterLight(LastLight, Glow, 6f, 3f, 6f);
