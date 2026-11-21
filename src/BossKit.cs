@@ -42,10 +42,12 @@ namespace IslandsOfValheim
         // A keeper's own look, as Hafgufa's (HafgufaLooks): its body repainted in two tones from its own light
         // and shade (dark, middle, light), read gently (see Palette: its small textures). (Before 2.1.5, a
         // colour cast over its vanilla colours, which kept it looking like the vanilla creature.)
-        internal static void TwoTone(GameObject go, string who, Color dark, Color mid, Color pale, Color glow, float gloss)
+        // (keepLight: the game's own lightness kept, only the colours changed, for the smallest, blockiest
+        // textures; brightness scales it)
+        internal static void TwoTone(GameObject go, string who, Color dark, Color mid, Color pale, Color glow, float gloss, bool keepLight = false, float brightness = 1f)
         {
             try { HafgufaLooks.Repaint(go, new HafgufaLooks.Palette { who = who, dark = dark, mid = mid, pale = pale, glow = glow, gloss = gloss, keepOwnGlow = true,
-                low = 0.02f, high = 0.99f, smooth = false, glowParts = false }); }
+                low = 0.02f, high = 0.99f, smooth = false, glowParts = false, keepLight = keepLight, brightness = brightness }); }
             catch (System.Exception e) { Plugin.Log.LogWarning("Could not give " + who + " their look: " + e.Message); }
         }
 

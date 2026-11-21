@@ -36,6 +36,11 @@ namespace IslandsOfValheim
             // no glowing parts, so the game's own shading carries over in the new colours.
             internal float low = 0.3f, high = 0.92f;
             internal bool smooth = true, glowParts = true;
+            // Lightness kept as the game's (×brightness), only the colours from the palette: even read straight,
+            // a keeper's narrow shading stretched to the palette's dark-to-pale still came out in blocks (2.1.6);
+            // kept, its pixels differ only as much as the game's own do.
+            internal bool keepLight;
+            internal float brightness = 1f;
         }
 
         internal const string GlowSuffix = "_IoVGlow"; // the glow pictures' name ends so (HafgufaGlow finds them by it)
@@ -200,9 +205,17 @@ namespace IslandsOfValheim
             Color[] glow = new Color[pixels.Length];
             for (int i = 0; i < pixels.Length; i++)
             {
-                float u = Mathf.Clamp01((Light(pixels[i]) - lo) / (hi - lo));
+                float light = Light(pixels[i]);
+                float u = Mathf.Clamp01((light - lo) / (hi - lo));
                 float t = p.smooth ? Mathf.SmoothStep(0f, 1f, u) : u;
                 Color c = t < 0.6f ? Color.Lerp(p.dark, p.mid, t / 0.6f) : Color.Lerp(p.mid, p.pale, (t - 0.6f) / 0.4f);
+                if (p.keepLight)
+                {
+                    // its colour from the palette, its lightness the game's own (×brightness)
+                    float have = Light(c);
+                    if (have > 0.0001f) c *= light * p.brightness / have;
+                    c.r = Mathf.Min(1f, c.r); c.g = Mathf.Min(1f, c.g); c.b = Mathf.Min(1f, c.b);
+                }
                 c.a = pixels[i].a;
                 pixels[i] = c;
                 float g = Mathf.Clamp01((t - 0.72f) / 0.28f);

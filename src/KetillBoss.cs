@@ -45,7 +45,7 @@ namespace IslandsOfValheim
         // Drowned: black weed-green, pale sea-foam, a faint green sea-shimmer; wet.
         static void Look(GameObject go)
         {
-            BossKit.TwoTone(go, "Ketill", new Color(0.04f, 0.08f, 0.06f), new Color(0.16f, 0.3f, 0.24f), new Color(0.62f, 0.78f, 0.7f), Glow * 0.5f, 0.55f);
+            BossKit.TwoTone(go, "Ketill", new Color(0.04f, 0.08f, 0.06f), new Color(0.16f, 0.3f, 0.24f), new Color(0.62f, 0.78f, 0.7f), Glow * 0.5f, 0.55f, true, 0.9f);
         }
 
         // The fragment about his neck: a light on his chest that moves with him.
