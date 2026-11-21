@@ -40,7 +40,7 @@ namespace IslandsOfValheim
             // a keeper's narrow shading stretched to the palette's dark-to-pale still came out in blocks (2.1.6);
             // kept, its pixels differ only as much as the game's own do.
             internal bool keepLight;
-            internal float brightness = 1f;
+            internal float brightness = 1f, saturation = 1f; // (keepLight only)
         }
 
         internal const string GlowSuffix = "_IoVGlow"; // the glow pictures' name ends so (HafgufaGlow finds them by it)
@@ -214,6 +214,10 @@ namespace IslandsOfValheim
                     // its colour from the palette, its lightness the game's own (×brightness)
                     float have = Light(c);
                     if (have > 0.0001f) c *= light * p.brightness / have;
+                    // muted: the game's pixel-by-pixel shading shows as blocks in a strong colour (2.1.7: a
+                    // bright green Ketill, a vivid purple Ormr), not in a soft one
+                    float grey = light * p.brightness;
+                    c = Color.Lerp(new Color(grey, grey, grey), c, p.saturation);
                     c.r = Mathf.Min(1f, c.r); c.g = Mathf.Min(1f, c.g); c.b = Mathf.Min(1f, c.b);
                 }
                 c.a = pixels[i].a;
