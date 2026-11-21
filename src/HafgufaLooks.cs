@@ -29,6 +29,13 @@ namespace IslandsOfValheim
             internal Color dark, mid, pale, glow;
             internal float gloss;
             internal bool keepOwnGlow; // a part that glows in the game's own (eyes) keeps its glow
+            // How the light and shade are read: the share of the texture called darkest (low) and lightest (high),
+            // eased (smooth) or straight; and whether its palest parts glow. Hafgufa's big, smooth scales took
+            // the strong way. The keepers' small textures (64-256 px, drawn sharp, pixel by pixel) came out in
+            // blocks and specks that way (2.1.5): theirs is read over nearly its whole spread, straight, with
+            // no glowing parts, so the game's own shading carries over in the new colours.
+            internal float low = 0.3f, high = 0.92f;
+            internal bool smooth = true, glowParts = true;
         }
 
         internal const string GlowSuffix = "_IoVGlow"; // the glow pictures' name ends so (HafgufaGlow finds them by it)
@@ -91,7 +98,7 @@ namespace IslandsOfValheim
                     List<string> emission = new List<string>();
                     for (int k = 0; k < copy.shader.GetPropertyCount(); k++)
                         if (copy.shader.GetPropertyName(k).IndexOf("Emission", System.StringComparison.OrdinalIgnoreCase) >= 0) emission.Add(copy.shader.GetPropertyName(k));
-                    bool lit = copy.HasProperty("_EmissionMap") && copy.HasProperty("_EmissionColor");
+                    bool lit = p.glowParts && copy.HasProperty("_EmissionMap") && copy.HasProperty("_EmissionColor");
                     bool own = lit && p.keepOwnGlow && source.GetTexture("_EmissionMap") != null;
                     if (lit && !own)
                     {
@@ -187,12 +194,14 @@ namespace IslandsOfValheim
             List<float> sample = new List<float>();
             for (int i = 0; i < pixels.Length; i += 7) sample.Add(Light(pixels[i]));
             sample.Sort();
-            float lo = sample[(int)(sample.Count * 0.3f)], hi = sample[(int)(sample.Count * 0.92f)];
+            int last = sample.Count - 1;
+            float lo = sample[Mathf.Min(last, (int)(sample.Count * p.low))], hi = sample[Mathf.Min(last, (int)(sample.Count * p.high))];
             if (hi - lo < 0.05f) hi = lo + 0.05f;
             Color[] glow = new Color[pixels.Length];
             for (int i = 0; i < pixels.Length; i++)
             {
-                float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((Light(pixels[i]) - lo) / (hi - lo)));
+                float u = Mathf.Clamp01((Light(pixels[i]) - lo) / (hi - lo));
+                float t = p.smooth ? Mathf.SmoothStep(0f, 1f, u) : u;
                 Color c = t < 0.6f ? Color.Lerp(p.dark, p.mid, t / 0.6f) : Color.Lerp(p.mid, p.pale, (t - 0.6f) / 0.4f);
                 c.a = pixels[i].a;
                 pixels[i] = c;
@@ -213,7 +222,7 @@ namespace IslandsOfValheim
             lit.wrapMode = source.wrapMode;
             lit.filterMode = source.filterMode;
             lit.Apply(true, true);
-            Plugin.Debug(p.who + "'s skin painted: its light " + lo.ToString("F2") + " to " + hi.ToString("F2"));
+            Plugin.Debug(p.who + "'s skin painted: its light " + lo.ToString("F2") + " to " + hi.ToString("F2") + " (drawn " + source.filterMode + ")");
             return new[] { main, lit };
         }
 
